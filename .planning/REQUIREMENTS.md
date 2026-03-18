@@ -59,9 +59,9 @@
 
 ### Graph Store
 
-- [ ] **STORE-01**: `save_graph(G, repo_path)` persists NetworkX graph to SQLite (`graph_nodes` + `graph_edges` tables)
-- [ ] **STORE-02**: `load_graph(repo_path)` reconstructs NetworkX DiGraph from SQLite on startup
-- [ ] **STORE-03**: `delete_nodes_for_files(file_paths, repo_path)` removes nodes for incremental re-index
+- [x] **STORE-01**: `save_graph(G, repo_path)` persists NetworkX graph to SQLite (`graph_nodes` + `graph_edges` tables)
+- [x] **STORE-02**: `load_graph(repo_path)` reconstructs NetworkX DiGraph from SQLite on startup
+- [x] **STORE-03**: `delete_nodes_for_files(file_paths, repo_path)` removes nodes for incremental re-index
 
 ### Retrieval — Graph RAG
 
@@ -205,9 +205,9 @@
 | EMBED-04 | Phase 5 | Pending |
 | EMBED-05 | Phase 5 | Pending |
 | EMBED-06 | Phase 5 | Pending |
-| STORE-01 | Phase 5 | Pending |
-| STORE-02 | Phase 5 | Pending |
-| STORE-03 | Phase 5 | Pending |
+| STORE-01 | Phase 5 | Complete |
+| STORE-02 | Phase 5 | Complete |
+| STORE-03 | Phase 5 | Complete |
 | PIPE-01 | Phase 6 | Pending |
 | PIPE-02 | Phase 6 | Pending |
 | PIPE-03 | Phase 6 | Pending |
