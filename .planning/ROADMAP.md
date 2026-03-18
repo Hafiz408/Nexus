@@ -10,7 +10,7 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
 - Integer phases (1–14): Planned milestone work in PRD order
 - Decimal phases (N.1, N.2): Urgent insertions, created via `/gsd:insert-phase`
 
-- [ ] **Phase 1: Infrastructure** - Docker Compose running PostgreSQL + pgvector with health checks
+- [x] **Phase 1: Infrastructure** - Docker Compose running PostgreSQL + pgvector with health checks (completed 2026-03-18)
 - [ ] **Phase 2: File Walker** - `file_walker.py` + tests — traverse repo, return annotated file list
 - [ ] **Phase 3: AST Parser** - `ast_parser.py` + tests — parse Python/TypeScript, extract CodeNode objects
 - [ ] **Phase 4: Graph Builder** - `graph_builder.py` + tests — NetworkX DiGraph with edge resolution and PageRank
@@ -199,7 +199,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure | 2/3 | In Progress|  |
+| 1. Infrastructure | 3/3 | Complete   | 2026-03-18 |
 | 2. File Walker | 0/TBD | Not started | - |
 | 3. AST Parser | 0/TBD | Not started | - |
 | 4. Graph Builder | 0/TBD | Not started | - |
