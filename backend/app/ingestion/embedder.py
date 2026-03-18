@@ -64,7 +64,7 @@ def _init_fts_table(db_path: str) -> None:
     try:
         conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS code_fts
-            USING fts5(node_id UNINDEXED, name, file_path UNINDEXED, content='')
+            USING fts5(node_id UNINDEXED, name, file_path UNINDEXED)
         """)
         conn.commit()
     finally:
