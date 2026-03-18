@@ -173,27 +173,95 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01..04 | Phase 1 | Pending |
-| WALK-01..06 | Phase 2 | Pending |
-| PARSE-01..08 | Phase 3 | Pending |
-| GRAPH-01..05 | Phase 4 | Pending |
-| EMBED-01..06 | Phase 5 | Pending |
-| PIPE-01..05 | Phase 6 | Pending |
-| STORE-01..03 | Phase 6 | Pending |
-| API-01..02, API-07..08 | Phase 7 | Pending |
-| RAG-01..06 | Phase 8 | Pending |
-| AGNT-01..05 | Phase 9 | Pending |
-| API-03..06 | Phase 10 | Pending |
-| EXT-01..04, CHAT-01..05, SSE-01..03 | Phase 11 | Pending |
-| HIGH-01..02 | Phase 12 | Pending |
-| WATCH-01..03 | Phase 13 | Pending |
-| EVAL-01..04, TEST-01..06 | Phase 14 | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| WALK-01 | Phase 2 | Pending |
+| WALK-02 | Phase 2 | Pending |
+| WALK-03 | Phase 2 | Pending |
+| WALK-04 | Phase 2 | Pending |
+| WALK-05 | Phase 2 | Pending |
+| WALK-06 | Phase 2 | Pending |
+| TEST-02 | Phase 2 | Pending |
+| PARSE-01 | Phase 3 | Pending |
+| PARSE-02 | Phase 3 | Pending |
+| PARSE-03 | Phase 3 | Pending |
+| PARSE-04 | Phase 3 | Pending |
+| PARSE-05 | Phase 3 | Pending |
+| PARSE-06 | Phase 3 | Pending |
+| PARSE-07 | Phase 3 | Pending |
+| PARSE-08 | Phase 3 | Pending |
+| TEST-03 | Phase 3 | Pending |
+| GRAPH-01 | Phase 4 | Pending |
+| GRAPH-02 | Phase 4 | Pending |
+| GRAPH-03 | Phase 4 | Pending |
+| GRAPH-04 | Phase 4 | Pending |
+| GRAPH-05 | Phase 4 | Pending |
+| TEST-04 | Phase 4 | Pending |
+| EMBED-01 | Phase 5 | Pending |
+| EMBED-02 | Phase 5 | Pending |
+| EMBED-03 | Phase 5 | Pending |
+| EMBED-04 | Phase 5 | Pending |
+| EMBED-05 | Phase 5 | Pending |
+| EMBED-06 | Phase 5 | Pending |
+| STORE-01 | Phase 5 | Pending |
+| STORE-02 | Phase 5 | Pending |
+| STORE-03 | Phase 5 | Pending |
+| PIPE-01 | Phase 6 | Pending |
+| PIPE-02 | Phase 6 | Pending |
+| PIPE-03 | Phase 6 | Pending |
+| PIPE-04 | Phase 6 | Pending |
+| PIPE-05 | Phase 6 | Pending |
+| API-01 | Phase 7 | Pending |
+| API-02 | Phase 7 | Pending |
+| API-05 | Phase 7 | Pending |
+| API-06 | Phase 7 | Pending |
+| API-07 | Phase 7 | Pending |
+| API-08 | Phase 7 | Pending |
+| RAG-01 | Phase 8 | Pending |
+| RAG-02 | Phase 8 | Pending |
+| RAG-03 | Phase 8 | Pending |
+| RAG-04 | Phase 8 | Pending |
+| RAG-05 | Phase 8 | Pending |
+| RAG-06 | Phase 8 | Pending |
+| TEST-05 | Phase 8 | Pending |
+| TEST-06 | Phase 8 | Pending |
+| AGNT-01 | Phase 9 | Pending |
+| AGNT-02 | Phase 9 | Pending |
+| AGNT-03 | Phase 9 | Pending |
+| AGNT-04 | Phase 9 | Pending |
+| AGNT-05 | Phase 9 | Pending |
+| API-03 | Phase 10 | Pending |
+| API-04 | Phase 10 | Pending |
+| EXT-01 | Phase 11 | Pending |
+| EXT-02 | Phase 11 | Pending |
+| EXT-03 | Phase 11 | Pending |
+| EXT-04 | Phase 11 | Pending |
+| CHAT-01 | Phase 11 | Pending |
+| CHAT-02 | Phase 11 | Pending |
+| CHAT-03 | Phase 11 | Pending |
+| CHAT-04 | Phase 11 | Pending |
+| CHAT-05 | Phase 11 | Pending |
+| SSE-01 | Phase 11 | Pending |
+| SSE-02 | Phase 11 | Pending |
+| SSE-03 | Phase 11 | Pending |
+| HIGH-01 | Phase 12 | Pending |
+| HIGH-02 | Phase 12 | Pending |
+| WATCH-01 | Phase 13 | Pending |
+| WATCH-02 | Phase 13 | Pending |
+| WATCH-03 | Phase 13 | Pending |
+| EVAL-01 | Phase 14 | Pending |
+| EVAL-02 | Phase 14 | Pending |
+| EVAL-03 | Phase 14 | Pending |
+| EVAL-04 | Phase 14 | Pending |
+| TEST-01 | Phase 14 | Pending |
 
 **Coverage:**
-- v1 requirements: 68 total
-- Mapped to phases: 68
+- v1 requirements: 74 total (68 functional + 6 test files mapped to their phases)
+- Mapped to phases: 74
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 — traceability updated after roadmap creation*
