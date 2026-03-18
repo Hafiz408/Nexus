@@ -14,12 +14,12 @@
 
 ### Ingestion — File Walker
 
-- [ ] **WALK-01**: `walk_repo(repo_path, languages)` returns list of `{path, language, size_kb}` dicts
-- [ ] **WALK-02**: Respects `.gitignore` at repo root and nested directories (via pathspec)
-- [ ] **WALK-03**: Skips directories: `.git`, `node_modules`, `__pycache__`, `.venv`, `venv`, `dist`, `build`, `.next`, `coverage`, `*.egg-info`
-- [ ] **WALK-04**: Skips files larger than `settings.max_file_size_kb` (default 500KB)
-- [ ] **WALK-05**: Detects language per file extension (`.py` → python; `.ts/.tsx/.js/.jsx` → typescript)
-- [ ] **WALK-06**: Unit tests pass with synthetic temp directory fixture
+- [x] **WALK-01**: `walk_repo(repo_path, languages)` returns list of `{path, language, size_kb}` dicts
+- [x] **WALK-02**: Respects `.gitignore` at repo root and nested directories (via pathspec)
+- [x] **WALK-03**: Skips directories: `.git`, `node_modules`, `__pycache__`, `.venv`, `venv`, `dist`, `build`, `.next`, `coverage`, `*.egg-info`
+- [x] **WALK-04**: Skips files larger than `settings.max_file_size_kb` (default 500KB)
+- [x] **WALK-05**: Detects language per file extension (`.py` → python; `.ts/.tsx/.js/.jsx` → typescript)
+- [x] **WALK-06**: Unit tests pass with synthetic temp directory fixture
 
 ### Ingestion — AST Parser
 
@@ -133,7 +133,7 @@
 ### Tests
 
 - [ ] **TEST-01**: `pytest backend/tests/` passes all unit tests
-- [ ] **TEST-02**: `tests/test_file_walker.py` — gitignore, skip dirs, extension filtering with temp dir fixture
+- [x] **TEST-02**: `tests/test_file_walker.py` — gitignore, skip dirs, extension filtering with temp dir fixture
 - [ ] **TEST-03**: `tests/test_ast_parser.py` — Python + TypeScript parsing, docstring extraction, CALLS edge detection
 - [ ] **TEST-04**: `tests/test_graph_builder.py` — edge resolution, unresolvable edge drop, PageRank, in/out degree
 - [ ] **TEST-05**: `tests/test_graph_rag.py` — BFS expansion, reranking, max_nodes; all with in-memory fixture (no DB)
@@ -177,13 +177,13 @@
 | INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Complete |
 | INFRA-04 | Phase 1 | Complete |
-| WALK-01 | Phase 2 | Pending |
-| WALK-02 | Phase 2 | Pending |
-| WALK-03 | Phase 2 | Pending |
-| WALK-04 | Phase 2 | Pending |
-| WALK-05 | Phase 2 | Pending |
-| WALK-06 | Phase 2 | Pending |
-| TEST-02 | Phase 2 | Pending |
+| WALK-01 | Phase 2 | Complete |
+| WALK-02 | Phase 2 | Complete |
+| WALK-03 | Phase 2 | Complete |
+| WALK-04 | Phase 2 | Complete |
+| WALK-05 | Phase 2 | Complete |
+| WALK-06 | Phase 2 | Complete |
+| TEST-02 | Phase 2 | Complete |
 | PARSE-01 | Phase 3 | Pending |
 | PARSE-02 | Phase 3 | Pending |
 | PARSE-03 | Phase 3 | Pending |

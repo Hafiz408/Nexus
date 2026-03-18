@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 1 — Infrastructure
+**Current focus:** Phase 2 — File Walker
 
 ## Current Position
 
-Phase: 1 of 14 (Infrastructure)
-Plan: 3 of 3 in current phase
-Status: Phase complete — advancing to Phase 2
-Last activity: 2026-03-18 — Plan 01-03 complete: docker compose stack verified end-to-end, all 4 INFRA requirements satisfied
+Phase: 2 of 14 (File Walker)
+Plan: 1 of 3 in current phase
+Status: In progress — Plan 02-01 complete
+Last activity: 2026-03-18 — Plan 02-01 complete: walk_repo() implemented with gitignore-aware traversal, 12 tests passing
 
-Progress: [█░░░░░░░░░] 7%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
@@ -28,9 +28,10 @@ Progress: [█░░░░░░░░░] 7%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-infrastructure | 3 | 11 min | 4 min |
+| 02-file-walker | 1 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min, 3 min, 5 min
+- Last 5 plans: 3 min, 3 min, 5 min, 3 min
 - Trend: baseline
 
 *Updated after each plan completion*
@@ -54,6 +55,10 @@ Recent decisions affecting current work:
 - [Phase 01-infrastructure]: CREATE EXTENSION IF NOT EXISTS vector in FastAPI lifespan — idempotent per-database activation (01-01)
 - [Phase 01-infrastructure]: OPENAI_API_KEY set to sk-placeholder for Phase 1 — not needed until Phase 5 (Embedder) (01-03)
 - [Phase 01-infrastructure]: All 4 INFRA requirements verified before Phase 2 gate — smoke test gate pattern established (01-03)
+- [Phase 02-file-walker]: pathspec.GitIgnoreSpec.from_lines() used (not PathSpec factory) — correct class for gitignore semantics (02-01)
+- [Phase 02-file-walker]: Two-pass os.walk — collect gitignore specs first, then filter files — ensures nested specs loaded before file evaluation (02-01)
+- [Phase 02-file-walker]: os.walk used not Path.walk — project targets Python 3.11; Path.walk only available in Python 3.12+ (02-01)
+- [Phase 02-file-walker]: Test assertions use Path.parts not substring match — pytest tmp_path dir name embeds test function name which may contain skip-dir strings (02-01)
 
 ### Pending Todos
 
@@ -66,5 +71,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 01-03-PLAN.md — docker compose stack verified, all INFRA requirements satisfied, Phase 1 complete
+Stopped at: Completed 02-01-PLAN.md — walk_repo() implemented, 12 tests passing, Phase 2 Plan 1 complete
 Resume file: None
