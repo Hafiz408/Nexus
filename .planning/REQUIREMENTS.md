@@ -9,8 +9,8 @@
 
 - [ ] **INFRA-01**: `docker compose up` starts PostgreSQL 16 + pgvector without errors and passes health checks
 - [ ] **INFRA-02**: Backend Dockerfile builds Python 3.11 environment with all dependencies
-- [ ] **INFRA-03**: `.env.example` documents all required secrets; `.env` is in `.gitignore`
-- [ ] **INFRA-04**: `data/` directory is mounted for SQLite persistence across container restarts
+- [x] **INFRA-03**: `.env.example` documents all required secrets; `.env` is in `.gitignore`
+- [x] **INFRA-04**: `data/` directory is mounted for SQLite persistence across container restarts
 
 ### Ingestion — File Walker
 
@@ -175,8 +175,8 @@
 |-------------|-------|--------|
 | INFRA-01 | Phase 1 | Pending |
 | INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
 | WALK-01 | Phase 2 | Pending |
 | WALK-02 | Phase 2 | Pending |
 | WALK-03 | Phase 2 | Pending |
