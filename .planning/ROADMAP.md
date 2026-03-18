@@ -16,7 +16,7 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
 - [x] **Phase 4: Graph Builder** - `graph_builder.py` + tests — NetworkX DiGraph with edge resolution and PageRank (completed 2026-03-18)
 - [x] **Phase 5: Embedder** - `embedder.py` — embed nodes into pgvector + SQLite FTS5 (completed 2026-03-18)
 - [x] **Phase 6: Pipeline** - `pipeline.py` — orchestrate ingestion steps 2–5 with concurrency + incremental re-index (completed 2026-03-18)
-- [ ] **Phase 7: Index Endpoint** - `POST /index` + `GET /index/status` via FastAPI BackgroundTasks
+- [x] **Phase 7: Index Endpoint** - `POST /index` + `GET /index/status` via FastAPI BackgroundTasks (completed 2026-03-18)
 - [ ] **Phase 8: Graph RAG** - `graph_rag.py` + tests — 3-step graph-traversal RAG, testable without DB
 - [ ] **Phase 9: Explorer Agent** - `explorer.py` — LangChain streaming agent with LangSmith tracing
 - [ ] **Phase 10: Query Endpoint** - `POST /query` SSE streaming endpoint
@@ -129,8 +129,8 @@ Plans:
   5. CORS allows requests from `vscode-webview://*` and `http://localhost:3000`
 **Plans**: 2 plans
 Plans:
-- [ ] 07-01-PLAN.md — IndexRequest schema + delete helpers + index_router.py (POST /index, GET /index/status, DELETE /index)
-- [ ] 07-02-PLAN.md — Wire CORSMiddleware + router in main.py + live smoke test checkpoint
+- [x] 07-01-PLAN.md — IndexRequest schema + delete helpers + index_router.py (POST /index, GET /index/status, DELETE /index)
+- [x] 07-02-PLAN.md — Wire CORSMiddleware + router in main.py + live smoke test checkpoint
 
 ### Phase 8: Graph RAG
 **Goal**: Retrieval produces structurally grounded context that is verifiably better than pure vector search, without requiring a live database
@@ -223,7 +223,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 4. Graph Builder | 1/1 | Complete   | 2026-03-18 |
 | 5. Embedder | 3/3 | Complete   | 2026-03-18 |
 | 6. Pipeline | 3/3 | Complete   | 2026-03-18 |
-| 7. Index Endpoint | 1/2 | In Progress|  |
+| 7. Index Endpoint | 2/2 | Complete   | 2026-03-18 |
 | 8. Graph RAG | 0/TBD | Not started | - |
 | 9. Explorer Agent | 0/TBD | Not started | - |
 | 10. Query Endpoint | 0/TBD | Not started | - |
