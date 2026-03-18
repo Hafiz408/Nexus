@@ -19,3 +19,11 @@ class CodeEdge(BaseModel):
     source_id: str        # node_id of the source node
     target_name: str      # unresolved name (module or function name)
     edge_type: str        # "IMPORTS" or "CALLS"
+
+
+class IndexStatus(BaseModel):
+    status: str  # "running" | "complete" | "failed"
+    nodes_indexed: int = 0
+    edges_indexed: int = 0
+    files_processed: int = 0
+    error: str | None = None
