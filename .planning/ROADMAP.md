@@ -96,7 +96,11 @@ Plans:
   3. SQLite FTS5 `code_fts` virtual table supports exact name search queries
   4. Re-running `embed_and_store()` on the same nodes upserts without duplicate rows
   5. NetworkX graph persists to SQLite and reconstructs correctly on load
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 05-01-PLAN.md — graph_store.py: save_graph, load_graph, delete_nodes_for_files (SQLite persistence)
+- [ ] 05-02-PLAN.md — embedder.py: init_pgvector_table, embed_and_store + openai to requirements.txt
+- [ ] 05-03-PLAN.md — test_embedder.py (graph_store + embedder tests) + wire lifespan
 
 ### Phase 6: Pipeline
 **Goal**: The full ingestion flow runs end-to-end from repo path to indexed graph in a single orchestrated call
@@ -210,7 +214,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 2. File Walker | 1/1 | Complete   | 2026-03-18 |
 | 3. AST Parser | 2/2 | Complete   | 2026-03-18 |
 | 4. Graph Builder | 1/1 | Complete   | 2026-03-18 |
-| 5. Embedder | 0/TBD | Not started | - |
+| 5. Embedder | 0/3 | Not started | - |
 | 6. Pipeline | 0/TBD | Not started | - |
 | 7. Index Endpoint | 0/TBD | Not started | - |
 | 8. Graph RAG | 0/TBD | Not started | - |
