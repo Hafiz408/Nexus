@@ -82,7 +82,9 @@ Plans:
   3. IMPORTS edges link caller files to all nodes in the imported target file
   4. Every node has `pagerank`, `in_degree`, and `out_degree` attributes populated
   5. All unit tests pass including edge resolution, PageRank presence, and degree correctness
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 04-01-PLAN.md — TDD: graph_builder.py implementation + test_graph_builder.py (19 test cases)
 
 ### Phase 5: Embedder
 **Goal**: CodeNode objects are embedded and stored so that semantic search and exact-name search are both available
@@ -207,7 +209,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 1. Infrastructure | 3/3 | Complete   | 2026-03-18 |
 | 2. File Walker | 1/1 | Complete   | 2026-03-18 |
 | 3. AST Parser | 2/2 | Complete   | 2026-03-18 |
-| 4. Graph Builder | 0/TBD | Not started | - |
+| 4. Graph Builder | 0/1 | Not started | - |
 | 5. Embedder | 0/TBD | Not started | - |
 | 6. Pipeline | 0/TBD | Not started | - |
 | 7. Index Endpoint | 0/TBD | Not started | - |
