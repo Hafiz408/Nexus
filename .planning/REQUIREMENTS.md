@@ -82,14 +82,14 @@
 
 ### API Endpoints
 
-- [ ] **API-01**: `POST /index` accepts `IndexRequest{repo_path, languages}`, starts ingestion as BackgroundTask, returns `{status: "pending", repo_path}`
-- [ ] **API-02**: `GET /index/status?repo_path=...` returns `IndexStatus`
+- [x] **API-01**: `POST /index` accepts `IndexRequest{repo_path, languages}`, starts ingestion as BackgroundTask, returns `{status: "pending", repo_path}`
+- [x] **API-02**: `GET /index/status?repo_path=...` returns `IndexStatus`
 - [ ] **API-03**: `POST /query` accepts `QueryRequest{question, repo_path, max_nodes, hop_depth}`, returns SSE `StreamingResponse`
 - [ ] **API-04**: SSE stream format: `event: token\ndata: {type, content}` → `event: citations\ndata: {type, citations}` → `event: done\ndata: {type, retrieval_stats}` → `event: error\ndata: {type, message}`
 - [ ] **API-05**: `GET /health` returns `{status: "ok", version: "1.0.0"}`
-- [ ] **API-06**: `DELETE /index?repo_path=...` removes all pgvector, FTS5, SQLite data for repo
+- [x] **API-06**: `DELETE /index?repo_path=...` removes all pgvector, FTS5, SQLite data for repo
 - [ ] **API-07**: CORS allows `vscode-webview://*` and `http://localhost:3000`
-- [ ] **API-08**: `app/config.py` uses pydantic-settings; all secrets from `.env`; no hardcoded values
+- [x] **API-08**: `app/config.py` uses pydantic-settings; all secrets from `.env`; no hardcoded values
 
 ### VS Code Extension — Core
 
@@ -213,12 +213,12 @@
 | PIPE-03 | Phase 6 | Complete |
 | PIPE-04 | Phase 6 | Complete |
 | PIPE-05 | Phase 6 | Complete |
-| API-01 | Phase 7 | Pending |
-| API-02 | Phase 7 | Pending |
+| API-01 | Phase 7 | Complete |
+| API-02 | Phase 7 | Complete |
 | API-05 | Phase 7 | Pending |
-| API-06 | Phase 7 | Pending |
+| API-06 | Phase 7 | Complete |
 | API-07 | Phase 7 | Pending |
-| API-08 | Phase 7 | Pending |
+| API-08 | Phase 7 | Complete |
 | RAG-01 | Phase 8 | Pending |
 | RAG-02 | Phase 8 | Pending |
 | RAG-03 | Phase 8 | Pending |

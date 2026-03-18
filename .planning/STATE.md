@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 6 — Ingestion Pipeline
+**Current focus:** Phase 7 — Index Endpoint
 
 ## Current Position
 
-Phase: 6 of 14 (Pipeline) — COMPLETE
-Plan: 3 of 3 in current phase
-Status: Phase 06-pipeline plan 03 complete — pipeline unit tests (PIPE-01 through PIPE-05)
-Last activity: 2026-03-18 — Plan 06-03 complete: 5 pytest unit tests for pipeline.py, all I/O mocked at app.ingestion.pipeline.* namespace; 59/62 total tests pass (3 pre-existing embedder failures unrelated)
+Phase: 7 of 14 (Index Endpoint) — IN PROGRESS
+Plan: 1 of 1 in current phase — COMPLETE
+Status: Phase 07-index-endpoint plan 01 complete — index API router with POST/GET/DELETE endpoints
+Last activity: 2026-03-18 — Plan 07-01 complete: FastAPI index router, IndexRequest schema, three delete helpers (embeddings, graph, status); 59 passing tests (3 pre-existing embedder failures unrelated)
 
-Progress: [████░░░░░░] 30%
+Progress: [████░░░░░░] 35%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 7 min
 - Total execution time: 1.12 hours
 
@@ -33,6 +33,7 @@ Progress: [████░░░░░░] 30%
 | 04-graph-builder | 1 | 3 min | 3 min |
 | 05-embedder | 3 | 10 min | 3.3 min |
 | 06-pipeline | 3 | 40 min | 13.3 min |
+| 07-index-endpoint | 1 | 2 min | 2 min |
 
 **Recent Trend:**
 - Last 5 plans: 5 min, 3 min, 2 min, 5 min, 5 min
@@ -93,6 +94,9 @@ Recent decisions affecting current work:
 - [Phase 06-pipeline]: _parse_python() and _parse_typescript() accept parser as explicit parameter — keeps helpers pure, no global state dependency (06-02)
 - [Phase 06-pipeline]: Patch all I/O stages at app.ingestion.pipeline.* namespace (not origin modules) — from-imports bind at load time
 - [Phase 06-pipeline]: asyncio.run() used in tests to invoke async run_ingestion — no pytest-asyncio fixture needed for pipeline unit tests
+- [Phase 07-index-endpoint]: BackgroundTasks.add_task passes run_ingestion directly — no asyncio.run() wrapper; Starlette awaits async functions correctly (07-01)
+- [Phase 07-index-endpoint]: DELETE and GET routes use plain str repo_path query parameter — FastAPI maps plain str params to query params, Pydantic models to request bodies (07-01)
+- [Phase 07-index-endpoint]: delete_embeddings_for_repo collects pgvector ids before DELETE to build FTS5 target set — single connection traversal (07-01)
 
 ### Pending Todos
 
@@ -105,5 +109,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 06-03-PLAN.md — Pipeline unit tests: 5 test cases covering PIPE-01 through PIPE-05, all passing, full suite at 59 tests; Phase 06-pipeline complete
+Stopped at: Completed 07-01-PLAN.md — Index API router: POST/GET/DELETE /index endpoints, IndexRequest schema, three-store delete helpers; Phase 07-index-endpoint plan 01 complete
 Resume file: None
