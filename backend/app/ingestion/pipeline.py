@@ -84,5 +84,7 @@ async def run_ingestion(
         logger.exception("run_ingestion failed for %s", repo_path)
         result = IndexStatus(status="failed", error=str(exc))
 
-    _status[repo_path] = result
+    # Only persist result if DELETE hasn't cleared this repo's status concurrently
+    if repo_path in _status:
+        _status[repo_path] = result
     return result
