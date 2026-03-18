@@ -37,7 +37,11 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
   3. Backend container builds successfully with all Python dependencies installed
   4. `.env.example` documents every required secret; `.env` is git-ignored and never committed
   5. SQLite `data/` directory persists across container restarts
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 01-01-PLAN.md — Docker Compose stack + backend Dockerfile + requirements.txt
+- [ ] 01-02-PLAN.md — pydantic-settings config, database.py stub, .env.example, .gitignore, data/
+- [ ] 01-03-PLAN.md — Create .env, start stack, verify all INFRA requirements (checkpoint)
 
 ### Phase 2: File Walker
 **Goal**: A verified module that accurately enumerates the files in any Python or TypeScript repo
@@ -195,7 +199,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure | 0/TBD | Not started | - |
+| 1. Infrastructure | 0/3 | Not started | - |
 | 2. File Walker | 0/TBD | Not started | - |
 | 3. AST Parser | 0/TBD | Not started | - |
 | 4. Graph Builder | 0/TBD | Not started | - |
