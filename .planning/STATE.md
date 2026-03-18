@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 3 of 14 (AST Parser)
-Plan: 1 of 3 in current phase
-Status: In progress — Plan 03-01 complete
-Last activity: 2026-03-18 — Plan 03-01 complete: CodeNode/CodeEdge Pydantic v2 models created, tree-sitter 0.25.2 + tree-sitter-python 0.25.0 + tree-sitter-typescript 0.23.2 pinned and verified
+Plan: 2 of 3 in current phase
+Status: In progress — Plan 03-02 complete
+Last activity: 2026-03-18 — Plan 03-02 complete: ast_parser.py implemented with Python + TypeScript parsing via tree-sitter 0.25.x QueryCursor API; 17 tests pass
 
 Progress: [█░░░░░░░░░] 14%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 3 min
-- Total execution time: 0.20 hours
+- Total execution time: 0.27 hours
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [█░░░░░░░░░] 14%
 |-------|-------|-------|----------|
 | 01-infrastructure | 3 | 11 min | 4 min |
 | 02-file-walker | 1 | 3 min | 3 min |
-| 03-ast-parser | 1 | 1 min | 1 min |
+| 03-ast-parser | 2 | 5 min | 2.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 1 min, 3 min, 3 min, 5 min, 3 min
+- Last 5 plans: 4 min, 1 min, 3 min, 3 min, 5 min
 - Trend: baseline
 
 *Updated after each plan completion*
@@ -64,6 +64,10 @@ Recent decisions affecting current work:
 - [Phase 03-ast-parser]: tree-sitter pinned at exact versions == not >= — API changed significantly at 0.21 (captures() return type, Parser constructor, Language construction) (03-01)
 - [Phase 03-ast-parser]: tree-sitter-typescript exposes language_typescript() and language_tsx() (not .language()) — separate function per dialect (03-01)
 - [Phase 03-ast-parser]: embedding_text is a plain str field with default "" — populated by ast_parser.py, not auto-computed in the model (03-01)
+- [Phase 03-ast-parser]: QueryCursor(Query).captures(node) — tree-sitter 0.25.x removed captures() from Query object; must wrap with QueryCursor (03-02)
+- [Phase 03-ast-parser]: Query() constructor used not lang.query() — lang.query() deprecated in 0.25.x (03-02)
+- [Phase 03-ast-parser]: raw_edges returned as (source_id, target_name, edge_type) tuples — Graph Builder (Phase 4) resolves target_name to full node_ids (03-02)
+- [Phase 03-ast-parser]: IMPORTS edges use synthetic "rel_path::__module__" source_id — avoids requiring a file-level node in the graph (03-02)
 
 ### Pending Todos
 
@@ -76,5 +80,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 03-01-PLAN.md — CodeNode/CodeEdge Pydantic models created, tree-sitter dependencies pinned and verified, Phase 3 Plan 1 complete
+Stopped at: Completed 03-02-PLAN.md — ast_parser.py implemented with Python + TypeScript parsing, 17 tests pass, QueryCursor API fix applied
 Resume file: None

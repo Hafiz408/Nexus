@@ -23,14 +23,14 @@
 
 ### Ingestion — AST Parser
 
-- [ ] **PARSE-01**: `parse_file(file_path, repo_root, language)` returns `(list[CodeNode], list[raw_edges])`
-- [ ] **PARSE-02**: Extracts Python `function_definition`, `class_definition`, methods inside classes
-- [ ] **PARSE-03**: Extracts TypeScript `function_declaration`, `arrow_function`, `method_definition`, `class_declaration`
+- [x] **PARSE-01**: `parse_file(file_path, repo_root, language)` returns `(list[CodeNode], list[raw_edges])`
+- [x] **PARSE-02**: Extracts Python `function_definition`, `class_definition`, methods inside classes
+- [x] **PARSE-03**: Extracts TypeScript `function_declaration`, `arrow_function`, `method_definition`, `class_declaration`
 - [x] **PARSE-04**: Node ID format: `"relative_file_path::name"` (consistent across all modules)
 - [x] **PARSE-05**: Populates `signature`, `docstring`, `body_preview` (first 300 chars), `complexity` (keyword count proxy)
 - [x] **PARSE-06**: `embedding_text` = `"{signature}\n{docstring}\n{body_preview}"`
-- [ ] **PARSE-07**: Detects `import` statements and `call_expression`s for raw IMPORTS/CALLS edges
-- [ ] **PARSE-08**: Unit tests pass: 2 functions + 1 class in sample file → correct node count + docstrings
+- [x] **PARSE-07**: Detects `import` statements and `call_expression`s for raw IMPORTS/CALLS edges
+- [x] **PARSE-08**: Unit tests pass: 2 functions + 1 class in sample file → correct node count + docstrings
 
 ### Ingestion — Graph Builder
 
@@ -134,7 +134,7 @@
 
 - [ ] **TEST-01**: `pytest backend/tests/` passes all unit tests
 - [x] **TEST-02**: `tests/test_file_walker.py` — gitignore, skip dirs, extension filtering with temp dir fixture
-- [ ] **TEST-03**: `tests/test_ast_parser.py` — Python + TypeScript parsing, docstring extraction, CALLS edge detection
+- [x] **TEST-03**: `tests/test_ast_parser.py` — Python + TypeScript parsing, docstring extraction, CALLS edge detection
 - [ ] **TEST-04**: `tests/test_graph_builder.py` — edge resolution, unresolvable edge drop, PageRank, in/out degree
 - [ ] **TEST-05**: `tests/test_graph_rag.py` — BFS expansion, reranking, max_nodes; all with in-memory fixture (no DB)
 - [ ] **TEST-06**: `tests/conftest.py` — `sample_repo_path` (synthetic temp repo), `mock_embedder` (deterministic np.random.seed(42)), `sample_graph` (small NetworkX DiGraph)
@@ -184,15 +184,15 @@
 | WALK-05 | Phase 2 | Complete |
 | WALK-06 | Phase 2 | Complete |
 | TEST-02 | Phase 2 | Complete |
-| PARSE-01 | Phase 3 | Pending |
-| PARSE-02 | Phase 3 | Pending |
-| PARSE-03 | Phase 3 | Pending |
+| PARSE-01 | Phase 3 | Complete |
+| PARSE-02 | Phase 3 | Complete |
+| PARSE-03 | Phase 3 | Complete |
 | PARSE-04 | Phase 3 | Complete |
 | PARSE-05 | Phase 3 | Complete |
 | PARSE-06 | Phase 3 | Complete |
-| PARSE-07 | Phase 3 | Pending |
-| PARSE-08 | Phase 3 | Pending |
-| TEST-03 | Phase 3 | Pending |
+| PARSE-07 | Phase 3 | Complete |
+| PARSE-08 | Phase 3 | Complete |
+| TEST-03 | Phase 3 | Complete |
 | GRAPH-01 | Phase 4 | Pending |
 | GRAPH-02 | Phase 4 | Pending |
 | GRAPH-03 | Phase 4 | Pending |

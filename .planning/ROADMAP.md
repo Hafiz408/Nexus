@@ -12,7 +12,7 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
 
 - [x] **Phase 1: Infrastructure** - Docker Compose running PostgreSQL + pgvector with health checks (completed 2026-03-18)
 - [x] **Phase 2: File Walker** - `file_walker.py` + tests — traverse repo, return annotated file list (completed 2026-03-18)
-- [ ] **Phase 3: AST Parser** - `ast_parser.py` + tests — parse Python/TypeScript, extract CodeNode objects
+- [x] **Phase 3: AST Parser** - `ast_parser.py` + tests — parse Python/TypeScript, extract CodeNode objects (completed 2026-03-18)
 - [ ] **Phase 4: Graph Builder** - `graph_builder.py` + tests — NetworkX DiGraph with edge resolution and PageRank
 - [ ] **Phase 5: Embedder** - `embedder.py` — embed nodes into pgvector + SQLite FTS5
 - [ ] **Phase 6: Pipeline** - `pipeline.py` — orchestrate ingestion steps 2–5 with concurrency + incremental re-index
@@ -206,7 +206,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 |-------|----------------|--------|-----------|
 | 1. Infrastructure | 3/3 | Complete   | 2026-03-18 |
 | 2. File Walker | 1/1 | Complete   | 2026-03-18 |
-| 3. AST Parser | 1/2 | In Progress|  |
+| 3. AST Parser | 2/2 | Complete   | 2026-03-18 |
 | 4. Graph Builder | 0/TBD | Not started | - |
 | 5. Embedder | 0/TBD | Not started | - |
 | 6. Pipeline | 0/TBD | Not started | - |
