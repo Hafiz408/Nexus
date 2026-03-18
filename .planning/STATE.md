@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 5 — Embedder
+**Current focus:** Phase 6 — Ingestion Pipeline
 
 ## Current Position
 
-Phase: 5 of 14 (Embedder)
-Plan: 2 of 3 in current phase
-Status: In progress — Plan 05-02 complete
-Last activity: 2026-03-18 — Plan 05-02 complete: embedder.py implemented with init_pgvector_table and embed_and_store (lazy OpenAI client, pgvector ON CONFLICT upsert, FTS5 DELETE+INSERT); all 47 tests pass
+Phase: 5 of 14 (Embedder) — COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase 05-embedder complete — all 3 plans done
+Last activity: 2026-03-18 — Plan 05-03 complete: test_embedder.py (10 tests for graph_store and embedder), init_pgvector_table wired into main.py lifespan, FTS5 content='' bug fixed; all 57 tests pass
 
-Progress: [██░░░░░░░░] 23%
+Progress: [███░░░░░░░] 27%
 
 ## Performance Metrics
 
@@ -31,10 +31,10 @@ Progress: [██░░░░░░░░] 23%
 | 02-file-walker | 1 | 3 min | 3 min |
 | 03-ast-parser | 2 | 5 min | 2.5 min |
 | 04-graph-builder | 1 | 3 min | 3 min |
-| 05-embedder | 2 | 5 min | 2.5 min |
+| 05-embedder | 3 | 10 min | 3.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min, 5 min, 3 min, 2 min, 3 min
+- Last 5 plans: 3 min, 5 min, 3 min, 2 min, 5 min
 - Trend: baseline
 
 *Updated after each plan completion*
@@ -80,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 05-embedder]: Lazy OpenAI client init inside embed_and_store() body — prevents ValidationError on import when OPENAI_API_KEY absent (05-02)
 - [Phase 05-embedder]: FTS5 upsert via DELETE + INSERT per batch — FTS5 virtual tables have no ON CONFLICT support (05-02)
 - [Phase 05-embedder]: register_vector(conn) called per-connection — pgvector requires per-connection type registration, never global (05-02)
+- [Phase 05-embedder]: Patch targets use app.ingestion.embedder namespace not origin module — from-imports bind at module load time
+- [Phase 05-embedder]: FTS5 content='' removed — contentless mode silently breaks SELECT and DELETE on UNINDEXED columns
 
 ### Pending Todos
 
@@ -92,5 +94,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 05-02-PLAN.md — embedder.py implemented with init_pgvector_table and embed_and_store; lazy OpenAI client, pgvector ON CONFLICT upsert, FTS5 DELETE+INSERT; all 47 tests pass
+Stopped at: Completed 05-03-PLAN.md — test_embedder.py (10 tests for graph_store and embedder), init_pgvector_table wired into main.py lifespan, FTS5 content='' bug fixed; all 57 tests pass
 Resume file: None
