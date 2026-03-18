@@ -4,6 +4,7 @@
 # SQLite data directory — host bind mount, not for git
 data/*
 !data/.gitkeep
+backend/data/*.db
 
 # Python
 __pycache__/
