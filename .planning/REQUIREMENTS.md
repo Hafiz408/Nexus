@@ -34,11 +34,11 @@
 
 ### Ingestion — Graph Builder
 
-- [ ] **GRAPH-01**: `build_graph(nodes, raw_edges)` returns `nx.DiGraph` with all node attributes
-- [ ] **GRAPH-02**: Resolves raw CALLS edges by matching `target_name` against full node registry; unresolvable edges dropped with warning
-- [ ] **GRAPH-03**: Resolves IMPORTS edges: module import → IMPORTS edge to all nodes in target file
-- [ ] **GRAPH-04**: Computes and stores `in_degree`, `out_degree`, `pagerank` as node attributes
-- [ ] **GRAPH-05**: Unit tests pass: edge resolution, PageRank presence, in/out degree correctness
+- [x] **GRAPH-01**: `build_graph(nodes, raw_edges)` returns `nx.DiGraph` with all node attributes
+- [x] **GRAPH-02**: Resolves raw CALLS edges by matching `target_name` against full node registry; unresolvable edges dropped with warning
+- [x] **GRAPH-03**: Resolves IMPORTS edges: module import → IMPORTS edge to all nodes in target file
+- [x] **GRAPH-04**: Computes and stores `in_degree`, `out_degree`, `pagerank` as node attributes
+- [x] **GRAPH-05**: Unit tests pass: edge resolution, PageRank presence, in/out degree correctness
 
 ### Ingestion — Embedder
 
@@ -135,7 +135,7 @@
 - [ ] **TEST-01**: `pytest backend/tests/` passes all unit tests
 - [x] **TEST-02**: `tests/test_file_walker.py` — gitignore, skip dirs, extension filtering with temp dir fixture
 - [x] **TEST-03**: `tests/test_ast_parser.py` — Python + TypeScript parsing, docstring extraction, CALLS edge detection
-- [ ] **TEST-04**: `tests/test_graph_builder.py` — edge resolution, unresolvable edge drop, PageRank, in/out degree
+- [x] **TEST-04**: `tests/test_graph_builder.py` — edge resolution, unresolvable edge drop, PageRank, in/out degree
 - [ ] **TEST-05**: `tests/test_graph_rag.py` — BFS expansion, reranking, max_nodes; all with in-memory fixture (no DB)
 - [ ] **TEST-06**: `tests/conftest.py` — `sample_repo_path` (synthetic temp repo), `mock_embedder` (deterministic np.random.seed(42)), `sample_graph` (small NetworkX DiGraph)
 
@@ -193,12 +193,12 @@
 | PARSE-07 | Phase 3 | Complete |
 | PARSE-08 | Phase 3 | Complete |
 | TEST-03 | Phase 3 | Complete |
-| GRAPH-01 | Phase 4 | Pending |
-| GRAPH-02 | Phase 4 | Pending |
-| GRAPH-03 | Phase 4 | Pending |
-| GRAPH-04 | Phase 4 | Pending |
-| GRAPH-05 | Phase 4 | Pending |
-| TEST-04 | Phase 4 | Pending |
+| GRAPH-01 | Phase 4 | Complete |
+| GRAPH-02 | Phase 4 | Complete |
+| GRAPH-03 | Phase 4 | Complete |
+| GRAPH-04 | Phase 4 | Complete |
+| GRAPH-05 | Phase 4 | Complete |
+| TEST-04 | Phase 4 | Complete |
 | EMBED-01 | Phase 5 | Pending |
 | EMBED-02 | Phase 5 | Pending |
 | EMBED-03 | Phase 5 | Pending |

@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 3 — AST Parser
+**Current focus:** Phase 4 — Graph Builder
 
 ## Current Position
 
-Phase: 3 of 14 (AST Parser)
-Plan: 2 of 3 in current phase
-Status: In progress — Plan 03-02 complete
-Last activity: 2026-03-18 — Plan 03-02 complete: ast_parser.py implemented with Python + TypeScript parsing via tree-sitter 0.25.x QueryCursor API; 17 tests pass
+Phase: 4 of 14 (Graph Builder)
+Plan: 1 of 1 in current phase
+Status: In progress — Plan 04-01 complete
+Last activity: 2026-03-18 — Plan 04-01 complete: graph_builder.py implemented with 3-pass build_graph(), CALLS/IMPORTS edge resolution, PageRank scoring; 18 tests pass
 
-Progress: [█░░░░░░░░░] 14%
+Progress: [█░░░░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 3 min
-- Total execution time: 0.27 hours
+- Total execution time: 0.31 hours
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [█░░░░░░░░░] 14%
 | 01-infrastructure | 3 | 11 min | 4 min |
 | 02-file-walker | 1 | 3 min | 3 min |
 | 03-ast-parser | 2 | 5 min | 2.5 min |
+| 04-graph-builder | 1 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 1 min, 3 min, 3 min, 5 min
+- Last 5 plans: 1 min, 3 min, 3 min, 5 min, 3 min
 - Trend: baseline
 
 *Updated after each plan completion*
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - [Phase 03-ast-parser]: Query() constructor used not lang.query() — lang.query() deprecated in 0.25.x (03-02)
 - [Phase 03-ast-parser]: raw_edges returned as (source_id, target_name, edge_type) tuples — Graph Builder (Phase 4) resolves target_name to full node_ids (03-02)
 - [Phase 03-ast-parser]: IMPORTS edges use synthetic "rel_path::__module__" source_id — avoids requiring a file-level node in the graph (03-02)
+- [Phase 04-graph-builder]: scipy added alongside networkx — nx.pagerank() delegates to _pagerank_scipy() in networkx 3.6; scipy must be explicitly installed (04-01)
+- [Phase 04-graph-builder]: 3-pass construction order enforced — all nodes added in Pass 1 before any edges in Pass 2 to prevent bare attribute-less nodes (04-01)
+- [Phase 04-graph-builder]: ::__module__ synthetic source_id fan-out — edges emitted from all real nodes in importing file to all real nodes in target file (Option A) (04-01)
 
 ### Pending Todos
 
@@ -80,5 +84,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 03-02-PLAN.md — ast_parser.py implemented with Python + TypeScript parsing, 17 tests pass, QueryCursor API fix applied
+Stopped at: Completed 04-01-PLAN.md — graph_builder.py implemented with 3-pass construction, edge resolution, PageRank; 18 tests pass, all 47 project tests pass
 Resume file: None
