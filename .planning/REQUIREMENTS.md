@@ -26,9 +26,9 @@
 - [ ] **PARSE-01**: `parse_file(file_path, repo_root, language)` returns `(list[CodeNode], list[raw_edges])`
 - [ ] **PARSE-02**: Extracts Python `function_definition`, `class_definition`, methods inside classes
 - [ ] **PARSE-03**: Extracts TypeScript `function_declaration`, `arrow_function`, `method_definition`, `class_declaration`
-- [ ] **PARSE-04**: Node ID format: `"relative_file_path::name"` (consistent across all modules)
-- [ ] **PARSE-05**: Populates `signature`, `docstring`, `body_preview` (first 300 chars), `complexity` (keyword count proxy)
-- [ ] **PARSE-06**: `embedding_text` = `"{signature}\n{docstring}\n{body_preview}"`
+- [x] **PARSE-04**: Node ID format: `"relative_file_path::name"` (consistent across all modules)
+- [x] **PARSE-05**: Populates `signature`, `docstring`, `body_preview` (first 300 chars), `complexity` (keyword count proxy)
+- [x] **PARSE-06**: `embedding_text` = `"{signature}\n{docstring}\n{body_preview}"`
 - [ ] **PARSE-07**: Detects `import` statements and `call_expression`s for raw IMPORTS/CALLS edges
 - [ ] **PARSE-08**: Unit tests pass: 2 functions + 1 class in sample file → correct node count + docstrings
 
@@ -187,9 +187,9 @@
 | PARSE-01 | Phase 3 | Pending |
 | PARSE-02 | Phase 3 | Pending |
 | PARSE-03 | Phase 3 | Pending |
-| PARSE-04 | Phase 3 | Pending |
-| PARSE-05 | Phase 3 | Pending |
-| PARSE-06 | Phase 3 | Pending |
+| PARSE-04 | Phase 3 | Complete |
+| PARSE-05 | Phase 3 | Complete |
+| PARSE-06 | Phase 3 | Complete |
 | PARSE-07 | Phase 3 | Pending |
 | PARSE-08 | Phase 3 | Pending |
 | TEST-03 | Phase 3 | Pending |

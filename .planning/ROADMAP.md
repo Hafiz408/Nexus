@@ -206,7 +206,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 |-------|----------------|--------|-----------|
 | 1. Infrastructure | 3/3 | Complete   | 2026-03-18 |
 | 2. File Walker | 1/1 | Complete   | 2026-03-18 |
-| 3. AST Parser | 0/2 | Not started | - |
+| 3. AST Parser | 1/2 | In Progress|  |
 | 4. Graph Builder | 0/TBD | Not started | - |
 | 5. Embedder | 0/TBD | Not started | - |
 | 6. Pipeline | 0/TBD | Not started | - |

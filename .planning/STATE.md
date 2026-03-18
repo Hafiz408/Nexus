@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 2 — File Walker
+**Current focus:** Phase 3 — AST Parser
 
 ## Current Position
 
-Phase: 2 of 14 (File Walker)
+Phase: 3 of 14 (AST Parser)
 Plan: 1 of 3 in current phase
-Status: In progress — Plan 02-01 complete
-Last activity: 2026-03-18 — Plan 02-01 complete: walk_repo() implemented with gitignore-aware traversal, 12 tests passing
+Status: In progress — Plan 03-01 complete
+Last activity: 2026-03-18 — Plan 03-01 complete: CodeNode/CodeEdge Pydantic v2 models created, tree-sitter 0.25.2 + tree-sitter-python 0.25.0 + tree-sitter-typescript 0.23.2 pinned and verified
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [█░░░░░░░░░] 14%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 4 min
-- Total execution time: 0.18 hours
+- Total plans completed: 4
+- Average duration: 3 min
+- Total execution time: 0.20 hours
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [█░░░░░░░░░] 10%
 |-------|-------|-------|----------|
 | 01-infrastructure | 3 | 11 min | 4 min |
 | 02-file-walker | 1 | 3 min | 3 min |
+| 03-ast-parser | 1 | 1 min | 1 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min, 3 min, 5 min, 3 min
+- Last 5 plans: 1 min, 3 min, 3 min, 5 min, 3 min
 - Trend: baseline
 
 *Updated after each plan completion*
@@ -59,6 +60,10 @@ Recent decisions affecting current work:
 - [Phase 02-file-walker]: Two-pass os.walk — collect gitignore specs first, then filter files — ensures nested specs loaded before file evaluation (02-01)
 - [Phase 02-file-walker]: os.walk used not Path.walk — project targets Python 3.11; Path.walk only available in Python 3.12+ (02-01)
 - [Phase 02-file-walker]: Test assertions use Path.parts not substring match — pytest tmp_path dir name embeds test function name which may contain skip-dir strings (02-01)
+- [Phase 03-ast-parser]: str | None union syntax used (not Optional[str]) — idiomatic Pydantic v2 + Python 3.11 target (03-01)
+- [Phase 03-ast-parser]: tree-sitter pinned at exact versions == not >= — API changed significantly at 0.21 (captures() return type, Parser constructor, Language construction) (03-01)
+- [Phase 03-ast-parser]: tree-sitter-typescript exposes language_typescript() and language_tsx() (not .language()) — separate function per dialect (03-01)
+- [Phase 03-ast-parser]: embedding_text is a plain str field with default "" — populated by ast_parser.py, not auto-computed in the model (03-01)
 
 ### Pending Todos
 
@@ -71,5 +76,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 02-01-PLAN.md — walk_repo() implemented, 12 tests passing, Phase 2 Plan 1 complete
+Stopped at: Completed 03-01-PLAN.md — CodeNode/CodeEdge Pydantic models created, tree-sitter dependencies pinned and verified, Phase 3 Plan 1 complete
 Resume file: None
