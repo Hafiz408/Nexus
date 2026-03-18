@@ -3,11 +3,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.db.database import init_db
+from app.ingestion.embedder import init_pgvector_table
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    init_pgvector_table()
     yield
 
 
