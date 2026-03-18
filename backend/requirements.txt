@@ -9,3 +9,5 @@ pathspec>=1.0.0
 tree-sitter==0.25.2
 tree-sitter-python==0.25.0
 tree-sitter-typescript==0.23.2
+networkx>=3.4
+scipy>=1.10.0
