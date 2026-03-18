@@ -219,7 +219,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 3. AST Parser | 2/2 | Complete   | 2026-03-18 |
 | 4. Graph Builder | 1/1 | Complete   | 2026-03-18 |
 | 5. Embedder | 3/3 | Complete   | 2026-03-18 |
-| 6. Pipeline | 0/3 | Not started | - |
+| 6. Pipeline | 2/3 | In Progress|  |
 | 7. Index Endpoint | 0/TBD | Not started | - |
 | 8. Graph RAG | 0/TBD | Not started | - |
 | 9. Explorer Agent | 0/TBD | Not started | - |

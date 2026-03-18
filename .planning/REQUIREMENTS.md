@@ -52,7 +52,7 @@
 ### Ingestion — Pipeline
 
 - [ ] **PIPE-01**: `run_ingestion(repo_path, languages)` orchestrates walk → parse → build → embed → save
-- [ ] **PIPE-02**: File parsing runs concurrently via `asyncio.gather` with semaphore limiting to 10 concurrent parses
+- [x] **PIPE-02**: File parsing runs concurrently via `asyncio.gather` with semaphore limiting to 10 concurrent parses
 - [ ] **PIPE-03**: Supports `changed_files: list[str]` for incremental re-index (re-parse only changed files, remove old nodes)
 - [ ] **PIPE-04**: Stores current status in in-memory dict keyed by `repo_path` for status polling
 - [ ] **PIPE-05**: Returns `IndexStatus` with `{status, nodes_indexed, edges_indexed, files_processed, error}`
@@ -209,7 +209,7 @@
 | STORE-02 | Phase 5 | Complete |
 | STORE-03 | Phase 5 | Complete |
 | PIPE-01 | Phase 6 | Pending |
-| PIPE-02 | Phase 6 | Pending |
+| PIPE-02 | Phase 6 | Complete |
 | PIPE-03 | Phase 6 | Pending |
 | PIPE-04 | Phase 6 | Pending |
 | PIPE-05 | Phase 6 | Pending |

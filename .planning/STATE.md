@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 5 of 14 (Embedder) — COMPLETE
-Plan: 3 of 3 in current phase
-Status: Phase 05-embedder complete — all 3 plans done
-Last activity: 2026-03-18 — Plan 05-03 complete: test_embedder.py (10 tests for graph_store and embedder), init_pgvector_table wired into main.py lifespan, FTS5 content='' bug fixed; all 57 tests pass
+Phase: 6 of 14 (Pipeline) — IN PROGRESS
+Plan: 2 of 3 in current phase
+Status: Phase 06-pipeline plan 02 complete — parse_file() thread-safety fix
+Last activity: 2026-03-18 — Plan 06-02 complete: parse_file() made thread-safe by moving Parser construction inside function body; all 17 ast_parser tests pass, 54/57 total tests pass (3 pre-existing embedder failures unrelated)
 
-Progress: [███░░░░░░░] 27%
+Progress: [████░░░░░░] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 3 min
-- Total execution time: 0.37 hours
+- Total plans completed: 10
+- Average duration: 7 min
+- Total execution time: 1.12 hours
 
 **By Phase:**
 
@@ -32,6 +32,7 @@ Progress: [███░░░░░░░] 27%
 | 03-ast-parser | 2 | 5 min | 2.5 min |
 | 04-graph-builder | 1 | 3 min | 3 min |
 | 05-embedder | 3 | 10 min | 3.3 min |
+| 06-pipeline | 2 | 35 min | 17.5 min |
 
 **Recent Trend:**
 - Last 5 plans: 3 min, 5 min, 3 min, 2 min, 5 min
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 05-embedder]: register_vector(conn) called per-connection — pgvector requires per-connection type registration, never global (05-02)
 - [Phase 05-embedder]: Patch targets use app.ingestion.embedder namespace not origin module — from-imports bind at module load time
 - [Phase 05-embedder]: FTS5 content='' removed — contentless mode silently breaks SELECT and DELETE on UNINDEXED columns
+- [Phase 06-pipeline]: Parser instances constructed per parse_file() call — each asyncio.to_thread worker gets its own Parser, no shared mutable state (06-02)
+- [Phase 06-pipeline]: Language singletons remain at module level — Language objects are read-only and safe to share; Parser objects have mutable state and must be per-call (06-02)
+- [Phase 06-pipeline]: _parse_python() and _parse_typescript() accept parser as explicit parameter — keeps helpers pure, no global state dependency (06-02)
 
 ### Pending Todos
 
@@ -94,5 +98,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 05-03-PLAN.md — test_embedder.py (10 tests for graph_store and embedder), init_pgvector_table wired into main.py lifespan, FTS5 content='' bug fixed; all 57 tests pass
+Stopped at: Completed 06-02-PLAN.md — parse_file() made thread-safe by moving Parser construction inside function body; all 17 ast_parser tests pass
 Resume file: None
