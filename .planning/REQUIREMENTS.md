@@ -7,8 +7,8 @@
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: `docker compose up` starts PostgreSQL 16 + pgvector without errors and passes health checks
-- [ ] **INFRA-02**: Backend Dockerfile builds Python 3.11 environment with all dependencies
+- [x] **INFRA-01**: `docker compose up` starts PostgreSQL 16 + pgvector without errors and passes health checks
+- [x] **INFRA-02**: Backend Dockerfile builds Python 3.11 environment with all dependencies
 - [x] **INFRA-03**: `.env.example` documents all required secrets; `.env` is in `.gitignore`
 - [x] **INFRA-04**: `data/` directory is mounted for SQLite persistence across container restarts
 
@@ -173,8 +173,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Complete |
 | INFRA-04 | Phase 1 | Complete |
 | WALK-01 | Phase 2 | Pending |
