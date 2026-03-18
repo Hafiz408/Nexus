@@ -111,7 +111,11 @@ Plans:
   2. File parsing executes concurrently (asyncio.gather + semaphore) with no race conditions on a multi-file repo
   3. Incremental re-index with `changed_files` re-parses only the listed files and removes their old nodes
   4. Status is queryable at any point during ingestion and reflects current progress
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 06-01-PLAN.md — IndexStatus schema + pipeline.py (run_ingestion, _parse_concurrent, get_status)
+- [ ] 06-02-PLAN.md — ast_parser.py thread-safety fix (per-call Parser construction)
+- [ ] 06-03-PLAN.md — test_pipeline.py (5 mocked unit tests for all PIPE requirements)
 
 ### Phase 7: Index Endpoint
 **Goal**: The ingestion pipeline is accessible over HTTP with non-blocking background execution
@@ -215,7 +219,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 3. AST Parser | 2/2 | Complete   | 2026-03-18 |
 | 4. Graph Builder | 1/1 | Complete   | 2026-03-18 |
 | 5. Embedder | 3/3 | Complete   | 2026-03-18 |
-| 6. Pipeline | 0/TBD | Not started | - |
+| 6. Pipeline | 0/3 | Not started | - |
 | 7. Index Endpoint | 0/TBD | Not started | - |
 | 8. Graph RAG | 0/TBD | Not started | - |
 | 9. Explorer Agent | 0/TBD | Not started | - |
