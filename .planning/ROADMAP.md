@@ -16,7 +16,8 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
 - [x] **Phase 4: Graph Builder** - `graph_builder.py` + tests — NetworkX DiGraph with edge resolution and PageRank (completed 2026-03-18)
 - [x] **Phase 5: Embedder** - `embedder.py` — embed nodes into pgvector + SQLite FTS5 (completed 2026-03-18)
 - [x] **Phase 6: Pipeline** - `pipeline.py` — orchestrate ingestion steps 2–5 with concurrency + incremental re-index (completed 2026-03-18)
-- [ ] **Phase 7: Index Endpoint** - `POST /index` + `GET /index/status` via FastAPI BackgroundTasks
+- [x] **Phase 7: Index Endpoint** - `POST /index` + `GET /index/status` via FastAPI BackgroundTasks (completed 2026-03-18)
+- [ ] **Phase 7.1: Tech Debt Cleanup** - Fix FTS5 stale rows on incremental re-index + add backend Docker healthcheck
 - [ ] **Phase 8: Graph RAG** - `graph_rag.py` + tests — 3-step graph-traversal RAG, testable without DB
 - [ ] **Phase 9: Explorer Agent** - `explorer.py` — LangChain streaming agent with LangSmith tracing
 - [ ] **Phase 10: Query Endpoint** - `POST /query` SSE streaming endpoint
@@ -129,8 +130,20 @@ Plans:
   5. CORS allows requests from `vscode-webview://*` and `http://localhost:3000`
 **Plans**: 2 plans
 Plans:
-- [ ] 07-01-PLAN.md — IndexRequest schema + delete helpers + index_router.py (POST /index, GET /index/status, DELETE /index)
-- [ ] 07-02-PLAN.md — Wire CORSMiddleware + router in main.py + live smoke test checkpoint
+- [x] 07-01-PLAN.md — IndexRequest schema + delete helpers + index_router.py (POST /index, GET /index/status, DELETE /index)
+- [x] 07-02-PLAN.md — Wire CORSMiddleware + router in main.py + live smoke test checkpoint
+
+### Phase 7.1: Tech Debt Cleanup
+**Goal**: Close the two non-critical integration gaps identified in the v1.0 audit — stale FTS5 rows on incremental re-index and missing backend Docker healthcheck
+**Depends on**: Phase 7
+**Requirements**: PIPE-03, STORE-03, EMBED-05, INFRA-01 (gap closure)
+**Gap Closure:** Closes gaps from v1.0 audit (PIPE-03+STORE-03, INFRA-01-backend-healthcheck)
+**Success Criteria** (what must be TRUE):
+  1. Incremental re-index with `changed_files` removes stale FTS5 rows for renamed/removed functions
+  2. `backend` service in `docker-compose.yml` has a `healthcheck` stanza using `GET /health`
+  3. `delete_embeddings_for_files(file_paths, repo_path)` is implemented and tested in `embedder.py`
+  4. Existing pipeline tests still pass after the change
+**Plans**: TBD
 
 ### Phase 8: Graph RAG
 **Goal**: Retrieval produces structurally grounded context that is verifiably better than pure vector search, without requiring a live database
@@ -223,7 +236,8 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 4. Graph Builder | 1/1 | Complete   | 2026-03-18 |
 | 5. Embedder | 3/3 | Complete   | 2026-03-18 |
 | 6. Pipeline | 3/3 | Complete   | 2026-03-18 |
-| 7. Index Endpoint | 0/2 | Not started | - |
+| 7. Index Endpoint | 2/2 | Complete   | 2026-03-18 |
+| 7.1. Tech Debt Cleanup | 0/TBD | Not started | - |
 | 8. Graph RAG | 0/TBD | Not started | - |
 | 9. Explorer Agent | 0/TBD | Not started | - |
 | 10. Query Endpoint | 0/TBD | Not started | - |

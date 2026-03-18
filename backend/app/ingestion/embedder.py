@@ -161,3 +161,43 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str) -> int:
         sqlite_conn.close()
 
     return total_stored
+
+
+def delete_embeddings_for_repo(repo_path: str) -> None:
+    """Delete all pgvector and FTS5 rows for the given repo_path.
+
+    Steps:
+    1. Open a pgvector connection, collect all ``id`` values for the repo.
+    2. DELETE those rows from ``code_embeddings``.
+    3. If any node_ids were found, DELETE matching rows from ``code_fts``
+       in SQLite (FTS5 keyed by node_id which equals the pgvector id column).
+    """
+    pg_conn = get_db_connection()
+    register_vector(pg_conn)
+
+    try:
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM code_embeddings WHERE repo_path = %s",
+                (repo_path,),
+            )
+            node_ids = [row[0] for row in cur.fetchall()]
+            cur.execute(
+                "DELETE FROM code_embeddings WHERE repo_path = %s",
+                (repo_path,),
+            )
+    finally:
+        pg_conn.close()
+
+    if node_ids:
+        db_path = _sqlite_db_path()
+        sqlite_conn = sqlite3.connect(db_path)
+        try:
+            placeholders = ",".join("?" * len(node_ids))
+            sqlite_conn.execute(
+                f"DELETE FROM code_fts WHERE node_id IN ({placeholders})",
+                node_ids,
+            )
+            sqlite_conn.commit()
+        finally:
+            sqlite_conn.close()

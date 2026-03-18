@@ -18,6 +18,10 @@ def get_status(repo_path: str) -> IndexStatus | None:
     return _status.get(repo_path)
 
 
+def clear_status(repo_path: str) -> None:
+    _status.pop(repo_path, None)
+
+
 async def _parse_concurrent(files: list[dict], repo_path: str) -> tuple[list, list]:
     sem = Semaphore(PARSE_CONCURRENCY)
     all_nodes: list = []
@@ -80,5 +84,7 @@ async def run_ingestion(
         logger.exception("run_ingestion failed for %s", repo_path)
         result = IndexStatus(status="failed", error=str(exc))
 
-    _status[repo_path] = result
+    # Only persist result if DELETE hasn't cleared this repo's status concurrently
+    if repo_path in _status:
+        _status[repo_path] = result
     return result

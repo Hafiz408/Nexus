@@ -109,6 +109,19 @@ def save_graph(G: nx.DiGraph, repo_path: str) -> None:
     conn.close()
 
 
+def delete_graph_for_repo(repo_path: str) -> None:
+    """Remove all graph_nodes and graph_edges rows for the given repo_path.
+
+    Args:
+        repo_path: Repository identifier used to scope the delete.
+    """
+    conn = _get_conn(_db_path())
+    conn.execute("DELETE FROM graph_nodes WHERE repo_path = ?", (repo_path,))
+    conn.execute("DELETE FROM graph_edges WHERE repo_path = ?", (repo_path,))
+    conn.commit()
+    conn.close()
+
+
 def load_graph(repo_path: str) -> nx.DiGraph:
     """Reconstruct a DiGraph from SQLite for the given repo_path.
 
