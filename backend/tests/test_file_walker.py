@@ -26,7 +26,11 @@ def test_skips_node_modules(tmp_path):
     (tmp_path / "node_modules" / "pkg").mkdir()
     (tmp_path / "node_modules" / "pkg" / "lib.js").write_text("module.exports = {}")
     results = walk_repo(str(tmp_path), ["typescript"])
-    assert all("node_modules" not in r["path"] for r in results)
+    # Check path parts to avoid false positives from the tmp_path directory name
+    assert all(
+        "node_modules" not in Path(r["path"]).relative_to(tmp_path.resolve()).parts
+        for r in results
+    )
 
 
 def test_skips_pycache(tmp_path):

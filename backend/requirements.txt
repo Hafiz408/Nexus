@@ -5,3 +5,4 @@ psycopg2-binary
 pgvector
 numpy
 aiosqlite
+pathspec>=1.0.0
