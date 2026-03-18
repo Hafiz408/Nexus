@@ -1,0 +1,21 @@
+# Secrets — never commit
+.env
+
+# SQLite data directory — host bind mount, not for git
+data/*
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
