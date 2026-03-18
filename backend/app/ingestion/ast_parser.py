@@ -24,13 +24,11 @@ from tree_sitter import Language, Parser, Query, QueryCursor
 from app.models.schemas import CodeNode
 
 # ── Module-level language singletons (create once, reuse forever) ──────────
+# Language objects are read-only and safe to share across threads.
+# Parser objects have internal mutable state — constructed fresh per parse_file() call.
 PY_LANGUAGE = Language(tspython.language())
 TS_LANGUAGE = Language(tstypescript.language_typescript())
 TSX_LANGUAGE = Language(tstypescript.language_tsx())
-
-py_parser = Parser(PY_LANGUAGE)
-ts_parser = Parser(TS_LANGUAGE)
-tsx_parser = Parser(TSX_LANGUAGE)
 
 # ── Query constants ─────────────────────────────────────────────────────────
 PY_DEFS_QUERY = Query(PY_LANGUAGE, """
@@ -85,26 +83,34 @@ def parse_file(
 
     raw_edges: list of (source_node_id, target_name, edge_type) tuples.
     edge_type is "IMPORTS" or "CALLS". target_name is unresolved.
+
+    Parser instances are constructed fresh on each call so that concurrent
+    invocations via asyncio.to_thread do not share mutable Parser state.
     """
+    # Per-call Parser construction — thread-safe (each call gets its own instances)
+    py_parser = Parser(PY_LANGUAGE)
+    ts_parser = Parser(TS_LANGUAGE)
+    tsx_parser = Parser(TSX_LANGUAGE)
+
     if language == "python":
         source_bytes = Path(file_path).read_bytes()
         rel_path = str(Path(file_path).relative_to(repo_root)).replace("\\", "/")
-        return _parse_python(source_bytes, rel_path, file_path)
+        return _parse_python(source_bytes, rel_path, file_path, py_parser)
     elif language == "typescript":
         source_bytes = Path(file_path).read_bytes()
         rel_path = str(Path(file_path).relative_to(repo_root)).replace("\\", "/")
         # Select dialect by extension
         if file_path.endswith(".tsx"):
-            return _parse_typescript(source_bytes, rel_path, file_path, tsx=True)
-        return _parse_typescript(source_bytes, rel_path, file_path, tsx=False)
+            return _parse_typescript(source_bytes, rel_path, file_path, tsx_parser, tsx=True)
+        return _parse_typescript(source_bytes, rel_path, file_path, ts_parser, tsx=False)
     return [], []
 
 
 # ── Internal: Python ─────────────────────────────────────────────────────────
 def _parse_python(
-    source_bytes: bytes, rel_path: str, abs_path: str
+    source_bytes: bytes, rel_path: str, abs_path: str, parser: Parser
 ) -> tuple[list[CodeNode], list[tuple]]:
-    tree = py_parser.parse(source_bytes)
+    tree = parser.parse(source_bytes)
     root = tree.root_node
 
     captures = QueryCursor(PY_DEFS_QUERY).captures(root)
@@ -194,9 +200,8 @@ def _parse_python(
 
 # ── Internal: TypeScript ─────────────────────────────────────────────────────
 def _parse_typescript(
-    source_bytes: bytes, rel_path: str, abs_path: str, *, tsx: bool = False
+    source_bytes: bytes, rel_path: str, abs_path: str, parser: Parser, *, tsx: bool = False
 ) -> tuple[list[CodeNode], list[tuple]]:
-    parser = tsx_parser if tsx else ts_parser
     language = TSX_LANGUAGE if tsx else TS_LANGUAGE
     tree = parser.parse(source_bytes)
     root = tree.root_node
