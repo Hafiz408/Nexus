@@ -42,12 +42,12 @@
 
 ### Ingestion — Embedder
 
-- [ ] **EMBED-01**: `embed_and_store(nodes, repo_path)` embeds all nodes and upserts into pgvector
-- [ ] **EMBED-02**: Creates `code_embeddings` table with vector(1536) and ivfflat index on startup
-- [ ] **EMBED-03**: Creates SQLite FTS5 `code_fts` virtual table for exact name search
-- [ ] **EMBED-04**: Embeds in batches of 100 using `openai.embeddings.create()`
-- [ ] **EMBED-05**: Upsert logic: `INSERT ... ON CONFLICT (id) DO UPDATE` — safe for incremental re-index
-- [ ] **EMBED-06**: Returns count of nodes stored
+- [x] **EMBED-01**: `embed_and_store(nodes, repo_path)` embeds all nodes and upserts into pgvector
+- [x] **EMBED-02**: Creates `code_embeddings` table with vector(1536) and ivfflat index on startup
+- [x] **EMBED-03**: Creates SQLite FTS5 `code_fts` virtual table for exact name search
+- [x] **EMBED-04**: Embeds in batches of 100 using `openai.embeddings.create()`
+- [x] **EMBED-05**: Upsert logic: `INSERT ... ON CONFLICT (id) DO UPDATE` — safe for incremental re-index
+- [x] **EMBED-06**: Returns count of nodes stored
 
 ### Ingestion — Pipeline
 
@@ -199,12 +199,12 @@
 | GRAPH-04 | Phase 4 | Complete |
 | GRAPH-05 | Phase 4 | Complete |
 | TEST-04 | Phase 4 | Complete |
-| EMBED-01 | Phase 5 | Pending |
-| EMBED-02 | Phase 5 | Pending |
-| EMBED-03 | Phase 5 | Pending |
-| EMBED-04 | Phase 5 | Pending |
-| EMBED-05 | Phase 5 | Pending |
-| EMBED-06 | Phase 5 | Pending |
+| EMBED-01 | Phase 5 | Complete |
+| EMBED-02 | Phase 5 | Complete |
+| EMBED-03 | Phase 5 | Complete |
+| EMBED-04 | Phase 5 | Complete |
+| EMBED-05 | Phase 5 | Complete |
+| EMBED-06 | Phase 5 | Complete |
 | STORE-01 | Phase 5 | Complete |
 | STORE-02 | Phase 5 | Complete |
 | STORE-03 | Phase 5 | Complete |
