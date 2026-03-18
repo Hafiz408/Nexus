@@ -18,6 +18,10 @@ def get_status(repo_path: str) -> IndexStatus | None:
     return _status.get(repo_path)
 
 
+def clear_status(repo_path: str) -> None:
+    _status.pop(repo_path, None)
+
+
 async def _parse_concurrent(files: list[dict], repo_path: str) -> tuple[list, list]:
     sem = Semaphore(PARSE_CONCURRENCY)
     all_nodes: list = []

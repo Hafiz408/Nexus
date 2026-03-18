@@ -27,3 +27,9 @@ class IndexStatus(BaseModel):
     edges_indexed: int = 0
     files_processed: int = 0
     error: str | None = None
+
+
+class IndexRequest(BaseModel):
+    repo_path: str
+    languages: list[str] = ["python", "typescript"]
+    changed_files: list[str] | None = None
