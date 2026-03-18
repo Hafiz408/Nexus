@@ -15,7 +15,7 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
 - [x] **Phase 3: AST Parser** - `ast_parser.py` + tests — parse Python/TypeScript, extract CodeNode objects (completed 2026-03-18)
 - [x] **Phase 4: Graph Builder** - `graph_builder.py` + tests — NetworkX DiGraph with edge resolution and PageRank (completed 2026-03-18)
 - [x] **Phase 5: Embedder** - `embedder.py` — embed nodes into pgvector + SQLite FTS5 (completed 2026-03-18)
-- [ ] **Phase 6: Pipeline** - `pipeline.py` — orchestrate ingestion steps 2–5 with concurrency + incremental re-index
+- [x] **Phase 6: Pipeline** - `pipeline.py` — orchestrate ingestion steps 2–5 with concurrency + incremental re-index (completed 2026-03-18)
 - [ ] **Phase 7: Index Endpoint** - `POST /index` + `GET /index/status` via FastAPI BackgroundTasks
 - [ ] **Phase 8: Graph RAG** - `graph_rag.py` + tests — 3-step graph-traversal RAG, testable without DB
 - [ ] **Phase 9: Explorer Agent** - `explorer.py` — LangChain streaming agent with LangSmith tracing
@@ -219,7 +219,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 3. AST Parser | 2/2 | Complete   | 2026-03-18 |
 | 4. Graph Builder | 1/1 | Complete   | 2026-03-18 |
 | 5. Embedder | 3/3 | Complete   | 2026-03-18 |
-| 6. Pipeline | 2/3 | In Progress|  |
+| 6. Pipeline | 3/3 | Complete   | 2026-03-18 |
 | 7. Index Endpoint | 0/TBD | Not started | - |
 | 8. Graph RAG | 0/TBD | Not started | - |
 | 9. Explorer Agent | 0/TBD | Not started | - |

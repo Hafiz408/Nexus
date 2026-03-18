@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 6 of 14 (Pipeline) — IN PROGRESS
-Plan: 2 of 3 in current phase
-Status: Phase 06-pipeline plan 02 complete — parse_file() thread-safety fix
-Last activity: 2026-03-18 — Plan 06-02 complete: parse_file() made thread-safe by moving Parser construction inside function body; all 17 ast_parser tests pass, 54/57 total tests pass (3 pre-existing embedder failures unrelated)
+Phase: 6 of 14 (Pipeline) — COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase 06-pipeline plan 03 complete — pipeline unit tests (PIPE-01 through PIPE-05)
+Last activity: 2026-03-18 — Plan 06-03 complete: 5 pytest unit tests for pipeline.py, all I/O mocked at app.ingestion.pipeline.* namespace; 59/62 total tests pass (3 pre-existing embedder failures unrelated)
 
 Progress: [████░░░░░░] 30%
 
@@ -32,10 +32,10 @@ Progress: [████░░░░░░] 30%
 | 03-ast-parser | 2 | 5 min | 2.5 min |
 | 04-graph-builder | 1 | 3 min | 3 min |
 | 05-embedder | 3 | 10 min | 3.3 min |
-| 06-pipeline | 2 | 35 min | 17.5 min |
+| 06-pipeline | 3 | 40 min | 13.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min, 5 min, 3 min, 2 min, 5 min
+- Last 5 plans: 5 min, 3 min, 2 min, 5 min, 5 min
 - Trend: baseline
 
 *Updated after each plan completion*
@@ -91,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 06-pipeline]: Parser instances constructed per parse_file() call — each asyncio.to_thread worker gets its own Parser, no shared mutable state (06-02)
 - [Phase 06-pipeline]: Language singletons remain at module level — Language objects are read-only and safe to share; Parser objects have mutable state and must be per-call (06-02)
 - [Phase 06-pipeline]: _parse_python() and _parse_typescript() accept parser as explicit parameter — keeps helpers pure, no global state dependency (06-02)
+- [Phase 06-pipeline]: Patch all I/O stages at app.ingestion.pipeline.* namespace (not origin modules) — from-imports bind at load time
+- [Phase 06-pipeline]: asyncio.run() used in tests to invoke async run_ingestion — no pytest-asyncio fixture needed for pipeline unit tests
 
 ### Pending Todos
 
@@ -103,5 +105,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 06-01-PLAN.md — IndexStatus Pydantic model + pipeline.py with run_ingestion/get_status/_parse_concurrent, concurrent parsing via asyncio.Semaphore(10)+to_thread, incremental update support
+Stopped at: Completed 06-03-PLAN.md — Pipeline unit tests: 5 test cases covering PIPE-01 through PIPE-05, all passing, full suite at 59 tests; Phase 06-pipeline complete
 Resume file: None
