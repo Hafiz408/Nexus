@@ -83,6 +83,11 @@ Recent decisions affecting current work:
 - [Phase 05-embedder]: register_vector(conn) called per-connection — pgvector requires per-connection type registration, never global (05-02)
 - [Phase 05-embedder]: Patch targets use app.ingestion.embedder namespace not origin module — from-imports bind at module load time
 - [Phase 05-embedder]: FTS5 content='' removed — contentless mode silently breaks SELECT and DELETE on UNINDEXED columns
+- [Phase 06-pipeline]: IndexStatus uses str | None union syntax (not Optional[str]) — consistent with Python 3.11 + pydantic v2 patterns (06-01)
+- [Phase 06-pipeline]: asyncio.gather with return_exceptions=True — single parse failure does not cancel all other parses (06-01)
+- [Phase 06-pipeline]: embed_and_store and save_graph wrapped in asyncio.to_thread — they are blocking I/O operations (06-01)
+- [Phase 06-pipeline]: Module-level _status dict keyed by repo_path — readable via get_status() at any point during async execution (06-01)
+- [Phase 06-pipeline]: Incremental path calls delete_nodes_for_files before re-parsing to avoid stale nodes in graph (06-01)
 - [Phase 06-pipeline]: Parser instances constructed per parse_file() call — each asyncio.to_thread worker gets its own Parser, no shared mutable state (06-02)
 - [Phase 06-pipeline]: Language singletons remain at module level — Language objects are read-only and safe to share; Parser objects have mutable state and must be per-call (06-02)
 - [Phase 06-pipeline]: _parse_python() and _parse_typescript() accept parser as explicit parameter — keeps helpers pure, no global state dependency (06-02)
@@ -98,5 +103,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-18
-Stopped at: Completed 06-02-PLAN.md — parse_file() made thread-safe by moving Parser construction inside function body; all 17 ast_parser tests pass
+Stopped at: Completed 06-01-PLAN.md — IndexStatus Pydantic model + pipeline.py with run_ingestion/get_status/_parse_concurrent, concurrent parsing via asyncio.Semaphore(10)+to_thread, incremental update support
 Resume file: None
