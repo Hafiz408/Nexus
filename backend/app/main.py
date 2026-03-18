@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.index_router import router as index_router
 from app.db.database import init_db
 from app.ingestion.embedder import init_pgvector_table
 
@@ -14,6 +16,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Nexus API", version="1.0.0", lifespan=lifespan)
+
+# CORS must be registered before include_router — middleware wraps the full app stack
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_origin_regex=r"vscode-webview://.*",
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["*"],
+)
+
+app.include_router(index_router)
 
 
 @app.get("/health")
