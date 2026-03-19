@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 11 of 14 (VS Code Extension) — IN PROGRESS
-Plan: 3 of 5 in current phase — COMPLETE
-Status: Phase 11-vs-code-extension plan 03 complete — webview chat UI: index.tsx createRoot entry, App.tsx streaming chat component, index.css vscode-variable styling
-Last activity: 2026-03-19 — Plan 11-03 complete: three webview files; tsc --noEmit 0 errors, all CHAT-01..05 requirements satisfied
+Plan: 4 of 5 in current phase — COMPLETE
+Status: Phase 11-vs-code-extension plan 04 complete — final extension.ts wiring SidebarProvider, dual esbuild bundles, human-verified Nexus sidebar in VS Code Extension Development Host
+Last activity: 2026-03-19 — Plan 11-04 complete: extension.ts imports SidebarProvider, 0 TypeScript errors, 14/14 bundle checks passed, human verified
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [████████░░] 80%
 | Phase 11-vs-code-extension P01 | 3 | 2 tasks | 8 files |
 | Phase 11-vs-code-extension P02 | 2 | 2 tasks | 4 files |
 | Phase 11-vs-code-extension P03 | 2 | 2 tasks | 3 files |
+| Phase 11-vs-code-extension P04 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -140,7 +141,7 @@ Recent decisions affecting current work:
 - [Phase 11-vs-code-extension]: DOM lib added to extension tsconfig.json — fetch/setInterval types unavailable without it even in Node 18+ extension host
 - [Phase 11-vs-code-extension]: acquireVsCodeApi() called at module level (not inside component) — VS Code throws if called more than once per webview lifetime
 - [Phase 11-vs-code-extension]: Functional setState updater for token append — ensures correct prev-state access in concurrent renders
-- [Phase 11-vs-code-extension]: void operator added to triggerIndex/triggerClear in activate() — real SidebarProvider returns Promise<void>, original stub had void returns
+- [Phase 11-vs-code-extension]: void operator added to triggerIndex/triggerClear in activate() — real SidebarProvider returns Promise<void>, original stub had void returns; TypeScript requires void operator to explicitly discard the promise
 
 ### Pending Todos
 
@@ -153,5 +154,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 11-03-PLAN.md — webview chat UI: index.tsx createRoot entry, App.tsx full chat component with streaming/citations/status-bar, index.css vscode-variable styling
+Stopped at: Completed 11-04-PLAN.md — final extension.ts wiring SidebarProvider, dual esbuild bundles (10KB + 1MB), human-verified Nexus sidebar in VS Code Extension Development Host
 Resume file: None

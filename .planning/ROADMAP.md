@@ -21,7 +21,7 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
 - [x] **Phase 8: Graph RAG** - `graph_rag.py` + tests — 3-step graph-traversal RAG, testable without DB (completed 2026-03-19)
 - [x] **Phase 9: Explorer Agent** - `explorer.py` — LangChain streaming agent with LangSmith tracing (completed 2026-03-19)
 - [x] **Phase 10: Query Endpoint** - `POST /query` SSE streaming endpoint (completed 2026-03-19)
-- [ ] **Phase 11: VS Code Extension** - Sidebar, BackendClient, SSE streaming to React chat UI
+- [x] **Phase 11: VS Code Extension** - Sidebar, BackendClient, SSE streaming to React chat UI (completed 2026-03-19)
 - [ ] **Phase 12: Highlighter** - `Highlighter.ts` — file:line decoration in VS Code editor
 - [ ] **Phase 13: File Watcher** - `FileWatcher.ts` — incremental re-index on file save
 - [ ] **Phase 14: RAGAS Eval** - Evaluation runner with 30 golden Q&A pairs, baseline scores committed
@@ -258,7 +258,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 8. Graph RAG | 2/2 | Complete    | 2026-03-19 |
 | 9. Explorer Agent | 2/2 | Complete    | 2026-03-19 |
 | 10. Query Endpoint | 2/2 | Complete    | 2026-03-19 |
-| 11. VS Code Extension | 3/4 | In Progress|  |
+| 11. VS Code Extension | 4/4 | Complete   | 2026-03-19 |
 | 12. Highlighter | 0/TBD | Not started | - |
 | 13. File Watcher | 0/TBD | Not started | - |
 | 14. RAGAS Eval | 0/TBD | Not started | - |
