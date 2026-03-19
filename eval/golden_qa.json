@@ -1,0 +1,212 @@
+[
+  {
+    "id": "Q01",
+    "topic": "routing",
+    "question": "How does FastAPI define path parameters with type validation?",
+    "ground_truth": "FastAPI uses Python type annotations in path operation function signatures. Declaring a parameter like `item_id: int` in both the path string `{item_id}` and the function signature causes FastAPI to automatically parse and validate the value using Pydantic under the hood. If the value cannot be coerced to the declared type, FastAPI returns a 422 Unprocessable Entity response with a detailed error body describing the validation failure.",
+    "notes": "Covers routing + type coercion via Pydantic"
+  },
+  {
+    "id": "Q02",
+    "topic": "routing",
+    "question": "How does FastAPI handle multiple HTTP methods on a single path?",
+    "ground_truth": "FastAPI registers path operations per HTTP method using dedicated decorators: `@app.get()`, `@app.post()`, `@app.put()`, `@app.delete()`, `@app.patch()`, and `@app.options()`. Each decorator creates a separate route entry in the OpenAPI schema. You can define multiple functions for the same path string as long as they use different HTTP method decorators, and FastAPI will dispatch to the correct handler based on the incoming request method.",
+    "notes": "Covers HTTP method routing via decorators"
+  },
+  {
+    "id": "Q03",
+    "topic": "routing",
+    "question": "How do you include a router from another module in a FastAPI application?",
+    "ground_truth": "FastAPI provides `APIRouter` as a modular way to group related path operations. You define an `APIRouter` instance in a separate module, attach path operations to it with the same decorators (`@router.get()`, etc.), then call `app.include_router(router, prefix='/items', tags=['items'])` in your main application. The `prefix` parameter prepends to every path in the router, and `tags` groups the operations in the OpenAPI documentation.",
+    "notes": "Covers APIRouter and modular routing"
+  },
+  {
+    "id": "Q04",
+    "topic": "routing",
+    "question": "How does FastAPI handle query parameters and their default values?",
+    "ground_truth": "In FastAPI, any function parameter that is not part of the path template is treated as a query parameter. If the parameter has a default value (e.g., `skip: int = 0`), it becomes optional in the URL. If no default is provided (e.g., `q: str`), the query parameter is required and FastAPI will return a 422 error if it is absent. Pydantic validation rules (min length, regex, etc.) can be added by using `Query()` as the default value.",
+    "notes": "Covers query parameter declaration and defaults"
+  },
+  {
+    "id": "Q05",
+    "topic": "routing",
+    "question": "How do you set a custom HTTP response status code for a path operation in FastAPI?",
+    "ground_truth": "You can set the default response status code for a path operation by passing the `status_code` argument to the decorator, for example `@app.post('/items', status_code=201)`. FastAPI will use that code for successful responses and include it in the OpenAPI schema. To return a dynamically chosen status code at runtime you can return a `Response` object directly (e.g., `Response(status_code=204)`) or raise an `HTTPException` with the desired status.",
+    "notes": "Covers status_code parameter on route decorators"
+  },
+  {
+    "id": "Q06",
+    "topic": "dependency_injection",
+    "question": "What is the purpose of `Depends()` in FastAPI and how does it work?",
+    "ground_truth": "FastAPI's `Depends()` function declares a dependency that the framework resolves and injects before calling the path operation. You declare it as a parameter default in the path function signature: `def read_items(db: Session = Depends(get_db))`. FastAPI inspects the callable passed to `Depends()`, resolves any of its own parameters recursively, calls it, and passes the result to the path function. This enables reusable authentication checks, database sessions, and other shared logic.",
+    "notes": "Covers the core Depends() mechanism"
+  },
+  {
+    "id": "Q07",
+    "topic": "dependency_injection",
+    "question": "How does FastAPI support sub-dependencies (dependencies that depend on other dependencies)?",
+    "ground_truth": "FastAPI resolves the full dependency tree recursively. A dependency callable can itself declare `Depends()` parameters, and FastAPI will resolve those sub-dependencies first before calling the outer dependency. FastAPI caches the result of each dependency within a single request by default, so a dependency that appears multiple times in the tree is called only once. This avoids duplicate work such as multiple database connections for a single request.",
+    "notes": "Covers nested dependency resolution and caching"
+  },
+  {
+    "id": "Q08",
+    "topic": "dependency_injection",
+    "question": "How do class-based dependencies work in FastAPI?",
+    "ground_truth": "Any callable—including a class—can be used as a FastAPI dependency. When a class is passed to `Depends()`, FastAPI calls its `__init__` method, injecting any parameters declared there as sub-dependencies or query parameters. The resulting instance is then injected into the path operation. This pattern is useful for grouping related parameters (e.g., common query filters) into a reusable class while keeping the route signature concise.",
+    "notes": "Covers class-based dependencies via __init__ injection"
+  },
+  {
+    "id": "Q09",
+    "topic": "dependency_injection",
+    "question": "What are yield dependencies in FastAPI and when should you use them?",
+    "ground_truth": "A yield dependency is a generator function used with `Depends()`. Code before the `yield` runs before the path operation (setup phase), the yielded value is injected into the path function, and code after the `yield` runs after the response is sent (teardown phase). This is the recommended pattern for managing resources like database sessions that need to be opened before and closed after a request. FastAPI also handles exceptions in yield dependencies, running the teardown code even if an error occurs.",
+    "notes": "Covers generator-based dependencies for resource management"
+  },
+  {
+    "id": "Q10",
+    "topic": "dependency_injection",
+    "question": "How do dependency overrides work in FastAPI and why are they useful in testing?",
+    "ground_truth": "FastAPI exposes `app.dependency_overrides`, a dict that maps the original dependency callable to a replacement. When a dependency is overridden, FastAPI calls the replacement instead of the original for every request handled by the app instance. This is invaluable in testing: you can replace a real database session dependency with an in-memory version, or replace an authentication dependency with one that always returns a mock user, without modifying any application code.",
+    "notes": "Covers dependency_overrides for test isolation"
+  },
+  {
+    "id": "Q11",
+    "topic": "middleware",
+    "question": "How do you add CORS support to a FastAPI application?",
+    "ground_truth": "FastAPI ships with Starlette's `CORSMiddleware`. You add it via `app.add_middleware(CORSMiddleware, allow_origins=['https://example.com'], allow_methods=['*'], allow_headers=['*'])`. The `allow_origins` list controls which origins may access the API; using `['*']` allows all origins. You may also use `allow_origin_regex` for pattern-based matching. Note that combining `allow_credentials=True` with a wildcard origin is not permitted by the CORS spec and will cause browser rejections.",
+    "notes": "Covers CORSMiddleware setup and gotchas"
+  },
+  {
+    "id": "Q12",
+    "topic": "middleware",
+    "question": "How do you write a custom middleware in FastAPI using BaseHTTPMiddleware?",
+    "ground_truth": "You subclass `starlette.middleware.base.BaseHTTPMiddleware` and override the `dispatch(request, call_next)` coroutine. Inside `dispatch`, you can inspect or modify the incoming `request`, then call `response = await call_next(request)` to pass control to the next layer in the stack. After `call_next` returns you can inspect or modify the `response` before returning it. The class is registered with `app.add_middleware(MyMiddleware)` or `app.middleware('http')(handler)` for function-based variants.",
+    "notes": "Covers custom middleware via BaseHTTPMiddleware.dispatch"
+  },
+  {
+    "id": "Q13",
+    "topic": "middleware",
+    "question": "What is the execution order of middleware in a FastAPI application?",
+    "ground_truth": "Middleware is executed in the reverse order of registration because Starlette builds the ASGI stack by wrapping each new middleware around the existing application. The last middleware added via `add_middleware()` wraps the outermost layer and therefore runs first on incoming requests and last on outgoing responses. This is the opposite of the addition order: if you add middleware A then middleware B, requests hit B first and responses pass through A last.",
+    "notes": "Covers LIFO execution order of Starlette middleware stack"
+  },
+  {
+    "id": "Q14",
+    "topic": "middleware",
+    "question": "What is the difference between adding middleware with app.add_middleware() and using @app.middleware('http')?",
+    "ground_truth": "Both approaches register middleware in the same Starlette stack. `app.add_middleware(MyMiddlewareClass, **kwargs)` is the class-based form and accepts constructor keyword arguments that are passed to `__init__`. `@app.middleware('http')` is a function-based shortcut that wraps a coroutine function `async def my_middleware(request, call_next)` without requiring a class. They are functionally equivalent but the class form is more reusable across multiple applications while the decorator form is more concise for one-off middleware.",
+    "notes": "Covers class-based vs decorator-based middleware registration"
+  },
+  {
+    "id": "Q15",
+    "topic": "background_tasks",
+    "question": "How do you use BackgroundTasks to run work after a response is sent in FastAPI?",
+    "ground_truth": "Declare a `BackgroundTasks` parameter in your path operation function signature—FastAPI injects it automatically. Call `background_tasks.add_task(function, arg1, arg2)` to enqueue work. FastAPI sends the HTTP response to the client first, then runs all enqueued tasks in the same process after the response is complete. This is useful for fire-and-forget operations like sending emails or writing audit logs where the client does not need to wait for the result.",
+    "notes": "Covers BackgroundTasks parameter injection and add_task"
+  },
+  {
+    "id": "Q16",
+    "topic": "background_tasks",
+    "question": "What is the signature of BackgroundTasks.add_task() and how do you pass arguments to it?",
+    "ground_truth": "`BackgroundTasks.add_task(func, *args, **kwargs)` accepts the callable as its first argument, followed by any positional and keyword arguments to pass when calling it. For example, `background_tasks.add_task(send_email, email=user.email, message='Welcome')` will call `send_email(email=user.email, message='Welcome')` after the response is sent. The function can be a regular function or an async coroutine; FastAPI handles both.",
+    "notes": "Covers add_task signature including args/kwargs forwarding"
+  },
+  {
+    "id": "Q17",
+    "topic": "background_tasks",
+    "question": "When exactly are FastAPI background tasks executed relative to the HTTP response?",
+    "ground_truth": "FastAPI background tasks are executed after the response body has been fully sent to the client. The ASGI server (e.g., Uvicorn) completes sending the response, and then Starlette's `BackgroundTask` middleware runs the queued callables in sequence within the same worker process and event loop. Because they run in the same process, they share the same memory space but execute after the client connection is closed. They are not run in a separate thread or process pool by default.",
+    "notes": "Covers timing: after response, same process/event loop"
+  },
+  {
+    "id": "Q18",
+    "topic": "background_tasks",
+    "question": "How can you inject BackgroundTasks into a dependency rather than a path operation function?",
+    "ground_truth": "You can declare a `BackgroundTasks` parameter in any dependency function just as you would in a path operation. FastAPI recognises the type annotation and injects the same `BackgroundTasks` instance that was created for the request. Tasks added inside the dependency are merged into the same queue and executed after the response is sent. This lets you encapsulate background task scheduling inside a service layer without exposing it directly to the route handler.",
+    "notes": "Covers BackgroundTasks injection inside Depends() callables"
+  },
+  {
+    "id": "Q19",
+    "topic": "security",
+    "question": "How does OAuth2PasswordBearer work in FastAPI?",
+    "ground_truth": "`OAuth2PasswordBearer` is a dependency class provided by FastAPI that extracts a Bearer token from the `Authorization` header of the incoming request. You instantiate it with a `tokenUrl` pointing to your token endpoint, e.g., `oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/token')`. When used as a `Depends()` in a path operation, it automatically returns the token string if present, or raises an HTTP 401 Unauthorized error if the header is missing. It also adds the correct security scheme to the OpenAPI docs.",
+    "notes": "Covers OAuth2PasswordBearer token extraction mechanism"
+  },
+  {
+    "id": "Q20",
+    "topic": "security",
+    "question": "How do you implement HTTP Basic authentication in FastAPI?",
+    "ground_truth": "FastAPI provides `HTTPBasic` from `fastapi.security`. Declare `credentials: HTTPBasicCredentials = Depends(HTTPBasic())` in your path operation or a dependency. FastAPI parses the `Authorization: Basic <base64>` header and returns an `HTTPBasicCredentials` object with `username` and `password` fields. You then compare the provided credentials against your stored values using `secrets.compare_digest()` to prevent timing attacks, raising an HTTP 401 with `WWW-Authenticate: Basic` if they do not match.",
+    "notes": "Covers HTTPBasic dependency and timing-safe credential comparison"
+  },
+  {
+    "id": "Q21",
+    "topic": "security",
+    "question": "How do you implement API key authentication via a custom header in FastAPI?",
+    "ground_truth": "FastAPI's `APIKeyHeader` security utility (from `fastapi.security`) reads a named header and returns its value. You instantiate it with the header name: `api_key_header = APIKeyHeader(name='X-API-Key')`. Declare it as a dependency: `api_key: str = Depends(api_key_header)`. FastAPI extracts the header value and raises HTTP 403 if the header is absent. You then compare the extracted value against your stored secret in the dependency function and raise HTTP 403 if it does not match.",
+    "notes": "Covers APIKeyHeader dependency for header-based API key auth"
+  },
+  {
+    "id": "Q22",
+    "topic": "security",
+    "question": "How does FastAPI support OAuth2 scopes for fine-grained authorization?",
+    "ground_truth": "FastAPI supports OAuth2 scopes via `SecurityScopes` and `Security()`. You declare `security_scopes: SecurityScopes = Security(oauth2_scheme, scopes=['items:read'])` in a dependency. The `SecurityScopes.scopes` list contains the required scopes for the current path. Inside the dependency you decode the JWT, extract its scope claim, and verify that all required scopes are present, raising HTTP 401 with a `WWW-Authenticate` header listing the missing scopes. FastAPI also surfaces required scopes in the OpenAPI security schema.",
+    "notes": "Covers SecurityScopes and fine-grained scope checking"
+  },
+  {
+    "id": "Q23",
+    "topic": "request_parsing",
+    "question": "How does FastAPI parse a JSON request body using a Pydantic model?",
+    "ground_truth": "Declare a Pydantic model as a parameter type in a path operation function, e.g., `def create_item(item: Item)`. FastAPI detects that the parameter type is a Pydantic `BaseModel` subclass, reads the raw request body, and calls Pydantic to parse and validate it as JSON. If the body is missing or fails validation, FastAPI returns a 422 Unprocessable Entity response with a detailed list of validation errors. The parsed model instance is then passed directly to the function.",
+    "notes": "Covers Pydantic BaseModel body parsing"
+  },
+  {
+    "id": "Q24",
+    "topic": "request_parsing",
+    "question": "How do you accept HTML form data in FastAPI?",
+    "ground_truth": "Import `Form` from `fastapi` and declare form fields as parameters: `def login(username: str = Form(), password: str = Form())`. FastAPI reads the `application/x-www-form-urlencoded` or `multipart/form-data` request body and maps the fields to the declared parameters, applying the same type validation as query parameters. You must install `python-multipart` as an additional dependency because FastAPI uses it to parse form data bodies. Form fields and JSON bodies cannot be mixed in the same endpoint.",
+    "notes": "Covers Form() fields and python-multipart dependency"
+  },
+  {
+    "id": "Q25",
+    "topic": "request_parsing",
+    "question": "How do you handle file uploads in FastAPI?",
+    "ground_truth": "FastAPI provides two options for file uploads: `File()` which returns raw `bytes`, and `UploadFile` which provides a file-like async interface. Using `async def upload(file: UploadFile = File())`, FastAPI reads the `multipart/form-data` body and wraps the uploaded content in an `UploadFile` object with `filename`, `content_type`, and async `read()`/`write()` methods. `UploadFile` is preferred for large files because it uses a `SpooledTemporaryFile` that keeps small files in memory and spills to disk for large ones.",
+    "notes": "Covers UploadFile and SpooledTemporaryFile behaviour"
+  },
+  {
+    "id": "Q26",
+    "topic": "request_parsing",
+    "question": "How do you add validation constraints to query parameters using Query() in FastAPI?",
+    "ground_truth": "`Query()` from `fastapi` is used as the default value for a query parameter to attach validation rules and metadata. For example, `q: str = Query(min_length=3, max_length=50, pattern='^[a-z]+$')` enforces length and regex constraints. You can also set `Query(default=None)` to make it optional, `Query(alias='item-query')` to accept a different URL key, and `Query(title='Query string', description='...')` for OpenAPI documentation. Validation failures return a 422 response with field-level error details.",
+    "notes": "Covers Query() for constraint and metadata declaration"
+  },
+  {
+    "id": "Q27",
+    "topic": "response_models",
+    "question": "What does the response_model parameter do in a FastAPI path operation?",
+    "ground_truth": "The `response_model` parameter on a path operation decorator declares the Pydantic model used to validate, filter, and serialize the response data. FastAPI takes whatever the function returns, passes it through the declared `response_model` for validation and filtering (removing any fields not present in the model), then serializes it to JSON. It also generates the correct response schema in the OpenAPI specification. If the returned data fails response model validation, FastAPI raises a 500 Internal Server Error rather than a 422.",
+    "notes": "Covers response_model validation and field filtering"
+  },
+  {
+    "id": "Q28",
+    "topic": "response_models",
+    "question": "What does response_model_exclude_unset do and when should you use it?",
+    "ground_truth": "`response_model_exclude_unset=True` on a path operation decorator tells FastAPI to omit fields from the response that were not explicitly set when constructing the returned model—i.e., fields that still hold their Pydantic default values. This is useful for PATCH endpoints where you want to return only the fields that were actually updated, rather than the full model with all defaults. Without this flag, every field with a default would be included even if it was not part of the update payload.",
+    "notes": "Covers response_model_exclude_unset for partial update responses"
+  },
+  {
+    "id": "Q29",
+    "topic": "response_models",
+    "question": "How do you return a raw JSONResponse in FastAPI and when would you use it?",
+    "ground_truth": "`JSONResponse` from `starlette.responses` (re-exported by FastAPI) lets you return a pre-serialized JSON response with explicit control over the status code and headers. You call `return JSONResponse(content={'key': 'value'}, status_code=200, headers={'X-Custom': 'header'})`. This bypasses `response_model` validation and Pydantic serialization, so it is useful when you need to return data that is already serialized, when you need non-standard headers, or when you want to avoid the overhead of Pydantic for performance-critical endpoints.",
+    "notes": "Covers JSONResponse and bypassing Pydantic serialization"
+  },
+  {
+    "id": "Q30",
+    "topic": "response_models",
+    "question": "How do you use a custom response class to change the default serialization format in FastAPI?",
+    "ground_truth": "You can set `response_class` on a path operation decorator or on the `FastAPI()` app constructor to change the default response type. For example, `@app.get('/data', response_class=ORJSONResponse)` uses the `ORJSONResponse` class (available in FastAPI extras) which serializes using the faster `orjson` library. You can also create your own response class by subclassing `Response` and overriding the `media_type` attribute and `render()` method. Setting `default_response_class` on the app applies the custom class to all routes globally.",
+    "notes": "Covers response_class for custom serialization and ORJSONResponse"
+  }
+]
