@@ -216,7 +216,9 @@ Plans:
   1. Clicking a citation chip opens the referenced file and scrolls to the cited line
   2. Cited line ranges are decorated with the editor's `findMatchHighlightBackground` color
   3. Highlights clear automatically after 10 seconds or when the next query is submitted
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 12-01-PLAN.md — HighlightService.ts + wire SseStream/SidebarProvider/extension.ts
 
 ### Phase 13: File Watcher
 **Goal**: The index stays current as the developer edits code, without requiring manual re-indexing
