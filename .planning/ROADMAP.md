@@ -186,7 +186,10 @@ Plans:
   2. After the last token, a single `event: citations` event delivers the full citation list
   3. Stream closes with `event: done` carrying retrieval stats, or `event: error` on failure
   4. A curl client can consume the SSE stream and reconstruct the full answer from events
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 10-01-PLAN.md — QueryRequest schema + query_router.py SSE endpoint + main.py wiring
+- [ ] 10-02-PLAN.md — test_query_router.py: 9 unit tests for SSE event sequence and error paths
 
 ### Phase 11: VS Code Extension
 **Goal**: A developer can open the Nexus sidebar, index a workspace, and ask a question that streams back a cited answer
@@ -249,7 +252,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 7.1. Tech Debt Cleanup | 2/2 | Complete    | 2026-03-19 |
 | 8. Graph RAG | 2/2 | Complete    | 2026-03-19 |
 | 9. Explorer Agent | 2/2 | Complete    | 2026-03-19 |
-| 10. Query Endpoint | 0/TBD | Not started | - |
+| 10. Query Endpoint | 0/2 | Not started | - |
 | 11. VS Code Extension | 0/TBD | Not started | - |
 | 12. Highlighter | 0/TBD | Not started | - |
 | 13. File Watcher | 0/TBD | Not started | - |
