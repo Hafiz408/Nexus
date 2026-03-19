@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 11 of 14 (VS Code Extension) — IN PROGRESS
-Plan: 1 of 5 in current phase — COMPLETE
-Status: Phase 11-vs-code-extension plan 01 complete — extension scaffold: package.json manifest, dual-bundle esbuild, tsconfigs, nexus.svg, extension.ts activate() skeleton
-Last activity: 2026-03-19 — Plan 11-01 complete: extension/ directory with all scaffold files; npm run build produces out/extension.js
+Plan: 2 of 5 in current phase — COMPLETE
+Status: Phase 11-vs-code-extension plan 02 complete — extension host services: types.ts, BackendClient.ts, SseStream.ts, SidebarProvider.ts
+Last activity: 2026-03-19 — Plan 11-02 complete: four extension host TypeScript files; tsc --noEmit 0 errors
 
 Progress: [████████░░] 78%
 
@@ -50,6 +50,7 @@ Progress: [████████░░] 78%
 | Phase 10-query-endpoint P01 | 2 | 3 tasks | 3 files |
 | Phase 10-query-endpoint P02 | 3 | 2 tasks | 1 files |
 | Phase 11-vs-code-extension P01 | 3 | 2 tasks | 8 files |
+| Phase 11-vs-code-extension P02 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,8 @@ Recent decisions affecting current work:
 - [Phase 10-query-endpoint]: patch init_db/init_pgvector_table at app.main namespace to decouple TestClient from postgres (10-02)
 - [Phase 10-query-endpoint]: r.read() inside client.stream() context required to materialize SSE body before httpx connection closes (10-02)
 - [Phase 11-vs-code-extension]: esbuild.js wraps webview rebuild in try/catch — gracefully skips missing entry point at scaffold stage, fails fast on extension host errors
+- [Phase 11-vs-code-extension]: fetch + ReadableStream used in SseStream (not EventSource) — EventSource is GET-only, POST /query requires custom method
+- [Phase 11-vs-code-extension]: DOM lib added to extension tsconfig.json — fetch/setInterval types unavailable without it even in Node 18+ extension host
 
 ### Pending Todos
 
@@ -146,5 +149,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 11-01-PLAN.md — VS Code extension scaffold: package.json manifest, dual-bundle esbuild, tsconfigs, nexus.svg, extension.ts skeleton
+Stopped at: Completed 11-02-PLAN.md — extension host services: types.ts discriminated unions, BackendClient HTTP polling, SseStream fetch SSE consumer, SidebarProvider webview bridge
 Resume file: None

@@ -108,9 +108,9 @@
 
 ### VS Code Extension — Backend Client & SSE
 
-- [ ] **SSE-01**: `BackendClient.ts` sends `POST /index` and polls `GET /index/status` every 2 seconds until complete/failed
-- [ ] **SSE-02**: `SseStream.ts` parses native EventSource stream; forwards token/citations/done/error events to SidebarProvider
-- [ ] **SSE-03**: SidebarProvider forwards events to Webview via `webview.postMessage()`
+- [x] **SSE-01**: `BackendClient.ts` sends `POST /index` and polls `GET /index/status` every 2 seconds until complete/failed
+- [x] **SSE-02**: `SseStream.ts` parses native EventSource stream; forwards token/citations/done/error events to SidebarProvider
+- [x] **SSE-03**: SidebarProvider forwards events to Webview via `webview.postMessage()`
 
 ### VS Code Extension — Highlighter
 
@@ -243,9 +243,9 @@
 | CHAT-03 | Phase 11 | Pending |
 | CHAT-04 | Phase 11 | Pending |
 | CHAT-05 | Phase 11 | Pending |
-| SSE-01 | Phase 11 | Pending |
-| SSE-02 | Phase 11 | Pending |
-| SSE-03 | Phase 11 | Pending |
+| SSE-01 | Phase 11 | Complete |
+| SSE-02 | Phase 11 | Complete |
+| SSE-03 | Phase 11 | Complete |
 | HIGH-01 | Phase 12 | Pending |
 | HIGH-02 | Phase 12 | Pending |
 | WATCH-01 | Phase 13 | Pending |
