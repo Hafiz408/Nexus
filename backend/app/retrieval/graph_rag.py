@@ -144,9 +144,10 @@ def rerank_and_assemble(
     Returns:
         Top max_nodes CodeNode objects sorted by descending composite score.
     """
-    # Compute max in_degree for normalisation — guard against zero-division
+    # Compute max in_degree for normalisation — guard against zero-division.
+    # Use `or 1` so that a list of all-zeros also yields max_in_degree=1.
     in_degrees = [G.nodes[n].get("in_degree", 0) for n in expanded_node_ids if n in G]
-    max_in_degree = max(in_degrees) if in_degrees else 1
+    max_in_degree = (max(in_degrees) if in_degrees else 0) or 1
 
     scored: list[tuple[float, CodeNode]] = []
     for node_id in expanded_node_ids:
