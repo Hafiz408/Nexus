@@ -201,7 +201,12 @@ Plans:
   3. Sending a question streams tokens into the chat panel in real-time with visible incremental rendering
   4. Citation chips appear after the answer completes and are clickable
   5. All styling uses VS Code CSS variables — no external CSS framework is shipped
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 11-01-PLAN.md — Extension scaffold (package.json, tsconfigs, esbuild.js, media/nexus.svg, extension.ts stub)
+- [ ] 11-02-PLAN.md — Extension host services (types.ts, BackendClient.ts, SseStream.ts, SidebarProvider.ts)
+- [ ] 11-03-PLAN.md — React 18 webview UI (App.tsx, index.tsx, index.css with VS Code CSS variables)
+- [ ] 11-04-PLAN.md — Wire extension.ts + full build + human verify checkpoint
 
 ### Phase 12: Highlighter
 **Goal**: Cited file:line references from an answer are visibly highlighted in the VS Code editor
