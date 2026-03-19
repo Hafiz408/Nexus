@@ -10,7 +10,7 @@ from typing import AsyncGenerator
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tracers.context import tracing_v2_enabled
-from langchain_openai import ChatOpenAI
+from langchain_mistralai import ChatMistralAI
 
 from app.agent.prompts import SYSTEM_PROMPT
 from app.config import get_settings
@@ -26,10 +26,10 @@ def _get_chain():
     global _chain
     if _chain is None:
         settings = get_settings()
-        llm = ChatOpenAI(
+        llm = ChatMistralAI(
             model=settings.model_name,
             temperature=0,
-            api_key=settings.openai_api_key,
+            api_key=settings.mistral_api_key,
         )
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_prompt}"),

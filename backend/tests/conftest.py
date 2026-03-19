@@ -188,25 +188,25 @@ def sample_graph() -> nx.DiGraph:
 
 @pytest.fixture
 def mock_embedder(monkeypatch):
-    """Patches app.retrieval.graph_rag.OpenAI — no API key or DB needed.
+    """Patches app.retrieval.graph_rag.Mistral — no API key or DB needed.
 
-    Uses np.random.seed(42) for reproducible 1536-d vectors.
+    Uses np.random.seed(42) for reproducible 1024-d vectors.
     Patches at the retrieval module namespace (from-import binding — Phase 08 pitfall 4).
     """
     from unittest.mock import MagicMock
 
     np.random.seed(42)
 
-    def _fake_create(model, input):
+    def _fake_create(model, inputs):
         resp = MagicMock()
         resp.data = [
-            MagicMock(embedding=np.random.rand(1536).tolist(), index=i)
-            for i in range(len(input))
+            MagicMock(embedding=np.random.rand(1024).tolist())
+            for _ in range(len(inputs))
         ]
         return resp
 
     mock_client = MagicMock()
     mock_client.embeddings.create.side_effect = _fake_create
-    mock_openai_cls = MagicMock(return_value=mock_client)
-    monkeypatch.setattr("app.retrieval.graph_rag.OpenAI", mock_openai_cls)
+    mock_mistral_cls = MagicMock(return_value=mock_client)
+    monkeypatch.setattr("app.retrieval.graph_rag.Mistral", mock_mistral_cls)  # from mistralai.client import Mistral
     return mock_client

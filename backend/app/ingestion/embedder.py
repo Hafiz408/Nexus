@@ -1,12 +1,12 @@
 """Embedding and storage layer for Phase 5.
 
-Sends CodeNode.embedding_text to OpenAI, writes dense vectors to pgvector,
+Sends CodeNode.embedding_text to Mistral, writes dense vectors to pgvector,
 and writes names to SQLite FTS5 for exact-match lookup.
 """
 
 import sqlite3
 
-from openai import OpenAI
+from mistralai.client import Mistral
 from pgvector.psycopg2 import register_vector
 from psycopg2.extras import execute_values
 
@@ -35,7 +35,7 @@ def init_pgvector_table() -> None:
                     file_path  TEXT NOT NULL,
                     line_start INT,
                     line_end   INT,
-                    embedding  vector(1536)
+                    embedding  vector(1024)
                 )
             """)
             cur.execute("""
@@ -92,8 +92,8 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str) -> int:
     Returns:
         Total number of nodes stored (== len(nodes) if all batches succeed).
     """
-    # Lazy client init — must NOT be at module level (OPENAI_API_KEY may be absent)
-    client = OpenAI(api_key=get_settings().openai_api_key)
+    # Lazy client init — must NOT be at module level (MISTRAL_API_KEY may be absent)
+    client = Mistral(api_key=get_settings().mistral_api_key)
 
     pg_conn = get_db_connection()
     register_vector(pg_conn)
@@ -109,16 +109,13 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str) -> int:
             batch = nodes[i : i + EMBED_BATCH_SIZE]
             texts = [n.embedding_text for n in batch]
 
-            # --- Call OpenAI embeddings API ---
+            # --- Call Mistral embeddings API ---
             response = client.embeddings.create(
-                model="text-embedding-3-small",
-                input=texts,
+                model="mistral-embed",
+                inputs=texts,
             )
-            # Preserve order by sorting on the response index
-            embeddings = [
-                item.embedding
-                for item in sorted(response.data, key=lambda x: x.index)
-            ]
+            # Mistral preserves input order in response.data
+            embeddings = [item.embedding for item in response.data]
 
             # --- Upsert to pgvector ---
             pg_rows = [

@@ -12,14 +12,16 @@ class Settings(BaseSettings):
     postgres_host: str = "postgres"
     postgres_port: int = 5432
 
-    # OpenAI (required for Phase 5+ embedding)
+    # Mistral (required for Phase 5+ embedding and LLM)
+    mistral_api_key: str = ""
+    # Keep for backward compat with tests / RAGAS
     openai_api_key: str = ""
 
     # LangSmith (optional tracing — Phase 9+)
     langchain_api_key: str = ""
     langchain_tracing_v2: bool = False
     langchain_project: str = "nexus-v1"
-    model_name: str = "gpt-4o-mini"
+    model_name: str = "mistral-small-latest"
 
 
 @lru_cache

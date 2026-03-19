@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 
 import networkx as nx
-from openai import OpenAI
+from mistralai.client import Mistral
 from pgvector.psycopg2 import register_vector
 
 from app.config import get_settings
@@ -42,10 +42,10 @@ def semantic_search(query: str, repo_path: str, top_k: int) -> list[tuple[str, f
     Returns:
         List of (node_id, score) tuples sorted by descending similarity score.
     """
-    # Lazy client init — must NOT be at module level (OPENAI_API_KEY may be absent)
-    client = OpenAI(api_key=get_settings().openai_api_key)
+    # Lazy client init — must NOT be at module level (MISTRAL_API_KEY may be absent)
+    client = Mistral(api_key=get_settings().mistral_api_key)
 
-    response = client.embeddings.create(model="text-embedding-3-small", input=[query])
+    response = client.embeddings.create(model="mistral-embed", inputs=[query])
     query_vec = response.data[0].embedding
 
     conn = get_db_connection()

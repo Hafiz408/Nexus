@@ -80,7 +80,7 @@ def mock_llm(monkeypatch):
     explorer_mod._chain = None
 
     mock_llm_instance = MagicMock()
-    monkeypatch.setattr("app.agent.explorer.ChatOpenAI", MagicMock(return_value=mock_llm_instance))
+    monkeypatch.setattr("app.agent.explorer.ChatMistralAI", MagicMock(return_value=mock_llm_instance))
 
     # Inject fake chain directly to bypass _get_chain() prompt|llm construction
     explorer_mod._chain = mock_chain
