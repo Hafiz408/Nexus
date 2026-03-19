@@ -74,11 +74,11 @@
 
 ### Agent — Explorer
 
-- [ ] **AGNT-01**: `explorer.py` implements LangChain runnable (not LangGraph) that takes retrieved context + question, generates grounded answer
-- [ ] **AGNT-02**: System prompt in `prompts.py` instructs agent to cite only file:line present in retrieved nodes; never fabricate
-- [ ] **AGNT-03**: Uses `llm.astream()` and yields SSE-formatted tokens
-- [ ] **AGNT-04**: All LLM calls traced in LangSmith via `LANGCHAIN_TRACING_V2=true` and `tracing_v2_enabled` context manager
-- [ ] **AGNT-05**: Context formatted per PRD: `--- [file_path:line_start-line_end] name (type) ---\n{signature}\n{docstring}\n{body_preview}`
+- [x] **AGNT-01**: `explorer.py` implements LangChain runnable (not LangGraph) that takes retrieved context + question, generates grounded answer
+- [x] **AGNT-02**: System prompt in `prompts.py` instructs agent to cite only file:line present in retrieved nodes; never fabricate
+- [x] **AGNT-03**: Uses `llm.astream()` and yields SSE-formatted tokens
+- [x] **AGNT-04**: All LLM calls traced in LangSmith via `LANGCHAIN_TRACING_V2=true` and `tracing_v2_enabled` context manager
+- [x] **AGNT-05**: Context formatted per PRD: `--- [file_path:line_start-line_end] name (type) ---\n{signature}\n{docstring}\n{body_preview}`
 
 ### API Endpoints
 
@@ -227,11 +227,11 @@
 | RAG-06 | Phase 8 | Complete |
 | TEST-05 | Phase 8 | Complete |
 | TEST-06 | Phase 8 | Complete |
-| AGNT-01 | Phase 9 | Pending |
-| AGNT-02 | Phase 9 | Pending |
-| AGNT-03 | Phase 9 | Pending |
-| AGNT-04 | Phase 9 | Pending |
-| AGNT-05 | Phase 9 | Pending |
+| AGNT-01 | Phase 9 | Complete |
+| AGNT-02 | Phase 9 | Complete |
+| AGNT-03 | Phase 9 | Complete |
+| AGNT-04 | Phase 9 | Complete |
+| AGNT-05 | Phase 9 | Complete |
 | API-03 | Phase 10 | Pending |
 | API-04 | Phase 10 | Pending |
 | EXT-01 | Phase 11 | Pending |

@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 8 — Graph RAG
+**Current focus:** Phase 9 — Explorer Agent
 
 ## Current Position
 
-Phase: 8 of 14 (Graph RAG) — COMPLETE
-Plan: 2 of 2 in current phase — COMPLETE
-Status: Phase 08-graph-rag plan 02 complete — Graph RAG test suite with 10 unit tests + conftest fixtures; RAG-05/06 TEST-05/06 satisfied; phase complete
-Last activity: 2026-03-19 — Plan 08-02 complete: test_graph_rag.py with 10 tests, sample_graph + mock_embedder fixtures added to conftest.py
+Phase: 9 of 14 (Explorer Agent) — In Progress
+Plan: 1 of 2 in current phase — COMPLETE
+Status: Phase 09-explorer-agent plan 01 complete — Explorer Agent: prompts.py + explorer.py; AGNT-01 through AGNT-05 satisfied
+Last activity: 2026-03-19 — Plan 09-01 complete: agent/__init__.py, prompts.py (SYSTEM_PROMPT), explorer.py (format_context_block + explore_stream); langchain-openai + langsmith added to requirements.txt; model_name added to Settings
 
-Progress: [██████░░░░] 57%
+Progress: [███████░░░] 64%
 
 ## Performance Metrics
 
@@ -45,6 +45,7 @@ Progress: [██████░░░░] 57%
 | Phase 07.1-tech-debt-cleanup P01 | 2 | 2 tasks | 4 files |
 | Phase 08-graph-rag P01 | 4 | 2 tasks | 2 files |
 | Phase 08-graph-rag P02 | 2 | 1 tasks | 3 files |
+| Phase 09-explorer-agent P01 | 2 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,8 @@ Recent decisions affecting current work:
 - [Phase 08-graph-rag]: max_in_degree guard (max(in_degrees) if in_degrees else 1) prevents ZeroDivisionError when all expanded nodes have in_degree 0 (08-01)
 - [Phase 08-graph-rag]: Patch register_vector at app.retrieval.graph_rag namespace for full test isolation from DB
 - [Phase 08-graph-rag]: max_in_degree guard changed to (max(in_degrees) if in_degrees else 0) or 1 to handle all-zeros case in rerank_and_assemble
+- [Phase 09-explorer-agent]: Lazy _get_chain() init prevents ValidationError when OPENAI_API_KEY absent at import time (09-01)
+- [Phase 09-explorer-agent]: tracing_v2_enabled wraps entire astream() call not per-token to avoid trace explosion in LangSmith (09-01)
 
 ### Pending Todos
 
@@ -130,5 +133,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 08-02-PLAN.md — Graph RAG test suite: 10 tests + sample_graph/mock_embedder fixtures; RAG-05/06 TEST-05/06 satisfied; phase 08 complete
+Stopped at: Completed 09-01-PLAN.md — Explorer Agent: prompts.py + explorer.py; AGNT-01 through AGNT-05 satisfied; phase 09 in progress
 Resume file: None
