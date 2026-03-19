@@ -100,11 +100,11 @@
 
 ### VS Code Extension — Sidebar Chat
 
-- [ ] **CHAT-01**: React 18 Webview shows chat messages with `user` and `assistant` roles
-- [ ] **CHAT-02**: Streaming: tokens append to last assistant message in real-time
-- [ ] **CHAT-03**: Citations rendered as clickable chips (`auth/login.py:42`); click opens file at correct line in editor
-- [ ] **CHAT-04**: Index status bar shows `Indexing...` spinner / `Ready — N nodes` / `Not indexed` + Index Workspace button
-- [ ] **CHAT-05**: Styling uses VS Code CSS variables (`--vscode-*`); no external CSS frameworks
+- [x] **CHAT-01**: React 18 Webview shows chat messages with `user` and `assistant` roles
+- [x] **CHAT-02**: Streaming: tokens append to last assistant message in real-time
+- [x] **CHAT-03**: Citations rendered as clickable chips (`auth/login.py:42`); click opens file at correct line in editor
+- [x] **CHAT-04**: Index status bar shows `Indexing...` spinner / `Ready — N nodes` / `Not indexed` + Index Workspace button
+- [x] **CHAT-05**: Styling uses VS Code CSS variables (`--vscode-*`); no external CSS frameworks
 
 ### VS Code Extension — Backend Client & SSE
 
@@ -238,11 +238,11 @@
 | EXT-02 | Phase 11 | Complete |
 | EXT-03 | Phase 11 | Complete |
 | EXT-04 | Phase 11 | Complete |
-| CHAT-01 | Phase 11 | Pending |
-| CHAT-02 | Phase 11 | Pending |
-| CHAT-03 | Phase 11 | Pending |
-| CHAT-04 | Phase 11 | Pending |
-| CHAT-05 | Phase 11 | Pending |
+| CHAT-01 | Phase 11 | Complete |
+| CHAT-02 | Phase 11 | Complete |
+| CHAT-03 | Phase 11 | Complete |
+| CHAT-04 | Phase 11 | Complete |
+| CHAT-05 | Phase 11 | Complete |
 | SSE-01 | Phase 11 | Complete |
 | SSE-02 | Phase 11 | Complete |
 | SSE-03 | Phase 11 | Complete |

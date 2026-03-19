@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 11 of 14 (VS Code Extension) — IN PROGRESS
-Plan: 2 of 5 in current phase — COMPLETE
-Status: Phase 11-vs-code-extension plan 02 complete — extension host services: types.ts, BackendClient.ts, SseStream.ts, SidebarProvider.ts
-Last activity: 2026-03-19 — Plan 11-02 complete: four extension host TypeScript files; tsc --noEmit 0 errors
+Plan: 3 of 5 in current phase — COMPLETE
+Status: Phase 11-vs-code-extension plan 03 complete — webview chat UI: index.tsx createRoot entry, App.tsx streaming chat component, index.css vscode-variable styling
+Last activity: 2026-03-19 — Plan 11-03 complete: three webview files; tsc --noEmit 0 errors, all CHAT-01..05 requirements satisfied
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [████████░░] 78%
 | Phase 10-query-endpoint P02 | 3 | 2 tasks | 1 files |
 | Phase 11-vs-code-extension P01 | 3 | 2 tasks | 8 files |
 | Phase 11-vs-code-extension P02 | 2 | 2 tasks | 4 files |
+| Phase 11-vs-code-extension P03 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,8 @@ Recent decisions affecting current work:
 - [Phase 11-vs-code-extension]: esbuild.js wraps webview rebuild in try/catch — gracefully skips missing entry point at scaffold stage, fails fast on extension host errors
 - [Phase 11-vs-code-extension]: fetch + ReadableStream used in SseStream (not EventSource) — EventSource is GET-only, POST /query requires custom method
 - [Phase 11-vs-code-extension]: DOM lib added to extension tsconfig.json — fetch/setInterval types unavailable without it even in Node 18+ extension host
+- [Phase 11-vs-code-extension]: acquireVsCodeApi() called at module level (not inside component) — VS Code throws if called more than once per webview lifetime
+- [Phase 11-vs-code-extension]: Functional setState updater for token append — ensures correct prev-state access in concurrent renders
 
 ### Pending Todos
 
@@ -149,5 +152,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 11-02-PLAN.md — extension host services: types.ts discriminated unions, BackendClient HTTP polling, SseStream fetch SSE consumer, SidebarProvider webview bridge
+Stopped at: Completed 11-03-PLAN.md — webview chat UI: index.tsx createRoot entry, App.tsx full chat component with streaming/citations/status-bar, index.css vscode-variable styling
 Resume file: None
