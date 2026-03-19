@@ -12,3 +12,5 @@ tree-sitter-typescript==0.23.2
 networkx>=3.4
 scipy>=1.10.0
 openai>=1.0.0
+langchain-openai>=0.3.0
+langsmith>=0.7.0

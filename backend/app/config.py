@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     langchain_api_key: str = ""
     langchain_tracing_v2: bool = False
     langchain_project: str = "nexus-v1"
+    model_name: str = "gpt-4o-mini"
 
 
 @lru_cache
