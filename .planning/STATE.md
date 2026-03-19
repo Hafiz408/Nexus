@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 9 — Explorer Agent
+**Current focus:** Phase 10 — Query Endpoint
 
 ## Current Position
 
-Phase: 9 of 14 (Explorer Agent) — COMPLETE
-Plan: 2 of 2 in current phase — COMPLETE
-Status: Phase 09-explorer-agent plan 02 complete — Explorer Agent tests: 9 passing unit tests for format_context_block + explore_stream; AGNT-01/02/03/05 verified
-Last activity: 2026-03-19 — Plan 09-02 complete: backend/tests/test_explorer.py (9 tests, zero API calls, _chain sentinel injection pattern)
+Phase: 10 of 14 (Query Endpoint) — IN PROGRESS
+Plan: 1 of 2 in current phase — COMPLETE
+Status: Phase 10-query-endpoint plan 01 complete — POST /query SSE endpoint streaming token/citations/done events; QueryRequest schema + graph_cache in lifespan; API-03/04 verified
+Last activity: 2026-03-19 — Plan 10-01 complete: query_router.py (SSE generator), schemas.py (QueryRequest), main.py (lifespan + router wiring)
 
-Progress: [████████░░] 71%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [████████░░] 71%
 | Phase 08-graph-rag P02 | 2 | 1 tasks | 3 files |
 | Phase 09-explorer-agent P01 | 2 min | 2 tasks | 5 files |
 | Phase 09-explorer-agent P02 | 2 min | 1 tasks | 1 files |
+| Phase 10-query-endpoint P01 | 2 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,9 @@ Recent decisions affecting current work:
 - [Phase 09-explorer-agent]: Inject _chain directly via explorer_mod._chain = mock_chain to bypass _get_chain() LCEL composition — avoids needing to mock ChatPromptTemplate (09-02)
 - [Phase 09-explorer-agent]: asyncio.run() in explorer tests (not pytest-asyncio) — consistent with test_pipeline.py pattern, no extra dependencies (09-02)
 - [Phase 09-explorer-agent]: AIMessageChunk(content="") as first fixture yield to exercise empty-chunk filtering guard in explore_stream (09-02)
+- [Phase 10-query-endpoint]: HTTPException raised before StreamingResponse — headers not yet sent; only safe error point for POST /query (10-01)
+- [Phase 10-query-endpoint]: asyncio.to_thread wraps _get_graph and graph_rag_retrieve — both do blocking SQLite/pgvector I/O (10-01)
+- [Phase 10-query-endpoint]: app.state.graph_cache dict initialized in lifespan — lazy per-repo nx.DiGraph cache avoids repeated SQLite reads (10-01)
 
 ### Pending Todos
 
@@ -137,5 +141,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 09-02-PLAN.md — Explorer Agent tests: 9 passing unit tests; phase 09 complete
+Stopped at: Completed 10-01-PLAN.md — POST /query SSE endpoint with QueryRequest schema, query_router, and graph_cache wired in main.py
 Resume file: None
