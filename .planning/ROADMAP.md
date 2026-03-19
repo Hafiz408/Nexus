@@ -24,7 +24,7 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
 - [x] **Phase 11: VS Code Extension** - Sidebar, BackendClient, SSE streaming to React chat UI (completed 2026-03-19)
 - [x] **Phase 12: Highlighter** - `Highlighter.ts` — file:line decoration in VS Code editor (completed 2026-03-19)
 - [x] **Phase 13: File Watcher** - `FileWatcher.ts` — incremental re-index on file save (completed 2026-03-19)
-- [ ] **Phase 14: RAGAS Eval** - Evaluation runner with 30 golden Q&A pairs, baseline scores committed
+- [x] **Phase 14: RAGAS Eval** - Evaluation runner with 30 golden Q&A pairs, baseline scores committed (completed 2026-03-19)
 
 ## Phase Details
 
