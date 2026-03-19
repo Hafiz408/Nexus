@@ -140,6 +140,7 @@ Recent decisions affecting current work:
 - [Phase 11-vs-code-extension]: DOM lib added to extension tsconfig.json — fetch/setInterval types unavailable without it even in Node 18+ extension host
 - [Phase 11-vs-code-extension]: acquireVsCodeApi() called at module level (not inside component) — VS Code throws if called more than once per webview lifetime
 - [Phase 11-vs-code-extension]: Functional setState updater for token append — ensures correct prev-state access in concurrent renders
+- [Phase 11-vs-code-extension]: void operator added to triggerIndex/triggerClear in activate() — real SidebarProvider returns Promise<void>, original stub had void returns
 
 ### Pending Todos
 
