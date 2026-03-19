@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 10 of 14 (Query Endpoint) — IN PROGRESS
-Plan: 1 of 2 in current phase — COMPLETE
-Status: Phase 10-query-endpoint plan 01 complete — POST /query SSE endpoint streaming token/citations/done events; QueryRequest schema + graph_cache in lifespan; API-03/04 verified
-Last activity: 2026-03-19 — Plan 10-01 complete: query_router.py (SSE generator), schemas.py (QueryRequest), main.py (lifespan + router wiring)
+Phase: 10 of 14 (Query Endpoint) — COMPLETE
+Plan: 2 of 2 in current phase — COMPLETE
+Status: Phase 10-query-endpoint plan 02 complete — 9 unit tests for POST /query SSE endpoint; API-03/04 fully tested with mocked dependencies
+Last activity: 2026-03-19 — Plan 10-02 complete: test_query_router.py (9 tests: 400 guards, token/citations/done/error events, Content-Type)
 
 Progress: [████████░░] 75%
 
@@ -48,6 +48,7 @@ Progress: [████████░░] 75%
 | Phase 09-explorer-agent P01 | 2 min | 2 tasks | 5 files |
 | Phase 09-explorer-agent P02 | 2 min | 1 tasks | 1 files |
 | Phase 10-query-endpoint P01 | 2 | 3 tasks | 3 files |
+| Phase 10-query-endpoint P02 | 3 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,8 @@ Recent decisions affecting current work:
 - [Phase 10-query-endpoint]: HTTPException raised before StreamingResponse — headers not yet sent; only safe error point for POST /query (10-01)
 - [Phase 10-query-endpoint]: asyncio.to_thread wraps _get_graph and graph_rag_retrieve — both do blocking SQLite/pgvector I/O (10-01)
 - [Phase 10-query-endpoint]: app.state.graph_cache dict initialized in lifespan — lazy per-repo nx.DiGraph cache avoids repeated SQLite reads (10-01)
+- [Phase 10-query-endpoint]: patch init_db/init_pgvector_table at app.main namespace to decouple TestClient from postgres (10-02)
+- [Phase 10-query-endpoint]: r.read() inside client.stream() context required to materialize SSE body before httpx connection closes (10-02)
 
 ### Pending Todos
 
@@ -141,5 +144,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 10-01-PLAN.md — POST /query SSE endpoint with QueryRequest schema, query_router, and graph_cache wired in main.py
+Stopped at: Completed 10-02-PLAN.md — 9 unit tests for POST /query SSE endpoint; Phase 10-query-endpoint fully complete
 Resume file: None
