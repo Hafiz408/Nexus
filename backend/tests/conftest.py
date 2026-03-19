@@ -132,3 +132,81 @@ def sample_raw_edges() -> list:
         ("file_a.py::caller", "helper", "CALLS"),
         ("file_a.py::__module__", "file_b", "IMPORTS"),
     ]
+
+
+import numpy as np
+import networkx as nx
+
+
+@pytest.fixture
+def sample_graph() -> nx.DiGraph:
+    """5-node DiGraph with known topology.
+
+    Topology:
+      a.py::func_a -> b.py::func_b (CALLS)
+      b.py::func_b -> c.py::func_c (CALLS)
+      d.py::func_d -> b.py::func_b (CALLS)
+      e.py::func_e  (isolated)
+
+    PageRank and in_degree pre-computed for deterministic reranking tests.
+    """
+    G = nx.DiGraph()
+    nodes = [
+        {"node_id": "a.py::func_a", "name": "func_a", "type": "function",
+         "file_path": "/repo/a.py", "line_start": 1, "line_end": 5,
+         "signature": "def func_a():", "docstring": None, "body_preview": "pass",
+         "complexity": 1, "embedding_text": "def func_a():",
+         "pagerank": 0.15, "in_degree": 0, "out_degree": 1},
+        {"node_id": "b.py::func_b", "name": "func_b", "type": "function",
+         "file_path": "/repo/b.py", "line_start": 1, "line_end": 5,
+         "signature": "def func_b():", "docstring": None, "body_preview": "pass",
+         "complexity": 1, "embedding_text": "def func_b():",
+         "pagerank": 0.25, "in_degree": 2, "out_degree": 1},
+        {"node_id": "c.py::func_c", "name": "func_c", "type": "function",
+         "file_path": "/repo/c.py", "line_start": 1, "line_end": 5,
+         "signature": "def func_c():", "docstring": None, "body_preview": "pass",
+         "complexity": 1, "embedding_text": "def func_c():",
+         "pagerank": 0.30, "in_degree": 1, "out_degree": 0},
+        {"node_id": "d.py::func_d", "name": "func_d", "type": "function",
+         "file_path": "/repo/d.py", "line_start": 1, "line_end": 5,
+         "signature": "def func_d():", "docstring": None, "body_preview": "pass",
+         "complexity": 1, "embedding_text": "def func_d():",
+         "pagerank": 0.15, "in_degree": 0, "out_degree": 1},
+        {"node_id": "e.py::func_e", "name": "func_e", "type": "function",
+         "file_path": "/repo/e.py", "line_start": 1, "line_end": 5,
+         "signature": "def func_e():", "docstring": None, "body_preview": "pass",
+         "complexity": 1, "embedding_text": "def func_e():",
+         "pagerank": 0.10, "in_degree": 0, "out_degree": 0},
+    ]
+    for n in nodes:
+        G.add_node(n["node_id"], **n)
+    G.add_edge("a.py::func_a", "b.py::func_b", type="CALLS")
+    G.add_edge("b.py::func_b", "c.py::func_c", type="CALLS")
+    G.add_edge("d.py::func_d", "b.py::func_b", type="CALLS")
+    return G
+
+
+@pytest.fixture
+def mock_embedder(monkeypatch):
+    """Patches app.retrieval.graph_rag.OpenAI — no API key or DB needed.
+
+    Uses np.random.seed(42) for reproducible 1536-d vectors.
+    Patches at the retrieval module namespace (from-import binding — Phase 08 pitfall 4).
+    """
+    from unittest.mock import MagicMock
+
+    np.random.seed(42)
+
+    def _fake_create(model, input):
+        resp = MagicMock()
+        resp.data = [
+            MagicMock(embedding=np.random.rand(1536).tolist(), index=i)
+            for i in range(len(input))
+        ]
+        return resp
+
+    mock_client = MagicMock()
+    mock_client.embeddings.create.side_effect = _fake_create
+    mock_openai_cls = MagicMock(return_value=mock_client)
+    monkeypatch.setattr("app.retrieval.graph_rag.OpenAI", mock_openai_cls)
+    return mock_client
