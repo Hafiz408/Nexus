@@ -201,3 +201,50 @@ def delete_embeddings_for_repo(repo_path: str) -> None:
             sqlite_conn.commit()
         finally:
             sqlite_conn.close()
+
+
+def delete_embeddings_for_files(file_paths: list[str], repo_path: str) -> None:
+    """Delete pgvector and FTS5 rows for a specific set of files in a repo.
+
+    Used by the incremental re-index path to clean stale embeddings before
+    re-parsing changed files.  Deletes by ``file_path`` (not ``node_id``) so
+    renamed or removed functions that no longer appear in the AST are fully
+    purged.
+
+    Guards against an empty list: returns immediately without opening any DB
+    connection when ``file_paths`` is empty.
+
+    Args:
+        file_paths: Absolute or repo-relative file paths whose rows should be
+                    deleted from both stores.
+        repo_path:  Repository root path used to scope the pgvector delete.
+    """
+    if not file_paths:
+        return
+
+    # --- Delete from pgvector code_embeddings ---
+    pg_conn = get_db_connection()
+    register_vector(pg_conn)
+    try:
+        placeholders = ", ".join(["%s"] * len(file_paths))
+        params = [repo_path, *file_paths]
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                f"DELETE FROM code_embeddings WHERE repo_path = %s AND file_path IN ({placeholders})",
+                params,
+            )
+    finally:
+        pg_conn.close()
+
+    # --- Delete from FTS5 code_fts ---
+    # file_path is declared UNINDEXED — must use plain WHERE, not MATCH syntax.
+    sqlite_conn = sqlite3.connect(_sqlite_db_path())
+    try:
+        placeholders = ", ".join(["?"] * len(file_paths))
+        sqlite_conn.execute(
+            f"DELETE FROM code_fts WHERE file_path IN ({placeholders})",
+            file_paths,
+        )
+        sqlite_conn.commit()
+    finally:
+        sqlite_conn.close()
