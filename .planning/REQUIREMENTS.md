@@ -114,8 +114,8 @@
 
 ### VS Code Extension — Highlighter
 
-- [ ] **HIGH-01**: `highlightCitations(citations)` groups citations by file path, opens documents, applies `TextEditorDecorationType` to cited line ranges
-- [ ] **HIGH-02**: Uses `editor.findMatchHighlightBackground` theme color; clears after 10 seconds or next query
+- [x] **HIGH-01**: `highlightCitations(citations)` groups citations by file path, opens documents, applies `TextEditorDecorationType` to cited line ranges
+- [x] **HIGH-02**: Uses `editor.findMatchHighlightBackground` theme color; clears after 10 seconds or next query
 
 ### VS Code Extension — File Watcher
 
@@ -246,8 +246,8 @@
 | SSE-01 | Phase 11 | Complete |
 | SSE-02 | Phase 11 | Complete |
 | SSE-03 | Phase 11 | Complete |
-| HIGH-01 | Phase 12 | Pending |
-| HIGH-02 | Phase 12 | Pending |
+| HIGH-01 | Phase 12 | Complete |
+| HIGH-02 | Phase 12 | Complete |
 | WATCH-01 | Phase 13 | Pending |
 | WATCH-02 | Phase 13 | Pending |
 | WATCH-03 | Phase 13 | Pending |

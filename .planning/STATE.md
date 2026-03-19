@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 11 — VS Code Extension
+**Current focus:** Phase 12 — Highlighter
 
 ## Current Position
 
-Phase: 11 of 14 (VS Code Extension) — IN PROGRESS
-Plan: 4 of 5 in current phase — COMPLETE
-Status: Phase 11-vs-code-extension plan 04 complete — final extension.ts wiring SidebarProvider, dual esbuild bundles, human-verified Nexus sidebar in VS Code Extension Development Host
-Last activity: 2026-03-19 — Plan 11-04 complete: extension.ts imports SidebarProvider, 0 TypeScript errors, 14/14 bundle checks passed, human verified
+Phase: 12 of 14 (Highlighter) — IN PROGRESS
+Plan: 1 of 1 in current phase — COMPLETE
+Status: Phase 12-highlighter plan 01 complete — HighlightService with TextEditorDecorationType, wired into SseStream onCitations callback, SidebarProvider lifecycle, and extension.ts disposal
+Last activity: 2026-03-19 — Plan 12-01 complete: HighlightService.ts created, SseStream/SidebarProvider/extension.ts wired, 0 TypeScript errors, checkpoint auto-approved
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [█████████░] 90%
 | Phase 11-vs-code-extension P02 | 2 | 2 tasks | 4 files |
 | Phase 11-vs-code-extension P03 | 2 | 2 tasks | 3 files |
 | Phase 11-vs-code-extension P04 | 5min | 2 tasks | 2 files |
+| Phase 12-highlighter P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,12 @@ Recent decisions affecting current work:
 - [Phase 11-vs-code-extension]: acquireVsCodeApi() called at module level (not inside component) — VS Code throws if called more than once per webview lifetime
 - [Phase 11-vs-code-extension]: Functional setState updater for token append — ensures correct prev-state access in concurrent renders
 - [Phase 11-vs-code-extension]: void operator added to triggerIndex/triggerClear in activate() — real SidebarProvider returns Promise<void>, original stub had void returns; TypeScript requires void operator to explicitly discard the promise
+- [Phase 12-highlighter]: Single TextEditorDecorationType created in constructor (never per-query) — per-query creation causes memory leak (HIGH-02)
+- [Phase 12-highlighter]: clearHighlights() called at start of highlightCitations() — ensures new query always replaces old decorations before opening files
+- [Phase 12-highlighter]: onCitations added as optional 5th param to streamQuery — keeps SseStream decoupled from HighlightService
+- [Phase 12-highlighter]: provider.dispose() pushed to context.subscriptions — guarantees TextEditorDecorationType.dispose() runs on extension deactivation
+- [Phase 12-highlighter]: preserveFocus: true + preview: false in showTextDocument — avoids stealing user focus, prevents disposable preview tabs
+- [Phase 12-highlighter]: Guard if (editor.document) before setDecorations — prevents vscode#18797 race condition warning
 
 ### Pending Todos
 
@@ -154,5 +161,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 11-04-PLAN.md — final extension.ts wiring SidebarProvider, dual esbuild bundles (10KB + 1MB), human-verified Nexus sidebar in VS Code Extension Development Host
+Stopped at: Completed 12-01-PLAN.md — HighlightService.ts created, SseStream/SidebarProvider/extension.ts wired, 0 TypeScript errors, checkpoint auto-approved
 Resume file: None
