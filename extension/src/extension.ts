@@ -1,8 +1,15 @@
 import * as vscode from 'vscode';
+import { BackendClient } from './BackendClient';
+import { FileWatcher } from './FileWatcher';
 import { SidebarProvider } from './SidebarProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const provider = new SidebarProvider(context.extensionUri);
+  // Construct ONE shared BackendClient — both SidebarProvider and FileWatcher use it
+  const config = vscode.workspace.getConfiguration('nexus');
+  const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
+  const client = new BackendClient(backendUrl);
+
+  const provider = new SidebarProvider(context.extensionUri, client);
 
   // EXT-01: Register WebviewViewProvider for nexus.sidebar
   // retainContextWhenHidden: true — keeps React state (chat history) alive when sidebar is hidden
@@ -29,9 +36,14 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // EXT-04: Auto-index on workspace open
+  // EXT-04: Auto-index on workspace open + wire FileWatcher for WATCH-01/02/03
   if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+    const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
     void provider.triggerIndex();
+
+    // WATCH-01/02/03: FileWatcher monitors file saves and debounces re-index calls
+    const watcher = new FileWatcher(repoPath, client);
+    context.subscriptions.push(watcher);
   }
 }
 

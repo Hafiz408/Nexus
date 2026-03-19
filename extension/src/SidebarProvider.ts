@@ -21,10 +21,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private readonly _highlight: HighlightService;
   private _repoPath: string | undefined;
 
-  constructor(private readonly _extensionUri: vscode.Uri) {
-    const config = vscode.workspace.getConfiguration('nexus');
-    const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
-    this._client = new BackendClient(backendUrl);
+  constructor(
+    private readonly _extensionUri: vscode.Uri,
+    client: BackendClient
+  ) {
+    this._client = client;  // use the passed-in client instead of constructing internally
     this._highlight = new HighlightService();
     // Use the first workspace folder as the repo path
     this._repoPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
