@@ -172,7 +172,10 @@ Plans:
   2. System prompt prevents fabricated citations — answers cite nodes or say they are uncertain
   3. Every LLM call appears as a trace in LangSmith when `LANGCHAIN_TRACING_V2=true`
   4. Context blocks are formatted as `--- [file_path:line_start-line_end] name (type) ---\n{signature}\n{docstring}\n{body_preview}`
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 09-01-PLAN.md — Explorer Agent implementation: prompts.py + explorer.py + requirements
+- [ ] 09-02-PLAN.md — test_explorer.py: format_context_block and explore_stream unit tests
 
 ### Phase 10: Query Endpoint
 **Goal**: Streaming query responses are accessible over HTTP via a well-specified SSE protocol
