@@ -35,18 +35,21 @@ docker compose logs -f backend
 ```bash
 cd backend
 
-# All tests
+# All tests (89 pass without external services)
 pytest tests/ -v
 
-# Specific module
+# By module
 pytest tests/test_file_walker.py -v
 pytest tests/test_ast_parser.py -v
 pytest tests/test_graph_builder.py -v
 pytest tests/test_pipeline.py -v
-pytest tests/test_embedder.py -v  # Note: 3 tests require POSTGRES_DB env var
+pytest tests/test_graph_rag.py -v   # in-memory NetworkX fixture, no DB
+pytest tests/test_explorer.py -v    # mocked LLM, no API key needed
+pytest tests/test_query_router.py -v
+pytest tests/test_embedder.py -v    # 4 tests require POSTGRES_DB env var + running Postgres
 ```
 
-Tests use `tmp_path` fixtures — no external services required for ingestion unit tests. The embedder tests that hit pgvector require a running Postgres container and valid `OPENAI_API_KEY`.
+Tests use `tmp_path` and in-memory NetworkX fixtures — 89 of 93 tests pass without external services. The 4 embedder tests that hit pgvector require a running Postgres container and valid `OPENAI_API_KEY`.
 
 ## Module overview
 
@@ -65,6 +68,7 @@ Shared Pydantic models used across all ingestion modules:
 - `CodeEdge` — edge definition (source_id, target_name, edge_type)
 - `IndexStatus` — ingestion progress (status, nodes_indexed, edges_indexed, files_processed, error)
 - `IndexRequest` — POST /index body (repo_path, languages, changed_files)
+- `QueryRequest` — POST /query body (question, repo_path, max_nodes=10, hop_depth=1)
 
 ### `app/ingestion/walker.py`
 
@@ -125,27 +129,79 @@ FastAPI router with three endpoints:
 - `GET /index/status?repo_path=...` — returns `IndexStatus` or 404
 - `DELETE /index?repo_path=...` — removes all pgvector, FTS5, and SQLite data for the repo
 
+### `app/retrieval/graph_rag.py`
+
+3-step graph-traversal retrieval pipeline:
+- `semantic_search(question, repo_path, G, top_k)` → `list[tuple[str, float]]` — cosine similarity query against pgvector, returns `(node_id, score)` pairs
+- `expand_via_graph(seed_ids, G, hop_depth, edge_types)` → `set[str]` — BFS expansion via `nx.ego_graph(undirected=True)` at configurable depth
+- `rerank_and_assemble(candidate_ids, seed_scores, G, max_nodes)` → `list[CodeNode]` — scores each node as `semantic + 0.2 * pagerank + 0.1 * in_degree_norm`, returns top `max_nodes`
+- `graph_rag_retrieve(question, repo_path, G, max_nodes, hop_depth)` → `(list[CodeNode], dict)` — orchestrates all three steps; `dict` carries retrieval stats
+
+All functions are testable without a live database using an in-memory NetworkX fixture.
+
+### `app/agent/prompts.py`
+
+`SYSTEM_PROMPT` constant — instructs the LLM to cite only `file:line` locations present in the retrieved context and explicitly prohibits fabricated citations.
+
+### `app/agent/explorer.py`
+
+- `format_context_block(nodes)` → `str` — formats each `CodeNode` as the PRD-specified header: `--- [file_path:line_start-line_end] name (type) ---\n{signature}\n{docstring}\n{body_preview}`
+- `explore_stream(nodes, question)` — async generator yielding `str` tokens; uses LangChain LCEL (`prompt | llm`), wraps the `astream()` call in `tracing_v2_enabled` for LangSmith tracing; lazy `_get_chain()` initialization prevents `ValidationError` on import when `OPENAI_API_KEY` is absent
+
+### `app/api/query_router.py`
+
+`POST /query` — accepts `QueryRequest` (`question`, `repo_path`, `max_nodes=10`, `hop_depth=1`), returns a `StreamingResponse` with SSE events:
+
+| Event | Payload | When |
+|-------|---------|------|
+| `token` | `{"content": "..."}` | Each LLM token |
+| `citations` | `[{file_path, name, line_start, line_end, ...}]` | After last token |
+| `done` | `{"nodes_retrieved": N, "nodes_expanded": M, ...}` | Stream close |
+| `error` | `{"detail": "..."}` | On exception inside generator |
+
+Blocking I/O (`graph_rag_retrieve`, `load_graph`) runs in `asyncio.to_thread` to avoid blocking the event loop. Repos are validated before the stream opens — unindexed repos return HTTP 400.
+
 ## Architecture
 
+**Indexing flow (`POST /index`):**
 ```
 POST /index
     │
     └── BackgroundTasks.add_task(run_ingestion)
                 │
-                ├── walk_repo()           ← walker.py
+                ├── walk_repo()              ← walker.py
                 │
-                ├── _parse_concurrent()   ← ast_parser.py (asyncio.gather, semaphore=10)
-                │       └── parse_file()  ← returns (list[CodeNode], list[tuple edges])
+                ├── _parse_concurrent()      ← ast_parser.py (asyncio.gather, semaphore=10)
+                │       └── parse_file()     ← returns (list[CodeNode], list[tuple edges])
                 │
-                ├── build_graph()         ← graph_builder.py
+                ├── build_graph()            ← graph_builder.py
                 │       └── nx.DiGraph with pagerank, in_degree, out_degree
                 │
-                ├── save_graph()          ← graph_store.py → data/nexus.db
+                ├── save_graph()             ← graph_store.py → data/nexus.db
                 │
-                └── embed_and_store()     ← embedder.py
+                └── embed_and_store()        ← embedder.py
                         ├── OpenAI text-embedding-3-small (100/batch)
                         ├── pgvector code_embeddings (upsert)
                         └── SQLite FTS5 code_fts (exact name search)
+```
+
+**Query flow (`POST /query`):**
+```
+POST /query
+    │
+    ├── load_graph(repo_path)         ← graph_store.py (via asyncio.to_thread)
+    │
+    ├── graph_rag_retrieve()          ← retrieval/graph_rag.py
+    │       ├── semantic_search()     ← pgvector cosine similarity (top_k seeds)
+    │       ├── expand_via_graph()    ← nx.ego_graph BFS at hop_depth 1 or 2
+    │       └── rerank_and_assemble() ← semantic + 0.2*pagerank + 0.1*in_degree_norm
+    │
+    └── explore_stream(nodes, q)      ← agent/explorer.py
+            ├── format_context_block()  ← PRD-specified header per CodeNode
+            ├── prompt | llm            ← LangChain LCEL
+            └── llm.astream()           ← yields tokens → SSE event: token
+                                        → SSE event: citations
+                                        → SSE event: done
 ```
 
 ## Postgres connection
