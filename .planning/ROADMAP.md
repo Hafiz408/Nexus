@@ -245,7 +245,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 14-01-PLAN.md — Golden Q&A dataset (eval/golden_qa.json, 30 pairs) + ragas/pandas to requirements.txt
-- [ ] 14-02-PLAN.md — eval/run_ragas.py evaluation script + results directory + pytest verification
+- [x] 14-02-PLAN.md — eval/run_ragas.py evaluation script + results directory + pytest verification
 
 ## Progress
 
@@ -268,4 +268,4 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 11. VS Code Extension | 4/4 | Complete    | 2026-03-19 |
 | 12. Highlighter | 0/TBD | Complete    | 2026-03-19 |
 | 13. File Watcher | 1/1 | Complete    | 2026-03-19 |
-| 14. RAGAS Eval | 1/2 | In Progress | - |
+| 14. RAGAS Eval | 2/2 | Complete    | 2026-03-19 |

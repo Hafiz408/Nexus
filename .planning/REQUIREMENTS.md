@@ -126,13 +126,13 @@
 ### Evaluation
 
 - [x] **EVAL-01**: `backend/eval/golden_qa.json` contains 30 Q&A pairs based on the FastAPI repo, covering routing, middleware, DI, request parsing, response models, exception handlers, background tasks, security
-- [ ] **EVAL-02**: `eval/run_ragas.py` runs faithfulness, answer_relevancy, context_precision metrics against golden dataset
-- [ ] **EVAL-03**: Results written to `eval/results/ragas_results_{timestamp}.json` with per-question breakdown
-- [ ] **EVAL-04**: Comparison experiment: graph-traversal RAG vs naive vector-only RAG side-by-side scores committed
+- [x] **EVAL-02**: `eval/run_ragas.py` runs faithfulness, answer_relevancy, context_precision metrics against golden dataset
+- [x] **EVAL-03**: Results written to `eval/results/ragas_results_{timestamp}.json` with per-question breakdown
+- [x] **EVAL-04**: Comparison experiment: graph-traversal RAG vs naive vector-only RAG side-by-side scores committed
 
 ### Tests
 
-- [ ] **TEST-01**: `pytest backend/tests/` passes all unit tests
+- [x] **TEST-01**: `pytest backend/tests/` passes all unit tests
 - [x] **TEST-02**: `tests/test_file_walker.py` — gitignore, skip dirs, extension filtering with temp dir fixture
 - [x] **TEST-03**: `tests/test_ast_parser.py` — Python + TypeScript parsing, docstring extraction, CALLS edge detection
 - [x] **TEST-04**: `tests/test_graph_builder.py` — edge resolution, unresolvable edge drop, PageRank, in/out degree
@@ -252,10 +252,10 @@
 | WATCH-02 | Phase 13 | Complete |
 | WATCH-03 | Phase 13 | Complete |
 | EVAL-01 | Phase 14 | Complete |
-| EVAL-02 | Phase 14 | Pending |
-| EVAL-03 | Phase 14 | Pending |
-| EVAL-04 | Phase 14 | Pending |
-| TEST-01 | Phase 14 | Pending |
+| EVAL-02 | Phase 14 | Complete |
+| EVAL-03 | Phase 14 | Complete |
+| EVAL-04 | Phase 14 | Complete |
+| TEST-01 | Phase 14 | Complete |
 
 **Coverage:**
 - v1 requirements: 74 total (68 functional + 6 test files mapped to their phases)

@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 14 of 14 (RAGAS Eval) — IN PROGRESS
-Plan: 1 of 1 in current phase — COMPLETE
-Status: Phase 14-ragas-eval plan 01 complete — eval/golden_qa.json created with 30 FastAPI Q&A pairs, ragas==0.4.3 and pandas added to backend/requirements.txt
-Last activity: 2026-03-19 — Plan 14-01 complete: 30-pair golden Q&A dataset created, ragas==0.4.3 and pandas added to requirements
+Phase: 14 of 14 (RAGAS Eval) — COMPLETE
+Plan: 2 of 2 in current phase — COMPLETE
+Status: Phase 14-ragas-eval plan 02 complete — eval/run_ragas.py RAGAS evaluation runner created, eval/results/.gitkeep committed
+Last activity: 2026-03-19 — Plan 14-02 complete: eval/run_ragas.py dual-mode RAGAS evaluation runner created, eval/results/.gitkeep committed
 
 Progress: [██████████] 100%
 
@@ -56,6 +56,7 @@ Progress: [██████████] 100%
 | Phase 12-highlighter P01 | 2min | 2 tasks | 4 files |
 | Phase 13-file-watcher P01 | 2 | 2 tasks | 4 files |
 | Phase 14-ragas-eval P01 | 2min | 2 tasks | 2 files |
+| Phase 14-ragas-eval P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,8 @@ Recent decisions affecting current work:
 - [Phase 13-file-watcher]: Single BackendClient in activate() shared by SidebarProvider and FileWatcher — constructor injection pattern
 - [Phase 14-ragas-eval]: pandas added unpinned — ragas 0.4.3 resolves a compatible version as transitive dep; pinning risks conflict (14-01)
 - [Phase 14-ragas-eval]: eval/ directory at repo root (sibling to backend/ and extension/) holds all evaluation artifacts (14-01)
+- [Phase 14-ragas-eval]: col_map substring matching handles faithfulness/answer_relevancy/response_relevancy column name variation between ragas 0.4.x minor versions (14-02)
+- [Phase 14-ragas-eval]: naive_retrieve wraps CodeNode hydration in try/except — skips malformed G.nodes entries without crashing evaluation loop (14-02)
 
 ### Pending Todos
 
@@ -167,5 +170,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 14-01-PLAN.md — eval/golden_qa.json created with 30 FastAPI Q&A pairs, ragas==0.4.3 and pandas added to backend/requirements.txt
+Stopped at: Completed 14-02-PLAN.md — eval/run_ragas.py RAGAS evaluation runner created, eval/results/.gitkeep committed. Phase 14-ragas-eval COMPLETE.
 Resume file: None
