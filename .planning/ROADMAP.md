@@ -158,7 +158,10 @@ Plans:
   3. Reranking scores correctly combine semantic score, PageRank weight, and in-degree normalization
   4. `max_nodes` limit is respected — result list never exceeds it
   5. All tests pass using an in-memory NetworkX fixture with no database connection required
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 08-01-PLAN.md — Retrieval package: graph_rag.py with semantic_search, expand_via_graph, rerank_and_assemble, graph_rag_retrieve
+- [ ] 08-02-PLAN.md — TDD: conftest fixtures (sample_graph, mock_embedder) + test_graph_rag.py (10 tests, no DB)
 
 ### Phase 9: Explorer Agent
 **Goal**: A streaming LangChain agent generates grounded, cited answers from retrieved code context
