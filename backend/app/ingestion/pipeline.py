@@ -5,7 +5,7 @@ from asyncio import Semaphore
 from app.ingestion.walker import walk_repo, EXTENSION_TO_LANGUAGE
 from app.ingestion.ast_parser import parse_file
 from app.ingestion.graph_builder import build_graph
-from app.ingestion.embedder import embed_and_store
+from app.ingestion.embedder import embed_and_store, delete_embeddings_for_files
 from app.ingestion.graph_store import save_graph, delete_nodes_for_files
 from app.models.schemas import IndexStatus
 
@@ -55,6 +55,7 @@ async def run_ingestion(
     try:
         if changed_files is not None:
             delete_nodes_for_files(changed_files, repo_path)
+            delete_embeddings_for_files(changed_files, repo_path)
             ext_map: dict[str, str] = {ext.lstrip("."): lang for ext, lang in EXTENSION_TO_LANGUAGE.items()}
             files_to_parse: list[dict] = []
             for f in changed_files:

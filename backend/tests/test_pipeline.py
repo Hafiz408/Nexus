@@ -183,3 +183,35 @@ def test_parse_failure_is_partial_not_fatal(tmp_path):
 
     # One file failed but the pipeline completes — not fatal
     assert result.status == "complete"
+
+
+# ---------------------------------------------------------------------------
+# PIPE-03 extension: incremental path also calls delete_embeddings_for_files
+# ---------------------------------------------------------------------------
+
+def test_incremental_calls_delete_embeddings(tmp_path):
+    """PIPE-03: Incremental path calls both delete_nodes_for_files and delete_embeddings_for_files."""
+    (tmp_path / "a.py").write_text("def foo(): pass\n")
+    changed = [str(tmp_path / "a.py")]
+
+    G = _make_graph(n_nodes=1, n_edges=0)
+
+    with patch("app.ingestion.pipeline.delete_nodes_for_files") as mock_graph_del:
+        with patch("app.ingestion.pipeline.delete_embeddings_for_files") as mock_emb_del:
+            with patch(
+                "app.ingestion.pipeline.walk_repo",
+                return_value=[{"path": changed[0], "language": "python", "size_kb": 1}],
+            ):
+                with patch("app.ingestion.pipeline.parse_file", return_value=([], [])):
+                    with patch("app.ingestion.pipeline.build_graph", return_value=G):
+                        with patch("app.ingestion.pipeline.save_graph"):
+                            with patch(
+                                "app.ingestion.pipeline.embed_and_store",
+                                return_value=0,
+                            ):
+                                asyncio.run(
+                                    run_ingestion(str(tmp_path), ["python"], changed_files=changed)
+                                )
+
+    mock_graph_del.assert_called_once_with(changed, str(tmp_path))
+    mock_emb_del.assert_called_once_with(changed, str(tmp_path))

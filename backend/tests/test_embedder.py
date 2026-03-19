@@ -18,7 +18,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from app.ingestion.graph_store import save_graph, load_graph, delete_nodes_for_files
-from app.ingestion.embedder import embed_and_store, init_pgvector_table, EMBED_BATCH_SIZE
+from app.ingestion.embedder import embed_and_store, init_pgvector_table, EMBED_BATCH_SIZE, delete_embeddings_for_files
 from app.models.schemas import CodeNode
 
 
@@ -247,3 +247,52 @@ def test_embed_and_store_upsert_no_duplicates(tmp_db, sample_nodes, mock_openai_
     count = conn.execute("SELECT COUNT(*) FROM code_fts").fetchone()[0]
     conn.close()
     assert count == len(sample_nodes)  # not doubled
+
+
+# ---------------------------------------------------------------------------
+# EMBED-05 / delete_embeddings_for_files tests (EMBED-05, PIPE-03 support)
+# ---------------------------------------------------------------------------
+
+def test_delete_embeddings_for_files_empty_list_is_noop():
+    """Empty file_paths list must return without opening any DB connection."""
+    with patch("app.ingestion.embedder.get_db_connection") as mock_conn:
+        delete_embeddings_for_files([], "/tmp/repo")
+        mock_conn.assert_not_called()
+
+
+def test_delete_embeddings_for_files_removes_fts5_rows(tmp_db, sample_nodes, mock_openai_client):
+    """After embed_and_store, delete_embeddings_for_files removes FTS5 rows for target file."""
+    # First embed so FTS5 rows exist
+    with patch("app.ingestion.embedder.OpenAI", return_value=mock_openai_client):
+        with patch("app.ingestion.embedder.get_db_connection") as mock_conn:
+            pg_conn = MagicMock()
+            pg_conn.cursor.return_value.__enter__ = MagicMock(return_value=MagicMock())
+            pg_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+            mock_conn.return_value = pg_conn
+            with patch("app.ingestion.embedder.execute_values"):
+                with patch("app.ingestion.embedder.register_vector"):
+                    embed_and_store(sample_nodes, "/tmp/test_repo")
+
+    # Confirm FTS5 rows were written
+    conn = sqlite3.connect(tmp_db)
+    total = conn.execute("SELECT COUNT(*) FROM code_fts").fetchone()[0]
+    conn.close()
+    assert total > 0
+
+    # Now delete for the file that all sample_nodes share (src/a.py)
+    target_file = sample_nodes[0].file_path
+    with patch("app.ingestion.embedder.get_db_connection") as mock_conn:
+        pg_conn = MagicMock()
+        pg_conn.cursor.return_value.__enter__ = MagicMock(return_value=MagicMock())
+        pg_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        mock_conn.return_value = pg_conn
+        with patch("app.ingestion.embedder.register_vector"):
+            delete_embeddings_for_files([target_file], "/tmp/test_repo")
+
+    # FTS5 rows for that file_path must be gone
+    conn = sqlite3.connect(tmp_db)
+    remaining = conn.execute(
+        "SELECT COUNT(*) FROM code_fts WHERE file_path = ?", (target_file,)
+    ).fetchone()[0]
+    conn.close()
+    assert remaining == 0
