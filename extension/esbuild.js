@@ -33,10 +33,19 @@ async function build() {
     await webCtx.watch();
     console.log('Watching...');
   } else {
+    // Extension host bundle — must succeed
     await extCtx.rebuild();
-    await webCtx.rebuild();
     await extCtx.dispose();
-    await webCtx.dispose();
+
+    // Webview bundle — may fail if src/webview/index.tsx not yet created (Plans 03+)
+    try {
+      await webCtx.rebuild();
+      await webCtx.dispose();
+    } catch (webviewErr) {
+      await webCtx.dispose();
+      console.warn('Webview bundle skipped (entry point not yet created):', webviewErr.message.split('\n')[0]);
+    }
+
     console.log('Build complete.');
   }
 }
