@@ -1,0 +1,75 @@
+{
+  "name": "nexus",
+  "displayName": "Nexus",
+  "description": "Graph-grounded code intelligence in VS Code",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.74.0" },
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "nexus-sidebar",
+          "title": "Nexus",
+          "icon": "media/nexus.svg"
+        }
+      ]
+    },
+    "views": {
+      "nexus-sidebar": [
+        {
+          "id": "nexus.sidebar",
+          "name": "Nexus",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "nexus.indexWorkspace",
+        "title": "Nexus: Index Workspace"
+      },
+      {
+        "command": "nexus.clearIndex",
+        "title": "Nexus: Clear Index"
+      }
+    ],
+    "configuration": {
+      "title": "Nexus",
+      "properties": {
+        "nexus.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "URL of the Nexus backend"
+        },
+        "nexus.hopDepth": {
+          "type": "number",
+          "default": 1,
+          "description": "Graph traversal hop depth"
+        },
+        "nexus.maxNodes": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum context nodes for RAG retrieval"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.webview.json"
+  },
+  "devDependencies": {
+    "@types/react": "^18.x",
+    "@types/react-dom": "^18.x",
+    "@types/vscode": "^1.74.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}
