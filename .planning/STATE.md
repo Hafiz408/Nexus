@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 7 — Index Endpoint
+**Current focus:** Phase 7.1 — Tech Debt Cleanup
 
 ## Current Position
 
-Phase: 7 of 14 (Index Endpoint) — COMPLETE
-Plan: 2 of 2 in current phase — COMPLETE
-Status: Phase 07-index-endpoint plan 02 complete — CORSMiddleware + index_router wired in main.py; all 8 smoke tests pass; Phase 7 fully done
-Last activity: 2026-03-18 — Plan 07-02 complete: CORSMiddleware registered (vscode-webview regex + localhost:3000), index_router included, concurrent DELETE race fix in pipeline.py; all Phase 7 requirements satisfied (API-01, API-02, API-05, API-06, API-07, API-08)
+Phase: 7.1 of 14 (Tech Debt Cleanup) — IN PROGRESS
+Plan: 2 of 3 in current phase — COMPLETE
+Status: Phase 07.1-tech-debt-cleanup plan 02 complete — backend healthcheck added to docker-compose.yml using curl -f http://localhost:8000/health; INFRA-01 satisfied
+Last activity: 2026-03-19 — Plan 07.1-02 complete: backend service healthcheck stanza added (CMD curl, interval 10s, timeout 5s, retries 5, start_period 15s); enables service_healthy orchestration
 
 Progress: [████░░░░░░] 40%
 
@@ -34,6 +34,7 @@ Progress: [████░░░░░░] 40%
 | 05-embedder | 3 | 10 min | 3.3 min |
 | 06-pipeline | 3 | 40 min | 13.3 min |
 | 07-index-endpoint | 2 | 7 min | 3.5 min |
+| 07.1-tech-debt-cleanup | 2 | 2 min | 1 min |
 
 **Recent Trend:**
 - Last 5 plans: 5 min, 3 min, 2 min, 5 min, 5 min
@@ -100,6 +101,9 @@ Recent decisions affecting current work:
 - [Phase 07-index-endpoint]: allow_credentials=True omitted — combining wildcard allow_origin_regex with allow_credentials causes browser CORS rejection (07-02)
 - [Phase 07-index-endpoint]: run_ingestion final status write guarded with repo_path presence check — prevents stale complete status written after concurrent DELETE (07-02)
 - [Phase 07-index-endpoint]: delete_embeddings_for_repo collects pgvector ids before DELETE to build FTS5 target set — single connection traversal (07-01)
+- [Phase 07.1-tech-debt-cleanup]: CMD array format used (not CMD-SHELL) for backend healthcheck — exec form, no shell interpretation overhead (07.1-02)
+- [Phase 07.1-tech-debt-cleanup]: start_period: 15s on backend — uvicorn + postgres init can take 2-8s; backend needs more than postgres (10s) since it depends on postgres being up first (07.1-02)
+- [Phase 07.1-tech-debt-cleanup]: curl -f http://localhost:8000/health reuses existing GET /health endpoint in main.py — no new code or infra required (07.1-02)
 
 ### Pending Todos
 
@@ -111,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18
-Stopped at: Completed 07-02-PLAN.md — CORSMiddleware + index_router wired in main.py, concurrent DELETE race fix, all 8 smoke tests pass; Phase 07-index-endpoint fully complete (API-01, API-02, API-05, API-06, API-07, API-08)
+Last session: 2026-03-19
+Stopped at: Completed 07.1-02-PLAN.md — backend healthcheck added to docker-compose.yml (curl -f http://localhost:8000/health, start_period 15s); INFRA-01 satisfied
 Resume file: None
