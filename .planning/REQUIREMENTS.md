@@ -93,10 +93,10 @@
 
 ### VS Code Extension — Core
 
-- [ ] **EXT-01**: Extension activates on VS Code startup; registers `nexus.sidebar` WebviewViewProvider
-- [ ] **EXT-02**: Registers commands: `nexus.indexWorkspace`, `nexus.clearIndex`
-- [ ] **EXT-03**: `package.json` contributes activity bar icon `$(circuit-board)`, sidebar view, commands, and configuration (`backendUrl`, `hopDepth`, `maxNodes`)
-- [ ] **EXT-04**: On activation with open workspace, automatically triggers `IndexerService.indexWorkspace()`
+- [x] **EXT-01**: Extension activates on VS Code startup; registers `nexus.sidebar` WebviewViewProvider
+- [x] **EXT-02**: Registers commands: `nexus.indexWorkspace`, `nexus.clearIndex`
+- [x] **EXT-03**: `package.json` contributes activity bar icon `$(circuit-board)`, sidebar view, commands, and configuration (`backendUrl`, `hopDepth`, `maxNodes`)
+- [x] **EXT-04**: On activation with open workspace, automatically triggers `IndexerService.indexWorkspace()`
 
 ### VS Code Extension — Sidebar Chat
 
@@ -234,10 +234,10 @@
 | AGNT-05 | Phase 9 | Complete |
 | API-03 | Phase 10 | Complete |
 | API-04 | Phase 10 | Complete |
-| EXT-01 | Phase 11 | Pending |
-| EXT-02 | Phase 11 | Pending |
-| EXT-03 | Phase 11 | Pending |
-| EXT-04 | Phase 11 | Pending |
+| EXT-01 | Phase 11 | Complete |
+| EXT-02 | Phase 11 | Complete |
+| EXT-03 | Phase 11 | Complete |
+| EXT-04 | Phase 11 | Complete |
 | CHAT-01 | Phase 11 | Pending |
 | CHAT-02 | Phase 11 | Pending |
 | CHAT-03 | Phase 11 | Pending |

@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 10 — Query Endpoint
+**Current focus:** Phase 11 — VS Code Extension
 
 ## Current Position
 
-Phase: 10 of 14 (Query Endpoint) — COMPLETE
-Plan: 2 of 2 in current phase — COMPLETE
-Status: Phase 10-query-endpoint plan 02 complete — 9 unit tests for POST /query SSE endpoint; API-03/04 fully tested with mocked dependencies
-Last activity: 2026-03-19 — Plan 10-02 complete: test_query_router.py (9 tests: 400 guards, token/citations/done/error events, Content-Type)
+Phase: 11 of 14 (VS Code Extension) — IN PROGRESS
+Plan: 1 of 5 in current phase — COMPLETE
+Status: Phase 11-vs-code-extension plan 01 complete — extension scaffold: package.json manifest, dual-bundle esbuild, tsconfigs, nexus.svg, extension.ts activate() skeleton
+Last activity: 2026-03-19 — Plan 11-01 complete: extension/ directory with all scaffold files; npm run build produces out/extension.js
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Progress: [████████░░] 75%
 | Phase 09-explorer-agent P02 | 2 min | 1 tasks | 1 files |
 | Phase 10-query-endpoint P01 | 2 | 3 tasks | 3 files |
 | Phase 10-query-endpoint P02 | 3 | 2 tasks | 1 files |
+| Phase 11-vs-code-extension P01 | 3 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,7 @@ Recent decisions affecting current work:
 - [Phase 10-query-endpoint]: app.state.graph_cache dict initialized in lifespan — lazy per-repo nx.DiGraph cache avoids repeated SQLite reads (10-01)
 - [Phase 10-query-endpoint]: patch init_db/init_pgvector_table at app.main namespace to decouple TestClient from postgres (10-02)
 - [Phase 10-query-endpoint]: r.read() inside client.stream() context required to materialize SSE body before httpx connection closes (10-02)
+- [Phase 11-vs-code-extension]: esbuild.js wraps webview rebuild in try/catch — gracefully skips missing entry point at scaffold stage, fails fast on extension host errors
 
 ### Pending Todos
 
@@ -144,5 +146,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 10-02-PLAN.md — 9 unit tests for POST /query SSE endpoint; Phase 10-query-endpoint fully complete
+Stopped at: Completed 11-01-PLAN.md — VS Code extension scaffold: package.json manifest, dual-bundle esbuild, tsconfigs, nexus.svg, extension.ts skeleton
 Resume file: None
