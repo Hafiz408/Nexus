@@ -33,3 +33,10 @@ class IndexRequest(BaseModel):
     repo_path: str
     languages: list[str] = ["python", "typescript"]
     changed_files: list[str] | None = None
+
+
+class QueryRequest(BaseModel):
+    question: str
+    repo_path: str
+    max_nodes: int = 10
+    hop_depth: int = 1
