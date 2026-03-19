@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 12 — Highlighter
+**Current focus:** Phase 13 — File Watcher
 
 ## Current Position
 
-Phase: 12 of 14 (Highlighter) — IN PROGRESS
+Phase: 13 of 14 (File Watcher) — COMPLETE
 Plan: 1 of 1 in current phase — COMPLETE
-Status: Phase 12-highlighter plan 01 complete — HighlightService with TextEditorDecorationType, wired into SseStream onCitations callback, SidebarProvider lifecycle, and extension.ts disposal
-Last activity: 2026-03-19 — Plan 12-01 complete: HighlightService.ts created, SseStream/SidebarProvider/extension.ts wired, 0 TypeScript errors, checkpoint auto-approved
+Status: Phase 13-file-watcher plan 01 complete — FileWatcher.ts created, BackendClient.indexFiles added, extension.ts/SidebarProvider.ts wired, 0 TypeScript errors
+Last activity: 2026-03-19 — Plan 13-01 complete: FileWatcher.ts created, BackendClient.indexFiles added, extension.ts/SidebarProvider.ts wired, 0 TypeScript errors
 
-Progress: [█████████░] 93%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [█████████░] 93%
 | Phase 11-vs-code-extension P03 | 2 | 2 tasks | 3 files |
 | Phase 11-vs-code-extension P04 | 5min | 2 tasks | 2 files |
 | Phase 12-highlighter P01 | 2min | 2 tasks | 4 files |
+| Phase 13-file-watcher P01 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,8 @@ Recent decisions affecting current work:
 - [Phase 12-highlighter]: provider.dispose() pushed to context.subscriptions — guarantees TextEditorDecorationType.dispose() runs on extension deactivation
 - [Phase 12-highlighter]: preserveFocus: true + preview: false in showTextDocument — avoids stealing user focus, prevents disposable preview tabs
 - [Phase 12-highlighter]: Guard if (editor.document) before setDecorations — prevents vscode#18797 race condition warning
+- [Phase 13-file-watcher]: FileWatcher uses RelativePattern scoped to workspace root — bare string glob watches all VS Code FS windows globally
+- [Phase 13-file-watcher]: Single BackendClient in activate() shared by SidebarProvider and FileWatcher — constructor injection pattern
 
 ### Pending Todos
 

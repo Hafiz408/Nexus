@@ -119,9 +119,9 @@
 
 ### VS Code Extension — File Watcher
 
-- [ ] **WATCH-01**: `FileWatcher` watches `**/*.{py,ts,tsx,js,jsx}` via `vscode.workspace.createFileSystemWatcher`
-- [ ] **WATCH-02**: Debounces 2 seconds after last file change before triggering re-index
-- [ ] **WATCH-03**: Sends `POST /index` with `changed_files: [filePath]` for incremental re-index
+- [x] **WATCH-01**: `FileWatcher` watches `**/*.{py,ts,tsx,js,jsx}` via `vscode.workspace.createFileSystemWatcher`
+- [x] **WATCH-02**: Debounces 2 seconds after last file change before triggering re-index
+- [x] **WATCH-03**: Sends `POST /index` with `changed_files: [filePath]` for incremental re-index
 
 ### Evaluation
 
@@ -248,9 +248,9 @@
 | SSE-03 | Phase 11 | Complete |
 | HIGH-01 | Phase 12 | Complete |
 | HIGH-02 | Phase 12 | Complete |
-| WATCH-01 | Phase 13 | Pending |
-| WATCH-02 | Phase 13 | Pending |
-| WATCH-03 | Phase 13 | Pending |
+| WATCH-01 | Phase 13 | Complete |
+| WATCH-02 | Phase 13 | Complete |
+| WATCH-03 | Phase 13 | Complete |
 | EVAL-01 | Phase 14 | Pending |
 | EVAL-02 | Phase 14 | Pending |
 | EVAL-03 | Phase 14 | Pending |
