@@ -242,7 +242,10 @@ Plans:
   3. Results include per-question faithfulness, answer_relevancy, and context_precision scores
   4. A committed comparison shows graph-traversal RAG scores higher than naive vector-only RAG on at least one metric
   5. `pytest backend/tests/` passes with all unit tests green
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 14-01-PLAN.md — Golden Q&A dataset (eval/golden_qa.json, 30 pairs) + ragas/pandas to requirements.txt
+- [ ] 14-02-PLAN.md — eval/run_ragas.py evaluation script + results directory + pytest verification
 
 ## Progress
 
@@ -265,4 +268,4 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 11. VS Code Extension | 4/4 | Complete    | 2026-03-19 |
 | 12. Highlighter | 0/TBD | Complete    | 2026-03-19 |
 | 13. File Watcher | 1/1 | Complete    | 2026-03-19 |
-| 14. RAGAS Eval | 0/TBD | Not started | - |
+| 14. RAGAS Eval | 0/2 | Not started | - |
