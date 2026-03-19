@@ -34,6 +34,18 @@ export class BackendClient {
     return res.json() as Promise<IndexStatus>;
   }
 
+  // WATCH-03: incremental re-index — sends only the changed file paths
+  async indexFiles(repoPath: string, changedFiles: string[]): Promise<void> {
+    const res = await fetch(`${this.backendUrl}/index`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repo_path: repoPath, changed_files: changedFiles }),
+    });
+    if (!res.ok) {
+      throw new Error(`POST /index (incremental) failed: ${res.status}`);
+    }
+  }
+
   // SSE-01: poll every 2 seconds until complete or failed
   pollUntilComplete(
     repoPath: string,
