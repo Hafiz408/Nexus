@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 7.1 — Tech Debt Cleanup
+**Current focus:** Phase 8 — Graph RAG
 
 ## Current Position
 
-Phase: 7.1 of 14 (Tech Debt Cleanup) — IN PROGRESS
-Plan: 2 of 3 in current phase — COMPLETE
-Status: Phase 07.1-tech-debt-cleanup plan 02 complete — backend healthcheck added to docker-compose.yml using curl -f http://localhost:8000/health; INFRA-01 satisfied
-Last activity: 2026-03-19 — Plan 07.1-02 complete: backend service healthcheck stanza added (CMD curl, interval 10s, timeout 5s, retries 5, start_period 15s); enables service_healthy orchestration
+Phase: 8 of 14 (Graph RAG) — IN PROGRESS
+Plan: 1 of 1 in current phase — COMPLETE
+Status: Phase 08-graph-rag plan 01 complete — Graph RAG retrieval package created with four public functions: semantic_search, expand_via_graph, rerank_and_assemble, graph_rag_retrieve
+Last activity: 2026-03-19 — Plan 08-01 complete: app/retrieval/graph_rag.py with 3-step pipeline (pgvector cosine search + nx.ego_graph BFS + RAG-03 reranking); RAG-01 through RAG-04 satisfied
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 7 min
-- Total execution time: 1.12 hours
+- Total execution time: 1.19 hours
 
 **By Phase:**
 
@@ -35,13 +35,15 @@ Progress: [████░░░░░░] 40%
 | 06-pipeline | 3 | 40 min | 13.3 min |
 | 07-index-endpoint | 2 | 7 min | 3.5 min |
 | 07.1-tech-debt-cleanup | 2 | 2 min | 1 min |
+| 08-graph-rag | 1 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min, 3 min, 2 min, 5 min, 5 min
+- Last 5 plans: 5 min, 3 min, 2 min, 5 min, 4 min
 - Trend: baseline
 
 *Updated after each plan completion*
 | Phase 07.1-tech-debt-cleanup P01 | 2 | 2 tasks | 4 files |
+| Phase 08-graph-rag P01 | 4 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -108,6 +110,11 @@ Recent decisions affecting current work:
 - [Phase 07.1-tech-debt-cleanup]: Plain WHERE file_path IN (...) for FTS5 delete — MATCH syntax invalid on UNINDEXED columns (07.1-01)
 - [Phase 07.1-tech-debt-cleanup]: delete_embeddings_for_files empty-list guard returns before any DB connection opened — no-op is safe and zero-cost (07.1-01)
 - [Phase 07.1-tech-debt-cleanup]: Incremental path calls both delete_nodes_for_files and delete_embeddings_for_files before re-parsing — ensures all three stores cleaned together (07.1-01)
+- [Phase 08-graph-rag]: semantic_search returns (node_id, score) pairs not CodeNode objects — code_embeddings table lacks signature/docstring/body_preview; CodeNode hydration happens in graph_rag_retrieve via G.nodes (08-01)
+- [Phase 08-graph-rag]: nx.ego_graph(undirected=True) for bidirectional BFS — covers both predecessors (callers) and successors (callees) in one call; nx.bfs_tree only follows outgoing edges on DiGraph (08-01)
+- [Phase 08-graph-rag]: nx.subgraph_view() zero-copy edge-type filtering — avoids graph copy overhead when restricting BFS traversal to specific edge types (08-01)
+- [Phase 08-graph-rag]: Lazy OpenAI client init inside semantic_search body — same pattern as embedder.py; prevents ValidationError on import when OPENAI_API_KEY absent (08-01)
+- [Phase 08-graph-rag]: max_in_degree guard (max(in_degrees) if in_degrees else 1) prevents ZeroDivisionError when all expanded nodes have in_degree 0 (08-01)
 
 ### Pending Todos
 
@@ -120,5 +127,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 07.1-01-PLAN.md — delete_embeddings_for_files added to embedder.py and wired into pipeline.py incremental path; 3 new tests pass; all 65 tests pass; EMBED-05, PIPE-03, STORE-03 satisfied
+Stopped at: Completed 08-01-PLAN.md — Graph RAG retrieval package created with semantic_search, expand_via_graph, rerank_and_assemble, graph_rag_retrieve; RAG-01 through RAG-04 satisfied
 Resume file: None

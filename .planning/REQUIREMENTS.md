@@ -65,10 +65,10 @@
 
 ### Retrieval — Graph RAG
 
-- [ ] **RAG-01**: `semantic_search(query, repo_path, top_k)` embeds query, cosine similarity search in pgvector, returns top_k CodeNodes
-- [ ] **RAG-02**: `expand_via_graph(seed_node_ids, G, hop_depth, edge_types)` BFS in both directions up to `hop_depth` hops; returns deduplicated node IDs
-- [ ] **RAG-03**: `rerank_and_assemble(expanded_node_ids, seed_scores, G, max_nodes)` scores nodes: `(semantic_score if seed else 0.3) + (0.2 * pagerank) + (0.1 * in_degree_norm)`; returns top `max_nodes` sorted by score
-- [ ] **RAG-04**: `graph_rag_retrieve(query, repo_path, G, max_nodes, hop_depth)` runs full 3-step retrieval, returns `(list[CodeNode], stats_dict)`
+- [x] **RAG-01**: `semantic_search(query, repo_path, top_k)` embeds query, cosine similarity search in pgvector, returns top_k CodeNodes
+- [x] **RAG-02**: `expand_via_graph(seed_node_ids, G, hop_depth, edge_types)` BFS in both directions up to `hop_depth` hops; returns deduplicated node IDs
+- [x] **RAG-03**: `rerank_and_assemble(expanded_node_ids, seed_scores, G, max_nodes)` scores nodes: `(semantic_score if seed else 0.3) + (0.2 * pagerank) + (0.1 * in_degree_norm)`; returns top `max_nodes` sorted by score
+- [x] **RAG-04**: `graph_rag_retrieve(query, repo_path, G, max_nodes, hop_depth)` runs full 3-step retrieval, returns `(list[CodeNode], stats_dict)`
 - [ ] **RAG-05**: Unit tests pass using in-memory NetworkX fixture — no database required
 - [ ] **RAG-06**: Tests verify BFS expansion at hop depth 1 and 2, reranking order, max_nodes limit
 
@@ -219,10 +219,10 @@
 | API-06 | Phase 7 | Complete |
 | API-07 | Phase 7 | Complete |
 | API-08 | Phase 7 | Complete |
-| RAG-01 | Phase 8 | Pending |
-| RAG-02 | Phase 8 | Pending |
-| RAG-03 | Phase 8 | Pending |
-| RAG-04 | Phase 8 | Pending |
+| RAG-01 | Phase 8 | Complete |
+| RAG-02 | Phase 8 | Complete |
+| RAG-03 | Phase 8 | Complete |
+| RAG-04 | Phase 8 | Complete |
 | RAG-05 | Phase 8 | Pending |
 | RAG-06 | Phase 8 | Pending |
 | TEST-05 | Phase 8 | Pending |
