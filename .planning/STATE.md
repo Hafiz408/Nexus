@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 9 of 14 (Explorer Agent) — In Progress
-Plan: 1 of 2 in current phase — COMPLETE
-Status: Phase 09-explorer-agent plan 01 complete — Explorer Agent: prompts.py + explorer.py; AGNT-01 through AGNT-05 satisfied
-Last activity: 2026-03-19 — Plan 09-01 complete: agent/__init__.py, prompts.py (SYSTEM_PROMPT), explorer.py (format_context_block + explore_stream); langchain-openai + langsmith added to requirements.txt; model_name added to Settings
+Phase: 9 of 14 (Explorer Agent) — COMPLETE
+Plan: 2 of 2 in current phase — COMPLETE
+Status: Phase 09-explorer-agent plan 02 complete — Explorer Agent tests: 9 passing unit tests for format_context_block + explore_stream; AGNT-01/02/03/05 verified
+Last activity: 2026-03-19 — Plan 09-02 complete: backend/tests/test_explorer.py (9 tests, zero API calls, _chain sentinel injection pattern)
 
-Progress: [███████░░░] 64%
+Progress: [████████░░] 71%
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Progress: [███████░░░] 64%
 | Phase 08-graph-rag P01 | 4 | 2 tasks | 2 files |
 | Phase 08-graph-rag P02 | 2 | 1 tasks | 3 files |
 | Phase 09-explorer-agent P01 | 2 min | 2 tasks | 5 files |
+| Phase 09-explorer-agent P02 | 2 min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Recent decisions affecting current work:
 - [Phase 08-graph-rag]: max_in_degree guard changed to (max(in_degrees) if in_degrees else 0) or 1 to handle all-zeros case in rerank_and_assemble
 - [Phase 09-explorer-agent]: Lazy _get_chain() init prevents ValidationError when OPENAI_API_KEY absent at import time (09-01)
 - [Phase 09-explorer-agent]: tracing_v2_enabled wraps entire astream() call not per-token to avoid trace explosion in LangSmith (09-01)
+- [Phase 09-explorer-agent]: Inject _chain directly via explorer_mod._chain = mock_chain to bypass _get_chain() LCEL composition — avoids needing to mock ChatPromptTemplate (09-02)
+- [Phase 09-explorer-agent]: asyncio.run() in explorer tests (not pytest-asyncio) — consistent with test_pipeline.py pattern, no extra dependencies (09-02)
+- [Phase 09-explorer-agent]: AIMessageChunk(content="") as first fixture yield to exercise empty-chunk filtering guard in explore_stream (09-02)
 
 ### Pending Todos
 
@@ -133,5 +137,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 09-01-PLAN.md — Explorer Agent: prompts.py + explorer.py; AGNT-01 through AGNT-05 satisfied; phase 09 in progress
+Stopped at: Completed 09-02-PLAN.md — Explorer Agent tests: 9 passing unit tests; phase 09 complete
 Resume file: None
