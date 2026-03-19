@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 8 of 14 (Graph RAG) — IN PROGRESS
-Plan: 1 of 1 in current phase — COMPLETE
-Status: Phase 08-graph-rag plan 01 complete — Graph RAG retrieval package created with four public functions: semantic_search, expand_via_graph, rerank_and_assemble, graph_rag_retrieve
-Last activity: 2026-03-19 — Plan 08-01 complete: app/retrieval/graph_rag.py with 3-step pipeline (pgvector cosine search + nx.ego_graph BFS + RAG-03 reranking); RAG-01 through RAG-04 satisfied
+Phase: 8 of 14 (Graph RAG) — COMPLETE
+Plan: 2 of 2 in current phase — COMPLETE
+Status: Phase 08-graph-rag plan 02 complete — Graph RAG test suite with 10 unit tests + conftest fixtures; RAG-05/06 TEST-05/06 satisfied; phase complete
+Last activity: 2026-03-19 — Plan 08-02 complete: test_graph_rag.py with 10 tests, sample_graph + mock_embedder fixtures added to conftest.py
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 57%
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Progress: [█████░░░░░] 50%
 *Updated after each plan completion*
 | Phase 07.1-tech-debt-cleanup P01 | 2 | 2 tasks | 4 files |
 | Phase 08-graph-rag P01 | 4 | 2 tasks | 2 files |
+| Phase 08-graph-rag P02 | 2 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,8 @@ Recent decisions affecting current work:
 - [Phase 08-graph-rag]: nx.subgraph_view() zero-copy edge-type filtering — avoids graph copy overhead when restricting BFS traversal to specific edge types (08-01)
 - [Phase 08-graph-rag]: Lazy OpenAI client init inside semantic_search body — same pattern as embedder.py; prevents ValidationError on import when OPENAI_API_KEY absent (08-01)
 - [Phase 08-graph-rag]: max_in_degree guard (max(in_degrees) if in_degrees else 1) prevents ZeroDivisionError when all expanded nodes have in_degree 0 (08-01)
+- [Phase 08-graph-rag]: Patch register_vector at app.retrieval.graph_rag namespace for full test isolation from DB
+- [Phase 08-graph-rag]: max_in_degree guard changed to (max(in_degrees) if in_degrees else 0) or 1 to handle all-zeros case in rerank_and_assemble
 
 ### Pending Todos
 
@@ -127,5 +130,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 08-01-PLAN.md — Graph RAG retrieval package created with semantic_search, expand_via_graph, rerank_and_assemble, graph_rag_retrieve; RAG-01 through RAG-04 satisfied
+Stopped at: Completed 08-02-PLAN.md — Graph RAG test suite: 10 tests + sample_graph/mock_embedder fixtures; RAG-05/06 TEST-05/06 satisfied; phase 08 complete
 Resume file: None

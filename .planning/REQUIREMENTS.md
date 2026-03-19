@@ -69,8 +69,8 @@
 - [x] **RAG-02**: `expand_via_graph(seed_node_ids, G, hop_depth, edge_types)` BFS in both directions up to `hop_depth` hops; returns deduplicated node IDs
 - [x] **RAG-03**: `rerank_and_assemble(expanded_node_ids, seed_scores, G, max_nodes)` scores nodes: `(semantic_score if seed else 0.3) + (0.2 * pagerank) + (0.1 * in_degree_norm)`; returns top `max_nodes` sorted by score
 - [x] **RAG-04**: `graph_rag_retrieve(query, repo_path, G, max_nodes, hop_depth)` runs full 3-step retrieval, returns `(list[CodeNode], stats_dict)`
-- [ ] **RAG-05**: Unit tests pass using in-memory NetworkX fixture — no database required
-- [ ] **RAG-06**: Tests verify BFS expansion at hop depth 1 and 2, reranking order, max_nodes limit
+- [x] **RAG-05**: Unit tests pass using in-memory NetworkX fixture — no database required
+- [x] **RAG-06**: Tests verify BFS expansion at hop depth 1 and 2, reranking order, max_nodes limit
 
 ### Agent — Explorer
 
@@ -136,8 +136,8 @@
 - [x] **TEST-02**: `tests/test_file_walker.py` — gitignore, skip dirs, extension filtering with temp dir fixture
 - [x] **TEST-03**: `tests/test_ast_parser.py` — Python + TypeScript parsing, docstring extraction, CALLS edge detection
 - [x] **TEST-04**: `tests/test_graph_builder.py` — edge resolution, unresolvable edge drop, PageRank, in/out degree
-- [ ] **TEST-05**: `tests/test_graph_rag.py` — BFS expansion, reranking, max_nodes; all with in-memory fixture (no DB)
-- [ ] **TEST-06**: `tests/conftest.py` — `sample_repo_path` (synthetic temp repo), `mock_embedder` (deterministic np.random.seed(42)), `sample_graph` (small NetworkX DiGraph)
+- [x] **TEST-05**: `tests/test_graph_rag.py` — BFS expansion, reranking, max_nodes; all with in-memory fixture (no DB)
+- [x] **TEST-06**: `tests/conftest.py` — `sample_repo_path` (synthetic temp repo), `mock_embedder` (deterministic np.random.seed(42)), `sample_graph` (small NetworkX DiGraph)
 
 ## v2 Requirements
 
@@ -223,10 +223,10 @@
 | RAG-02 | Phase 8 | Complete |
 | RAG-03 | Phase 8 | Complete |
 | RAG-04 | Phase 8 | Complete |
-| RAG-05 | Phase 8 | Pending |
-| RAG-06 | Phase 8 | Pending |
-| TEST-05 | Phase 8 | Pending |
-| TEST-06 | Phase 8 | Pending |
+| RAG-05 | Phase 8 | Complete |
+| RAG-06 | Phase 8 | Complete |
+| TEST-05 | Phase 8 | Complete |
+| TEST-06 | Phase 8 | Complete |
 | AGNT-01 | Phase 9 | Pending |
 | AGNT-02 | Phase 9 | Pending |
 | AGNT-03 | Phase 9 | Pending |

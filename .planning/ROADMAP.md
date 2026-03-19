@@ -18,7 +18,7 @@ Nexus V1 builds a VS Code extension backed by a FastAPI multi-agent backend that
 - [x] **Phase 6: Pipeline** - `pipeline.py` — orchestrate ingestion steps 2–5 with concurrency + incremental re-index (completed 2026-03-18)
 - [x] **Phase 7: Index Endpoint** - `POST /index` + `GET /index/status` via FastAPI BackgroundTasks (completed 2026-03-18)
 - [x] **Phase 7.1: Tech Debt Cleanup** - Fix FTS5 stale rows on incremental re-index + add backend Docker healthcheck (completed 2026-03-19)
-- [ ] **Phase 8: Graph RAG** - `graph_rag.py` + tests — 3-step graph-traversal RAG, testable without DB
+- [x] **Phase 8: Graph RAG** - `graph_rag.py` + tests — 3-step graph-traversal RAG, testable without DB (completed 2026-03-19)
 - [ ] **Phase 9: Explorer Agent** - `explorer.py` — LangChain streaming agent with LangSmith tracing
 - [ ] **Phase 10: Query Endpoint** - `POST /query` SSE streaming endpoint
 - [ ] **Phase 11: VS Code Extension** - Sidebar, BackendClient, SSE streaming to React chat UI
@@ -244,7 +244,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 6. Pipeline | 3/3 | Complete   | 2026-03-18 |
 | 7. Index Endpoint | 2/2 | Complete   | 2026-03-18 |
 | 7.1. Tech Debt Cleanup | 2/2 | Complete    | 2026-03-19 |
-| 8. Graph RAG | 1/2 | In Progress|  |
+| 8. Graph RAG | 2/2 | Complete   | 2026-03-19 |
 | 9. Explorer Agent | 0/TBD | Not started | - |
 | 10. Query Endpoint | 0/TBD | Not started | - |
 | 11. VS Code Extension | 0/TBD | Not started | - |
