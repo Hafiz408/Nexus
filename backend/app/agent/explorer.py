@@ -10,10 +10,10 @@ from typing import AsyncGenerator
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tracers.context import tracing_v2_enabled
-from langchain_mistralai import ChatMistralAI
 
 from app.agent.prompts import SYSTEM_PROMPT
 from app.config import get_settings
+from app.core.model_factory import get_llm
 from app.models.schemas import CodeNode
 
 # Module-level sentinel — chain is built lazily to avoid ValidationError
@@ -25,12 +25,7 @@ def _get_chain():
     """Return cached LCEL chain; build on first call (lazy init pattern)."""
     global _chain
     if _chain is None:
-        settings = get_settings()
-        llm = ChatMistralAI(
-            model=settings.model_name,
-            temperature=0,
-            api_key=settings.mistral_api_key,
-        )
+        llm = get_llm()
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_prompt}"),
             ("human", "Context:\n{context}\n\nQuestion: {question}"),

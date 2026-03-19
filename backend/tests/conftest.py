@@ -188,25 +188,19 @@ def sample_graph() -> nx.DiGraph:
 
 @pytest.fixture
 def mock_embedder(monkeypatch):
-    """Patches app.retrieval.graph_rag.Mistral — no API key or DB needed.
+    """Patches get_embedding_client at the graph_rag call site — no API key or DB needed.
 
     Uses np.random.seed(42) for reproducible 1024-d vectors.
-    Patches at the retrieval module namespace (from-import binding — Phase 08 pitfall 4).
+    Patching at the factory call site makes tests provider-agnostic.
     """
     from unittest.mock import MagicMock
 
     np.random.seed(42)
 
-    def _fake_create(model, inputs):
-        resp = MagicMock()
-        resp.data = [
-            MagicMock(embedding=np.random.rand(1024).tolist())
-            for _ in range(len(inputs))
-        ]
-        return resp
-
     mock_client = MagicMock()
-    mock_client.embeddings.create.side_effect = _fake_create
-    mock_mistral_cls = MagicMock(return_value=mock_client)
-    monkeypatch.setattr("app.retrieval.graph_rag.Mistral", mock_mistral_cls)  # from mistralai.client import Mistral
+    mock_client.embed.side_effect = lambda texts: [
+        np.random.rand(1024).tolist() for _ in texts
+    ]
+    mock_client.dimensions = 1024
+    monkeypatch.setattr("app.retrieval.graph_rag.get_embedding_client", lambda: mock_client)
     return mock_client

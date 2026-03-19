@@ -151,9 +151,6 @@ def test_semantic_search_returns_pairs(sample_graph, mock_embedder, monkeypatch)
         "app.retrieval.graph_rag.get_db_connection",
         MagicMock(return_value=mock_conn),
     )
-    mock_settings = MagicMock()
-    mock_settings.openai_api_key = "sk-test"
-    monkeypatch.setattr("app.retrieval.graph_rag.get_settings", MagicMock(return_value=mock_settings))
     monkeypatch.setattr("app.retrieval.graph_rag.register_vector", MagicMock())
 
     result = semantic_search("find func_b", "/repo", top_k=2)
@@ -179,9 +176,6 @@ def test_graph_rag_retrieve_stats(sample_graph, mock_embedder, monkeypatch):
         "app.retrieval.graph_rag.get_db_connection",
         MagicMock(return_value=mock_conn),
     )
-    mock_settings = MagicMock()
-    mock_settings.openai_api_key = "sk-test"
-    monkeypatch.setattr("app.retrieval.graph_rag.get_settings", MagicMock(return_value=mock_settings))
     monkeypatch.setattr("app.retrieval.graph_rag.register_vector", MagicMock())
 
     result = graph_rag_retrieve(

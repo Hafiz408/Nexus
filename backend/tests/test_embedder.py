@@ -85,27 +85,13 @@ def sample_graph():
 
 @pytest.fixture
 def mock_mistral_client():
-    """Returns a mock Mistral client that yields deterministic embeddings.
-
-    Each call to embeddings.create() returns 1024-dimensional vectors seeded
-    with numpy random (seed=42) for reproducibility.
-    """
+    """Returns a mock EmbeddingClient (factory interface) with deterministic 1024-d vectors."""
     import numpy as np
     np.random.seed(42)
 
-    def fake_create(model, inputs):
-        items = []
-        for i, _ in enumerate(inputs):
-            emb = MagicMock()
-            emb.embedding = np.random.rand(1024).tolist()
-            emb.index = i
-            items.append(emb)
-        resp = MagicMock()
-        resp.data = items
-        return resp
-
     client = MagicMock()
-    client.embeddings.create.side_effect = fake_create
+    client.embed.side_effect = lambda texts: [np.random.rand(1024).tolist() for _ in texts]
+    client.dimensions = 1024
     return client
 
 
@@ -196,7 +182,7 @@ def test_embed_batch_size_constant():
 
 def test_embed_and_store_returns_count(tmp_db, sample_nodes, mock_mistral_client):
     """EMBED-01 + EMBED-06: returns count equal to number of nodes."""
-    with patch("app.ingestion.embedder.Mistral", return_value=mock_mistral_client):
+    with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
         with patch("app.ingestion.embedder.get_db_connection") as mock_conn:
             # Mock psycopg2 connection so no Docker needed for this unit test
             pg_conn = MagicMock()
@@ -213,7 +199,7 @@ def test_embed_and_store_returns_count(tmp_db, sample_nodes, mock_mistral_client
 
 def test_fts5_table_supports_name_match(tmp_db, sample_nodes, mock_mistral_client):
     """EMBED-03: After embed_and_store, FTS5 supports exact name MATCH."""
-    with patch("app.ingestion.embedder.Mistral", return_value=mock_mistral_client):
+    with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
         with patch("app.ingestion.embedder.get_db_connection") as mock_conn:
             pg_conn = MagicMock()
             pg_conn.cursor.return_value.__enter__ = MagicMock(return_value=MagicMock())
@@ -233,7 +219,7 @@ def test_fts5_table_supports_name_match(tmp_db, sample_nodes, mock_mistral_clien
 
 def test_embed_and_store_upsert_no_duplicates(tmp_db, sample_nodes, mock_mistral_client):
     """EMBED-05: calling embed_and_store twice on same nodes yields same FTS row count."""
-    with patch("app.ingestion.embedder.Mistral", return_value=mock_mistral_client):
+    with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
         with patch("app.ingestion.embedder.get_db_connection") as mock_conn:
             pg_conn = MagicMock()
             pg_conn.cursor.return_value.__enter__ = MagicMock(return_value=MagicMock())
@@ -263,7 +249,7 @@ def test_delete_embeddings_for_files_empty_list_is_noop():
 def test_delete_embeddings_for_files_removes_fts5_rows(tmp_db, sample_nodes, mock_mistral_client):
     """After embed_and_store, delete_embeddings_for_files removes FTS5 rows for target file."""
     # First embed so FTS5 rows exist
-    with patch("app.ingestion.embedder.Mistral", return_value=mock_mistral_client):
+    with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
         with patch("app.ingestion.embedder.get_db_connection") as mock_conn:
             pg_conn = MagicMock()
             pg_conn.cursor.return_value.__enter__ = MagicMock(return_value=MagicMock())

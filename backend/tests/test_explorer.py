@@ -59,10 +59,9 @@ def node_no_docstring() -> CodeNode:
 
 @pytest.fixture
 def mock_llm(monkeypatch):
-    """Patches app.agent.explorer.ChatOpenAI to yield test tokens without API key.
+    """Patches app.agent.explorer.get_llm — provider-agnostic, no API key needed.
 
-    Patch at module namespace (from-import binding — Phase 9 pitfall 4).
-    Resets the module-level _chain sentinel so the mock is used.
+    Injects a fake chain directly to bypass _get_chain() construction entirely.
     """
     import app.agent.explorer as explorer_mod
 
@@ -76,13 +75,10 @@ def mock_llm(monkeypatch):
     mock_chain = MagicMock()
     mock_chain.astream = _fake_astream
 
-    # Reset cached chain so _get_chain() rebuilds with the mock
-    explorer_mod._chain = None
+    # Patch get_llm so _get_chain() doesn't call a real provider
+    monkeypatch.setattr("app.agent.explorer.get_llm", MagicMock(return_value=MagicMock()))
 
-    mock_llm_instance = MagicMock()
-    monkeypatch.setattr("app.agent.explorer.ChatMistralAI", MagicMock(return_value=mock_llm_instance))
-
-    # Inject fake chain directly to bypass _get_chain() prompt|llm construction
+    # Inject fake chain directly — bypasses prompt|llm construction
     explorer_mod._chain = mock_chain
 
     yield tokens

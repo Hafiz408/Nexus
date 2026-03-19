@@ -1,16 +1,18 @@
 """Embedding and storage layer for Phase 5.
 
-Sends CodeNode.embedding_text to Mistral, writes dense vectors to pgvector,
-and writes names to SQLite FTS5 for exact-match lookup.
+Sends CodeNode.embedding_text to the configured embedding provider,
+writes dense vectors to pgvector, and writes names to SQLite FTS5
+for exact-match lookup. Provider is selected via EMBEDDING_PROVIDER
+in .env — see app.core.model_factory for supported providers.
 """
 
 import sqlite3
 
-from mistralai.client import Mistral
 from pgvector.psycopg2 import register_vector
 from psycopg2.extras import execute_values
 
 from app.config import get_settings
+from app.core.model_factory import get_embedding_client
 from app.db.database import get_db_connection
 from app.models.schemas import CodeNode
 
@@ -26,8 +28,9 @@ def init_pgvector_table() -> None:
     conn = get_db_connection()
     try:
         register_vector(conn)
+        dims = get_embedding_client().dimensions
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 CREATE TABLE IF NOT EXISTS code_embeddings (
                     id         TEXT PRIMARY KEY,
                     repo_path  TEXT NOT NULL,
@@ -35,7 +38,7 @@ def init_pgvector_table() -> None:
                     file_path  TEXT NOT NULL,
                     line_start INT,
                     line_end   INT,
-                    embedding  vector(1024)
+                    embedding  vector({dims})
                 )
             """)
             cur.execute("""
@@ -92,8 +95,8 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str) -> int:
     Returns:
         Total number of nodes stored (== len(nodes) if all batches succeed).
     """
-    # Lazy client init — must NOT be at module level (MISTRAL_API_KEY may be absent)
-    client = Mistral(api_key=get_settings().mistral_api_key)
+    # Instantiate via factory — provider determined by EMBEDDING_PROVIDER in .env
+    embedder = get_embedding_client()
 
     pg_conn = get_db_connection()
     register_vector(pg_conn)
@@ -109,13 +112,7 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str) -> int:
             batch = nodes[i : i + EMBED_BATCH_SIZE]
             texts = [n.embedding_text for n in batch]
 
-            # --- Call Mistral embeddings API ---
-            response = client.embeddings.create(
-                model="mistral-embed",
-                inputs=texts,
-            )
-            # Mistral preserves input order in response.data
-            embeddings = [item.embedding for item in response.data]
+            embeddings = embedder.embed(texts)
 
             # --- Upsert to pgvector ---
             pg_rows = [
