@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 13 — File Watcher
+**Current focus:** Phase 14 — RAGAS Eval
 
 ## Current Position
 
-Phase: 13 of 14 (File Watcher) — COMPLETE
+Phase: 14 of 14 (RAGAS Eval) — IN PROGRESS
 Plan: 1 of 1 in current phase — COMPLETE
-Status: Phase 13-file-watcher plan 01 complete — FileWatcher.ts created, BackendClient.indexFiles added, extension.ts/SidebarProvider.ts wired, 0 TypeScript errors
-Last activity: 2026-03-19 — Plan 13-01 complete: FileWatcher.ts created, BackendClient.indexFiles added, extension.ts/SidebarProvider.ts wired, 0 TypeScript errors
+Status: Phase 14-ragas-eval plan 01 complete — eval/golden_qa.json created with 30 FastAPI Q&A pairs, ragas==0.4.3 and pandas added to backend/requirements.txt
+Last activity: 2026-03-19 — Plan 14-01 complete: 30-pair golden Q&A dataset created, ragas==0.4.3 and pandas added to requirements
 
 Progress: [██████████] 100%
 
@@ -55,6 +55,7 @@ Progress: [██████████] 100%
 | Phase 11-vs-code-extension P04 | 5min | 2 tasks | 2 files |
 | Phase 12-highlighter P01 | 2min | 2 tasks | 4 files |
 | Phase 13-file-watcher P01 | 2 | 2 tasks | 4 files |
+| Phase 14-ragas-eval P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,8 @@ Recent decisions affecting current work:
 - [Phase 12-highlighter]: Guard if (editor.document) before setDecorations — prevents vscode#18797 race condition warning
 - [Phase 13-file-watcher]: FileWatcher uses RelativePattern scoped to workspace root — bare string glob watches all VS Code FS windows globally
 - [Phase 13-file-watcher]: Single BackendClient in activate() shared by SidebarProvider and FileWatcher — constructor injection pattern
+- [Phase 14-ragas-eval]: pandas added unpinned — ragas 0.4.3 resolves a compatible version as transitive dep; pinning risks conflict (14-01)
+- [Phase 14-ragas-eval]: eval/ directory at repo root (sibling to backend/ and extension/) holds all evaluation artifacts (14-01)
 
 ### Pending Todos
 
@@ -164,5 +167,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 12-01-PLAN.md — HighlightService.ts created, SseStream/SidebarProvider/extension.ts wired, 0 TypeScript errors, checkpoint auto-approved
+Stopped at: Completed 14-01-PLAN.md — eval/golden_qa.json created with 30 FastAPI Q&A pairs, ragas==0.4.3 and pandas added to backend/requirements.txt
 Resume file: None

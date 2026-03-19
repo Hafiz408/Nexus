@@ -125,7 +125,7 @@
 
 ### Evaluation
 
-- [ ] **EVAL-01**: `backend/eval/golden_qa.json` contains 30 Q&A pairs based on the FastAPI repo, covering routing, middleware, DI, request parsing, response models, exception handlers, background tasks, security
+- [x] **EVAL-01**: `backend/eval/golden_qa.json` contains 30 Q&A pairs based on the FastAPI repo, covering routing, middleware, DI, request parsing, response models, exception handlers, background tasks, security
 - [ ] **EVAL-02**: `eval/run_ragas.py` runs faithfulness, answer_relevancy, context_precision metrics against golden dataset
 - [ ] **EVAL-03**: Results written to `eval/results/ragas_results_{timestamp}.json` with per-question breakdown
 - [ ] **EVAL-04**: Comparison experiment: graph-traversal RAG vs naive vector-only RAG side-by-side scores committed
@@ -251,7 +251,7 @@
 | WATCH-01 | Phase 13 | Complete |
 | WATCH-02 | Phase 13 | Complete |
 | WATCH-03 | Phase 13 | Complete |
-| EVAL-01 | Phase 14 | Pending |
+| EVAL-01 | Phase 14 | Complete |
 | EVAL-02 | Phase 14 | Pending |
 | EVAL-03 | Phase 14 | Pending |
 | EVAL-04 | Phase 14 | Pending |
