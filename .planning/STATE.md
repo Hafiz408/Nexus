@@ -41,6 +41,7 @@ Progress: [████░░░░░░] 40%
 - Trend: baseline
 
 *Updated after each plan completion*
+| Phase 07.1-tech-debt-cleanup P01 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,9 @@ Recent decisions affecting current work:
 - [Phase 07.1-tech-debt-cleanup]: CMD array format used (not CMD-SHELL) for backend healthcheck — exec form, no shell interpretation overhead (07.1-02)
 - [Phase 07.1-tech-debt-cleanup]: start_period: 15s on backend — uvicorn + postgres init can take 2-8s; backend needs more than postgres (10s) since it depends on postgres being up first (07.1-02)
 - [Phase 07.1-tech-debt-cleanup]: curl -f http://localhost:8000/health reuses existing GET /health endpoint in main.py — no new code or infra required (07.1-02)
+- [Phase 07.1-tech-debt-cleanup]: Plain WHERE file_path IN (...) for FTS5 delete — MATCH syntax invalid on UNINDEXED columns (07.1-01)
+- [Phase 07.1-tech-debt-cleanup]: delete_embeddings_for_files empty-list guard returns before any DB connection opened — no-op is safe and zero-cost (07.1-01)
+- [Phase 07.1-tech-debt-cleanup]: Incremental path calls both delete_nodes_for_files and delete_embeddings_for_files before re-parsing — ensures all three stores cleaned together (07.1-01)
 
 ### Pending Todos
 
@@ -116,5 +120,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Completed 07.1-02-PLAN.md — backend healthcheck added to docker-compose.yml (curl -f http://localhost:8000/health, start_period 15s); INFRA-01 satisfied
+Stopped at: Completed 07.1-01-PLAN.md — delete_embeddings_for_files added to embedder.py and wired into pipeline.py incremental path; 3 new tests pass; all 65 tests pass; EMBED-05, PIPE-03, STORE-03 satisfied
 Resume file: None
