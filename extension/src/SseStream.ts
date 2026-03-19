@@ -5,7 +5,8 @@ export async function streamQuery(
   question: string,
   repoPath: string,
   webview: vscode.Webview,
-  backendUrl: string
+  backendUrl: string,
+  onCitations?: (citations: Citation[]) => void
 ): Promise<void> {
   const config = vscode.workspace.getConfiguration('nexus');
   const maxNodes = config.get<number>('maxNodes', 10);
@@ -69,9 +70,12 @@ export async function streamQuery(
             case 'token':
               void webview.postMessage({ type: 'token', content: data['content'] as string });
               break;
-            case 'citations':
-              void webview.postMessage({ type: 'citations', citations: data['citations'] as Citation[] });
+            case 'citations': {
+              const citations = data['citations'] as Citation[];
+              void webview.postMessage({ type: 'citations', citations });
+              onCitations?.(citations);
               break;
+            }
             case 'done':
               void webview.postMessage({ type: 'done', retrieval_stats: data });
               break;

@@ -14,6 +14,8 @@ export function activate(context: vscode.ExtensionContext): void {
     )
   );
 
+  context.subscriptions.push({ dispose: () => provider.dispose() });
+
   // EXT-02: Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand('nexus.indexWorkspace', () => {

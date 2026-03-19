@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { BackendClient } from './BackendClient';
+import { HighlightService } from './HighlightService';
 import { streamQuery } from './SseStream';
 import { WebviewToHostMessage, IndexStatus } from './types';
 
@@ -17,12 +18,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   private _view?: vscode.WebviewView;
   private readonly _client: BackendClient;
+  private readonly _highlight: HighlightService;
   private _repoPath: string | undefined;
 
   constructor(private readonly _extensionUri: vscode.Uri) {
     const config = vscode.workspace.getConfiguration('nexus');
     const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
     this._client = new BackendClient(backendUrl);
+    this._highlight = new HighlightService();
     // Use the first workspace folder as the repo path
     this._repoPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   }
@@ -48,7 +51,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           if (this._repoPath) {
             const config = vscode.workspace.getConfiguration('nexus');
             const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
-            await streamQuery(msg.question, this._repoPath, webviewView.webview, backendUrl);
+            this._highlight.clearHighlights();   // HIGH-02: clear on new query
+            await streamQuery(
+              msg.question,
+              this._repoPath,
+              webviewView.webview,
+              backendUrl,
+              (citations) => { void this._highlight.highlightCitations(citations); }
+            );
           } else {
             void webviewView.webview.postMessage({
               type: 'error',
@@ -118,6 +128,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   private _postStatus(status: IndexStatus): Thenable<boolean> | undefined {
     return this._view?.webview.postMessage({ type: 'indexStatus', status });
+  }
+
+  dispose(): void {
+    this._highlight.dispose();
   }
 
   private _getHtmlForWebview(webview: vscode.Webview): string {
