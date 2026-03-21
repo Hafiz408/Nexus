@@ -46,6 +46,141 @@ function newId(): string {
   return String(++messageIdCounter);
 }
 
+// ── Markdown renderer — produces React elements, no innerHTML ──────────────
+
+type ReactChildren = React.ReactNode[];
+
+/** Apply inline formatting (bold, italic, inline code) to a text string.
+ *  Returns an array of React nodes. */
+function applyInline(text: string, key: string): React.ReactNode {
+  // Split on **bold**, *italic*, `code` patterns
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  return parts.map((part, i) => {
+    const k = `${key}-${i}`;
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={k}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={k}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={k}>{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
+}
+
+/** Convert markdown text to an array of React block elements. */
+function renderMarkdown(text: string): React.ReactElement {
+  const lines = text.split('\n');
+  const blocks: ReactChildren = [];
+  let listItems: React.ReactNode[] = [];
+  let codeLines: string[] = [];
+  let inCode = false;
+  let blockKey = 0;
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      blocks.push(<ul key={blockKey++}>{listItems}</ul>);
+      listItems = [];
+    }
+  };
+
+  const flushCode = () => {
+    if (codeLines.length > 0) {
+      blocks.push(
+        <pre key={blockKey++}>
+          <code>{codeLines.join('\n')}</code>
+        </pre>
+      );
+      codeLines = [];
+    }
+    inCode = false;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Fenced code block toggle
+    if (line.startsWith('```')) {
+      if (inCode) {
+        flushCode();
+      } else {
+        flushList();
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    // Headers
+    const h3 = line.match(/^### (.+)/);
+    const h2 = line.match(/^## (.+)/);
+    const h1 = line.match(/^# (.+)/);
+    if (h3 || h2 || h1) {
+      flushList();
+      const match = (h3 || h2 || h1)!;
+      const Tag = h3 ? 'h3' : h2 ? 'h2' : 'h1';
+      blocks.push(
+        <Tag key={blockKey++}>{applyInline(match[1], String(blockKey))}</Tag>
+      );
+      continue;
+    }
+
+    // List items  - item  or  * item  or  1. item
+    const li = line.match(/^[ \t]*[-*] (.+)$/) || line.match(/^[ \t]*\d+\. (.+)$/);
+    if (li) {
+      listItems.push(
+        <li key={listItems.length}>{applyInline(li[1], `li-${listItems.length}`)}</li>
+      );
+      continue;
+    }
+
+    // Blank line — flush list, start new paragraph break
+    if (line.trim() === '') {
+      flushList();
+      continue;
+    }
+
+    // Regular paragraph line — accumulate consecutive lines into one <p>
+    flushList();
+    const paraLines: string[] = [line];
+    while (i + 1 < lines.length) {
+      const next = lines[i + 1];
+      if (
+        next.trim() === '' ||
+        next.startsWith('#') ||
+        next.startsWith('```') ||
+        next.match(/^[ \t]*[-*] /) ||
+        next.match(/^[ \t]*\d+\. /)
+      ) {
+        break;
+      }
+      i++;
+      paraLines.push(next);
+    }
+    const paraContent: React.ReactNode[] = [];
+    paraLines.forEach((pl, pi) => {
+      if (pi > 0) paraContent.push(<br key={`br-${pi}`} />);
+      const inlined = applyInline(pl, `p-${blockKey}-${pi}`);
+      if (Array.isArray(inlined)) paraContent.push(...inlined);
+      else paraContent.push(inlined);
+    });
+    blocks.push(<p key={blockKey++}>{paraContent}</p>);
+  }
+
+  // Flush any remaining list or code block
+  flushList();
+  if (inCode) flushCode();
+
+  return <>{blocks}</>;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+
 export function App(): React.JSX.Element {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -146,7 +281,6 @@ export function App(): React.JSX.Element {
       return;
     }
 
-    // Add user message immediately
     setMessages((prev) => [
       ...prev,
       { id: newId(), role: 'user', content: question },
@@ -182,85 +316,102 @@ export function App(): React.JSX.Element {
 
   const renderStatusBar = (): React.JSX.Element => {
     const { status, nodes_indexed, error } = indexStatus;
-    let content: React.ReactNode;
+
+    let dotClass = 'status-dot idle';
+    let label: React.ReactNode = 'Not indexed';
+    let action: React.ReactNode = (
+      <button className="status-btn" onClick={handleIndexWorkspace} title="Index workspace">
+        ↺
+      </button>
+    );
 
     if (status === 'running' || status === 'pending') {
-      content = (
+      dotClass = 'status-dot running';
+      label = (
         <>
           <span className="spinner" />
-          <span>Indexing{nodes_indexed !== undefined ? ` — ${nodes_indexed} nodes` : '...'}</span>
+          <span>Indexing{nodes_indexed !== undefined ? ` — ${nodes_indexed} nodes` : '…'}</span>
         </>
       );
-    } else if (status === 'complete' && nodes_indexed !== undefined) {
+      action = null;
+    } else if (status === 'complete') {
       if (nodes_indexed === 0) {
-        content = (
-          <>
-            <span style={{ color: 'var(--vscode-errorForeground)' }}>
-              ⚠ Ready — 0 nodes. No Python/TypeScript functions found.
-            </span>
-            <button onClick={handleIndexWorkspace} title="Re-index">Re-index</button>
-          </>
-        );
+        dotClass = 'status-dot failed';
+        label = <span title="No Python/TypeScript functions found">0 nodes — check path</span>;
       } else {
-        content = (
-          <>
-            <span>✓ Ready — {nodes_indexed} nodes</span>
-            <button onClick={handleIndexWorkspace} title="Re-index">↺</button>
-          </>
-        );
+        dotClass = 'status-dot complete';
+        label = <span>{nodes_indexed?.toLocaleString()} nodes</span>;
       }
     } else if (status === 'failed') {
-      content = (
-        <>
-          <span style={{ color: 'var(--vscode-errorForeground)' }}
-                title={error ?? undefined}>
-            ✗ Index failed{error ? ` — ${error}` : ''}
-          </span>
-          <button onClick={handleIndexWorkspace}>Retry</button>
-        </>
-      );
-    } else {
-      content = (
-        <>
-          <span>Not indexed</span>
-          <button onClick={handleIndexWorkspace}>Index Workspace</button>
-        </>
-      );
+      dotClass = 'status-dot failed';
+      label = <span title={error ?? undefined}>Index failed</span>;
     }
 
-    return <div className="status-bar">{content}</div>;
+    return (
+      <div className="status-bar">
+        <div className="status-bar-left">
+          <span className={dotClass} />
+          {label}
+        </div>
+        {action}
+      </div>
+    );
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div id="root">
       {/* CHAT-04: Index status bar */}
       {renderStatusBar()}
 
       {/* CHAT-01: Message list */}
       <div className="message-list">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`message ${msg.role === 'user' ? 'message-user' : 'message-assistant'}`}
-          >
-            <div>{msg.content}</div>
-            {/* CHAT-03: Citation chips */}
-            {msg.citations && msg.citations.length > 0 && (
-              <div className="citations">
-                {msg.citations.map((c) => (
-                  <button
-                    key={c.node_id}
-                    className="citation-chip"
-                    onClick={() => handleCitationClick(c)}
-                    title={`${c.file_path}:${c.line_start}-${c.line_end}`}
-                  >
-                    {c.file_path.split('/').pop()}:{c.line_start}
-                  </button>
-                ))}
-              </div>
-            )}
+        {messages.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">⌘</div>
+            <div className="empty-state-title">Nexus</div>
+            <div className="empty-state-hint">
+              Ask anything about your codebase — functions, patterns, architecture.
+            </div>
           </div>
-        ))}
+        ) : (
+          messages.map((msg, idx) => {
+            const isLastStreaming = msg.isStreaming && idx === messages.length - 1;
+
+            if (msg.role === 'user') {
+              return (
+                <div key={msg.id} className="message message-user">
+                  <div className="message-bubble">{msg.content}</div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={msg.id} className="message message-assistant">
+                <div className={`message-bubble${isLastStreaming ? ' streaming-cursor' : ''}`}>
+                  {renderMarkdown(msg.content)}
+                </div>
+                {/* CHAT-03: Citation chips */}
+                {msg.citations && msg.citations.length > 0 && (
+                  <div className="citations">
+                    <div className="citations-label">Sources</div>
+                    <div className="citations-chips">
+                      {msg.citations.map((c) => (
+                        <button
+                          key={c.node_id}
+                          className="citation-chip"
+                          onClick={() => handleCitationClick(c)}
+                          title={`${c.file_path}:${c.line_start}-${c.line_end}`}
+                        >
+                          {c.file_path.split('/').pop()}:{c.line_start}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -271,12 +422,12 @@ export function App(): React.JSX.Element {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about your codebase..."
+          placeholder="Ask about your codebase…"
           disabled={isStreaming}
           rows={1}
         />
         <button onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
-          {isStreaming ? '...' : 'Ask'}
+          {isStreaming ? '…' : 'Ask'}
         </button>
       </div>
     </div>
