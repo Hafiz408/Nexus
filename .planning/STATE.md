@@ -6,15 +6,15 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 18 — debugger-agent
-Plan: 02 — complete
-Status: Phase 18 Plan 02 complete; Debugger agent test suite created; TST-02 marked complete; ready for Phase 19
-Last activity: 2026-03-22 — Completed 18-02-PLAN.md (Debugger agent tests: 10 offline tests, 3 fixtures, 124 total passing)
+Phase: 19 — reviewer-agent
+Plan: 01 — complete
+Status: Phase 19 Plan 01 complete; Reviewer agent module created; REVW-01, REVW-02, REVW-03 marked complete; ready for Phase 20
+Last activity: 2026-03-22 — Completed 19-01-PLAN.md (Reviewer agent: Finding+ReviewResult models, _assemble_context(), review() with groundedness filter; 124 tests passing)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 18 complete, next: Phase 19 (reviewer-agent)
+**Current focus:** v2.0 multi-agent team — Phase 19 complete, next: Phase 20 (reviewer-agent tests)
 
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 86%
 
 ## Performance Metrics
 
@@ -45,6 +45,9 @@ Last activity: 2026-03-22 — Completed 18-02-PLAN.md (Debugger agent tests: 10 
 - [Phase 18-debugger-agent]: Lazy import pattern applied to both get_settings() and get_llm() inside debug() body — consistent with Phase 17 router.py pattern
 - [Phase 18-debugger-agent]: mock_settings fixture injects debugger_max_hops=4 directly into debug() to bypass postgres env var requirement in tests
 - [Phase 18-debugger-agent]: Traversal path upper bound 6 (all 6 nodes in debug_graph reachable from entry within max_hops=4)
+- [Phase 19-reviewer-agent]: Groundedness post-filter applied after LLM call to drop findings with file_path not in retrieved_nodes set
+- [Phase 19-reviewer-agent]: range_clause injected via REVIEWER_PROMPT.partial() per-call, not baked into REVIEWER_SYSTEM constant
+- [Phase 19-reviewer-agent]: get_llm() and get_settings() imported inside review() body (lazy) — same pattern as router.py and debugger.py
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -65,3 +68,4 @@ Last activity: 2026-03-22 — Completed 18-02-PLAN.md (Debugger agent tests: 10 
 - 2026-03-22: Phase 17 Plan 02 complete — Router agent test suite: 21 tests offline, 12/12 labelled queries PASSED, accuracy gate cleared; ROUT-02, TST-01 marked complete
 - 2026-03-22: Phase 18 Plan 01 complete — Debugger agent module created; SuspectNode + DebugResult models + debug() with 5-factor anomaly scoring + BFS traversal; DBUG-01, DBUG-02, DBUG-03, DBUG-04, DBUG-05 marked complete; 114 tests passing
 - 2026-03-22: Phase 18 Plan 02 complete — Debugger agent test suite: 10 offline tests, debug_graph + mock_settings + mock_llm_factory fixtures; TST-02 marked complete; 124 tests passing
+- 2026-03-22: Phase 19 Plan 01 complete — Reviewer agent module created; Finding (7 fields) + ReviewResult (3 fields) models; _assemble_context() 1-hop CALLS-edge traversal; review() with LCEL structured-output chain and groundedness post-filter; REVW-01, REVW-02, REVW-03 marked complete; 124 tests passing

@@ -33,9 +33,9 @@
 
 ### Reviewer Agent
 
-- [ ] **REVW-01**: Reviewer assembles review context as: target node + 1-hop callers (predecessors) + 1-hop callees (successors)
-- [ ] **REVW-02**: Reviewer generates structured `Finding` objects with `severity`, `category`, `description`, `file_path`, `line_start`, `line_end`, and `suggestion`
-- [ ] **REVW-03**: When `selected_file` and `selected_range` are provided, reviewer targets the user-selected code range specifically
+- [x] **REVW-01**: Reviewer assembles review context as: target node + 1-hop callers (predecessors) + 1-hop callees (successors)
+- [x] **REVW-02**: Reviewer generates structured `Finding` objects with `severity`, `category`, `description`, `file_path`, `line_start`, `line_end`, and `suggestion`
+- [x] **REVW-03**: When `selected_file` and `selected_range` are provided, reviewer targets the user-selected code range specifically
 
 ### Tester Agent
 
@@ -136,9 +136,9 @@
 | DBUG-04 | Phase 18: debugger-agent | Complete |
 | DBUG-05 | Phase 18: debugger-agent | Complete |
 | TST-02 | Phase 18: debugger-agent | Complete |
-| REVW-01 | Phase 19: reviewer-agent | Pending |
-| REVW-02 | Phase 19: reviewer-agent | Pending |
-| REVW-03 | Phase 19: reviewer-agent | Pending |
+| REVW-01 | Phase 19: reviewer-agent | Complete |
+| REVW-02 | Phase 19: reviewer-agent | Complete |
+| REVW-03 | Phase 19: reviewer-agent | Complete |
 | TST-03 | Phase 19: reviewer-agent | Pending |
 | TEST-01 | Phase 20: tester-agent | Pending |
 | TEST-02 | Phase 20: tester-agent | Pending |
