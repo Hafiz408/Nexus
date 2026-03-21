@@ -188,7 +188,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 16. config-v2 | 1/1 | Complete    | 2026-03-21 |
 | 17. router-agent | 2/2 | Complete    | 2026-03-21 |
-| 18. debugger-agent | 0/2 | In progress | - |
+| 18. debugger-agent | 1/2 | In Progress|  |
 | 19. reviewer-agent | 0/? | Not started | - |
 | 20. tester-agent | 0/? | Not started | - |
 | 21. critic-agent | 0/? | Not started | - |

@@ -6,15 +6,15 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 17 — router-agent
-Plan: 02 — complete
-Status: Phase 17 complete (both plans done); Phase 17 accuracy gate PASSED 12/12; ready to begin Phase 18 (debugger-agent)
-Last activity: 2026-03-22 — Completed 17-02-PLAN.md (Router agent test suite: 21 tests, 12/12 accuracy gate PASSED)
+Phase: 18 — debugger-agent
+Plan: 01 — complete
+Status: Phase 18 Plan 01 complete; Debugger agent module created; DBUG-01 through DBUG-05 marked complete; ready for next plan
+Last activity: 2026-03-22 — Completed 18-01-PLAN.md (Debugger agent: SuspectNode, DebugResult, debug() with 5-factor anomaly scoring)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 17 complete, Phase 18 (debugger-agent) next
+**Current focus:** v2.0 multi-agent team — Phase 18 Plan 01 complete, next: Phase 19 (reviewer-agent)
 
-**Progress:** [██████████] 100%
+**Progress:** [████████░░] 80%
 
 ## Performance Metrics
 
@@ -40,6 +40,9 @@ Last activity: 2026-03-22 — Completed 17-02-PLAN.md (Router agent test suite: 
 - [Phase 17-router-agent]: Low-confidence fallback (<0.6) constructs new IntentResult preserving original confidence, overriding intent to 'explain' — Pydantic v2 immutability pattern
 - [Phase 17-router-agent]: Patch lazy-imported get_llm at source module (app.core.model_factory.get_llm), not consumer module — lazy imports don't appear in module __dict__
 - [Phase 17-router-agent]: LCEL mock pattern: use MagicMock(return_value=IntentResult(...)) for with_structured_output() result — pipe operator creates RunnableLambda that calls mock as __call__, not .invoke()
+- [Phase 18-debugger-agent]: Anomaly score weights 0.30/0.25/0.20/0.15/0.10 for complexity/error-absence/keyword-match/out-degree/inverted-PageRank
+- [Phase 18-debugger-agent]: Debugger entry node fallback uses highest in_degree (most-called) node when no function name matches bug description
+- [Phase 18-debugger-agent]: Lazy import pattern applied to both get_settings() and get_llm() inside debug() body — consistent with Phase 17 router.py pattern
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -58,3 +61,4 @@ Last activity: 2026-03-22 — Completed 17-02-PLAN.md (Router agent test suite: 
 - 2026-03-21: Phase 16 Plan 01 complete — V2 config fields added to Settings; .env.example created; CONF-01, CONF-02 marked complete
 - 2026-03-22: Phase 17 Plan 01 complete — Router agent module created; IntentResult model + route() function; ROUT-01, ROUT-03, ROUT-04 marked complete
 - 2026-03-22: Phase 17 Plan 02 complete — Router agent test suite: 21 tests offline, 12/12 labelled queries PASSED, accuracy gate cleared; ROUT-02, TST-01 marked complete
+- 2026-03-22: Phase 18 Plan 01 complete — Debugger agent module created; SuspectNode + DebugResult models + debug() with 5-factor anomaly scoring + BFS traversal; DBUG-01, DBUG-02, DBUG-03, DBUG-04, DBUG-05 marked complete; 114 tests passing

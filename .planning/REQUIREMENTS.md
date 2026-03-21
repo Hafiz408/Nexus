@@ -25,11 +25,11 @@
 
 ### Debugger Agent
 
-- [ ] **DBUG-01**: Debugger performs forward call graph traversal (up to 4 hops via CALLS edges) from entry point functions identified in the bug description
-- [ ] **DBUG-02**: Debugger scores each traversed node with an anomaly score (0.0–1.0) based on complexity, error handling, keyword match, coupling, and PageRank factors
-- [ ] **DBUG-03**: Debugger performs backward traversal from top suspect to compute impact radius
-- [ ] **DBUG-04**: Debugger returns ranked list of ≤5 suspect functions with `node_id`, `file_path`, `line_start`, `anomaly_score`, and reasoning
-- [ ] **DBUG-05**: Debugger generates a diagnosis narrative citing only functions in the traversal path
+- [x] **DBUG-01**: Debugger performs forward call graph traversal (up to 4 hops via CALLS edges) from entry point functions identified in the bug description
+- [x] **DBUG-02**: Debugger scores each traversed node with an anomaly score (0.0–1.0) based on complexity, error handling, keyword match, coupling, and PageRank factors
+- [x] **DBUG-03**: Debugger performs backward traversal from top suspect to compute impact radius
+- [x] **DBUG-04**: Debugger returns ranked list of ≤5 suspect functions with `node_id`, `file_path`, `line_start`, `anomaly_score`, and reasoning
+- [x] **DBUG-05**: Debugger generates a diagnosis narrative citing only functions in the traversal path
 
 ### Reviewer Agent
 
@@ -130,11 +130,11 @@
 | ROUT-03 | Phase 17: router-agent | Complete |
 | ROUT-04 | Phase 17: router-agent | Complete |
 | TST-01 | Phase 17: router-agent | Complete |
-| DBUG-01 | Phase 18: debugger-agent | Pending |
-| DBUG-02 | Phase 18: debugger-agent | Pending |
-| DBUG-03 | Phase 18: debugger-agent | Pending |
-| DBUG-04 | Phase 18: debugger-agent | Pending |
-| DBUG-05 | Phase 18: debugger-agent | Pending |
+| DBUG-01 | Phase 18: debugger-agent | Complete |
+| DBUG-02 | Phase 18: debugger-agent | Complete |
+| DBUG-03 | Phase 18: debugger-agent | Complete |
+| DBUG-04 | Phase 18: debugger-agent | Complete |
+| DBUG-05 | Phase 18: debugger-agent | Complete |
 | TST-02 | Phase 18: debugger-agent | Pending |
 | REVW-01 | Phase 19: reviewer-agent | Pending |
 | REVW-02 | Phase 19: reviewer-agent | Pending |
