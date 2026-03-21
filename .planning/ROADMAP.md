@@ -113,7 +113,11 @@ Plans:
   3. Generated test code contains at least 3 test functions covering happy path, error case, and edge case
   4. The derived test file path follows the detected framework convention (e.g. `tests/test_<name>.py` for pytest)
   5. Mock statements use the correct syntax for the detected framework — pytest uses `unittest.mock.patch`, jest uses `jest.fn()`
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Implement app/agent/tester.py (_LLMTestOutput + TestResult models + _detect_framework + _get_callees + _derive_test_path + test() function)
+- [ ] 20-02-PLAN.md — Write test_tester.py (10 offline tests: framework detection, mock targets, file path convention, ≥3 test functions, mock syntax)
 
 ### Phase 21: critic-agent
 **Goal**: The Critic agent enforces a quality gate on every specialist output — routing low-quality responses back for improvement while guaranteeing the loop always terminates
@@ -193,8 +197,8 @@ Plans:
 | 16. config-v2 | 1/1 | Complete    | 2026-03-21 |
 | 17. router-agent | 2/2 | Complete    | 2026-03-21 |
 | 18. debugger-agent | 2/2 | Complete    | 2026-03-21 |
-| 19. reviewer-agent | 2/2 | Complete   | 2026-03-21 |
-| 20. tester-agent | 0/? | Not started | - |
+| 19. reviewer-agent | 2/2 | Complete    | 2026-03-21 |
+| 20. tester-agent | 0/2 | Not started | - |
 | 21. critic-agent | 0/? | Not started | - |
 | 22. orchestrator | 0/? | Not started | - |
 | 23. mcp-tools | 0/? | Not started | - |
