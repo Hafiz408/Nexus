@@ -152,6 +152,19 @@ def debug_graph() -> nx.DiGraph:
 
 
 @pytest.fixture
+def mock_settings():
+    """Minimal settings stub with debugger_max_hops=4.
+
+    Passed directly to debug() to bypass get_settings(), which requires
+    postgres env vars not present in the test environment.
+    debug() accepts an optional settings parameter for exactly this purpose.
+    """
+    settings = MagicMock()
+    settings.debugger_max_hops = 4
+    return settings
+
+
+@pytest.fixture
 def mock_llm_factory():
     """Patch get_llm at source module — lazy import requires source-level patch.
 
@@ -185,9 +198,9 @@ def mock_llm_factory():
 # Test 1 — Traversal visits correct hop nodes (DBUG-01)
 # ---------------------------------------------------------------------------
 
-def test_traversal_visits_hop_nodes(mock_llm_factory, debug_graph):
+def test_traversal_visits_hop_nodes(mock_llm_factory, mock_settings, debug_graph):
     """BFS from entry must include hop1a and hop1b in traversal_path."""
-    result = debug("bug in entry function", debug_graph)
+    result = debug("bug in entry function", debug_graph, settings=mock_settings)
     assert "src.py::hop1a" in result.traversal_path
     assert "src.py::hop1b" in result.traversal_path
 
@@ -196,9 +209,9 @@ def test_traversal_visits_hop_nodes(mock_llm_factory, debug_graph):
 # Test 2 — Entry node appears in traversal path (DBUG-01)
 # ---------------------------------------------------------------------------
 
-def test_traversal_includes_entry_node(mock_llm_factory, debug_graph):
+def test_traversal_includes_entry_node(mock_llm_factory, mock_settings, debug_graph):
     """Entry node is the BFS start and must appear in traversal_path."""
-    result = debug("bug in entry function", debug_graph)
+    result = debug("bug in entry function", debug_graph, settings=mock_settings)
     assert "src.py::entry" in result.traversal_path
 
 
@@ -206,22 +219,27 @@ def test_traversal_includes_entry_node(mock_llm_factory, debug_graph):
 # Test 3 — Traversal depth reaches hop3 within max_hops=4 (DBUG-01)
 # ---------------------------------------------------------------------------
 
-def test_traversal_depth_respects_max_hops(mock_llm_factory, debug_graph):
-    """hop3 is at depth 3 from entry; with default max_hops=4 it must be reached."""
-    result = debug("bug in entry", debug_graph)
+def test_traversal_depth_respects_max_hops(mock_llm_factory, mock_settings, debug_graph):
+    """hop3 is at depth 3 from entry; with default max_hops=4 it must be reached.
+
+    debug_graph has 6 reachable nodes from entry: entry, hop1a, hop1b, hop2a,
+    hop2b, hop3 — all within 3 hops of entry. The traversal path may include
+    all 6 nodes (no phantom nodes beyond the graph).
+    """
+    result = debug("bug in entry", debug_graph, settings=mock_settings)
     # hop3 reachable: entry(0) -> hop1b(1) -> hop2b(2) -> hop3(3) — within max_hops=4
     assert "lib.py::hop3" in result.traversal_path
-    # Traversal should contain at most the 5 reachable nodes (no phantom nodes)
-    assert len(result.traversal_path) <= 5
+    # All 6 nodes are reachable within max_hops=4; no phantom nodes beyond that
+    assert len(result.traversal_path) <= 6
 
 
 # ---------------------------------------------------------------------------
 # Test 4 — Anomaly scores in [0.0, 1.0] range (DBUG-02)
 # ---------------------------------------------------------------------------
 
-def test_anomaly_score_range(mock_llm_factory, debug_graph):
+def test_anomaly_score_range(mock_llm_factory, mock_settings, debug_graph):
     """Every suspect's anomaly_score must be within [0.0, 1.0]."""
-    result = debug("risky_call failing", debug_graph)
+    result = debug("risky_call failing", debug_graph, settings=mock_settings)
     assert len(result.suspects) > 0
     for suspect in result.suspects:
         assert 0.0 <= suspect.anomaly_score <= 1.0, (
@@ -233,9 +251,9 @@ def test_anomaly_score_range(mock_llm_factory, debug_graph):
 # Test 5 — Suspects sorted by score descending (DBUG-02 / DBUG-04)
 # ---------------------------------------------------------------------------
 
-def test_suspects_sorted_descending(mock_llm_factory, debug_graph):
+def test_suspects_sorted_descending(mock_llm_factory, mock_settings, debug_graph):
     """Suspects list must be sorted by anomaly_score in descending order."""
-    result = debug("unsafe operation in hop2a", debug_graph)
+    result = debug("unsafe operation in hop2a", debug_graph, settings=mock_settings)
     scores = [s.anomaly_score for s in result.suspects]
     assert scores == sorted(scores, reverse=True), (
         "Suspects must be sorted by score descending"
@@ -246,9 +264,9 @@ def test_suspects_sorted_descending(mock_llm_factory, debug_graph):
 # Test 6 — At most 5 suspects returned (DBUG-04)
 # ---------------------------------------------------------------------------
 
-def test_max_five_suspects(mock_llm_factory, debug_graph):
+def test_max_five_suspects(mock_llm_factory, mock_settings, debug_graph):
     """debug() must return at most 5 suspects regardless of traversal size."""
-    result = debug("some bug", debug_graph)
+    result = debug("some bug", debug_graph, settings=mock_settings)
     assert len(result.suspects) <= 5
 
 
@@ -256,10 +274,10 @@ def test_max_five_suspects(mock_llm_factory, debug_graph):
 # Test 7 — SuspectNode has required schema fields (DBUG-04)
 # ---------------------------------------------------------------------------
 
-def test_suspect_node_schema(mock_llm_factory, debug_graph):
+def test_suspect_node_schema(mock_llm_factory, mock_settings, debug_graph):
     """Each SuspectNode must have non-empty node_id, str file_path, int line_start,
     float anomaly_score, and non-empty reasoning."""
-    result = debug("error in hop2a", debug_graph)
+    result = debug("error in hop2a", debug_graph, settings=mock_settings)
     for suspect in result.suspects:
         assert isinstance(suspect.node_id, str) and suspect.node_id
         assert isinstance(suspect.file_path, str)
@@ -272,9 +290,9 @@ def test_suspect_node_schema(mock_llm_factory, debug_graph):
 # Test 8 — Impact radius is set of CALLS-edge predecessors of top suspect (DBUG-03)
 # ---------------------------------------------------------------------------
 
-def test_impact_radius_correct(mock_llm_factory, debug_graph):
+def test_impact_radius_correct(mock_llm_factory, mock_settings, debug_graph):
     """impact_radius must equal the direct CALLS-edge callers of the top suspect."""
-    result = debug("error in hop2a", debug_graph)
+    result = debug("error in hop2a", debug_graph, settings=mock_settings)
     if not result.suspects:
         pytest.skip("no suspects — graph topology may not score any node")
     top_suspect_id = result.suspects[0].node_id
@@ -291,9 +309,9 @@ def test_impact_radius_correct(mock_llm_factory, debug_graph):
 # Test 9 — Diagnosis is a non-empty string (DBUG-05)
 # ---------------------------------------------------------------------------
 
-def test_diagnosis_is_non_empty_string(mock_llm_factory, debug_graph):
+def test_diagnosis_is_non_empty_string(mock_llm_factory, mock_settings, debug_graph):
     """diagnosis must be a non-empty string sourced from the LLM response."""
-    result = debug("bug in entry", debug_graph)
+    result = debug("bug in entry", debug_graph, settings=mock_settings)
     assert isinstance(result.diagnosis, str)
     assert len(result.diagnosis) > 0
 
@@ -302,12 +320,12 @@ def test_diagnosis_is_non_empty_string(mock_llm_factory, debug_graph):
 # Test 10 — Fallback when no entry node matched (DBUG-01 edge case)
 # ---------------------------------------------------------------------------
 
-def test_fallback_when_no_entry_matched(mock_llm_factory, debug_graph):
+def test_fallback_when_no_entry_matched(mock_llm_factory, mock_settings, debug_graph):
     """When bug description matches no node name, debug() must not raise and
     must return a DebugResult with a non-empty traversal_path (fallback to
     highest in_degree node)."""
     # "xyz_nonexistent" matches no node name in debug_graph
-    result = debug("error in xyz_nonexistent function", debug_graph)
+    result = debug("error in xyz_nonexistent function", debug_graph, settings=mock_settings)
     assert isinstance(result, DebugResult)
     # traversal_path is non-empty — fallback entry node selected
     assert len(result.traversal_path) >= 1
