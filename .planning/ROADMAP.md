@@ -190,7 +190,10 @@ Plans:
   1. The sidebar shows five pill-style options (Auto, Explain, Debug, Review, Test) and exactly one is active at a time
   2. Selecting Debug and submitting a query sends `intent_hint: "debug"` in the request body; selecting Auto omits the field entirely
   3. The Send button label matches the selected intent: Auto → "Ask", Explain → "Explain", Debug → "Debug", Review → "Review", Test → "Test"
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 25-01-PLAN.md — Add intent selector state + pill UI (App.tsx + index.css) + thread intent_hint through message contract and host chain (types.ts + SidebarProvider.ts + SseStream.ts)
 
 ### Phase 26: extension-result-rendering
 **Goal**: Debug, Review, and Test responses render in structured panels in the VS Code webview so developers can navigate suspects, findings, and generated code without leaving the editor
@@ -218,8 +221,8 @@ Plans:
 | 21. critic-agent | 2/2 | Complete    | 2026-03-21 |
 | 22. orchestrator | 2/2 | Complete    | 2026-03-21 |
 | 23. mcp-tools | 2/2 | Complete    | 2026-03-21 |
-| 24. query-endpoint-v2 | 2/2 | Complete   | 2026-03-21 |
-| 25. extension-intent-selector | 0/? | Not started | - |
+| 24. query-endpoint-v2 | 2/2 | Complete    | 2026-03-21 |
+| 25. extension-intent-selector | 0/1 | Not started | - |
 | 26. extension-result-rendering | 0/? | Not started | - |
 
 ---

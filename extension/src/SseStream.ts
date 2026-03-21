@@ -6,7 +6,8 @@ export async function streamQuery(
   repoPath: string,
   webview: vscode.Webview,
   backendUrl: string,
-  onCitations?: (citations: Citation[]) => void
+  onCitations?: (citations: Citation[]) => void,
+  intentHint?: string,
 ): Promise<void> {
   const config = vscode.workspace.getConfiguration('nexus');
   const maxNodes = config.get<number>('maxNodes', 10);
@@ -22,6 +23,7 @@ export async function streamQuery(
         repo_path: repoPath,
         max_nodes: maxNodes,
         hop_depth: hopDepth,
+        ...(intentHint ? { intent_hint: intentHint } : {}),
       }),
     });
   } catch (err) {

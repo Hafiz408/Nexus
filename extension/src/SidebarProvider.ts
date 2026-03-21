@@ -58,7 +58,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               this._repoPath,
               webviewView.webview,
               backendUrl,
-              (citations) => { void this._highlight.highlightCitations(citations); }
+              (citations) => { void this._highlight.highlightCitations(citations); },
+              msg.intent_hint,
             );
           } else {
             void webviewView.webview.postMessage({

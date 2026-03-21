@@ -8,7 +8,7 @@ export type HostToWebviewMessage =
 
 // Messages sent FROM webview TO extension host
 export type WebviewToHostMessage =
-  | { type: 'query'; question: string }
+  | { type: 'query'; question: string; intent_hint?: string }
   | { type: 'openFile'; filePath: string; lineStart: number }
   | { type: 'indexWorkspace' }
   | { type: 'clearIndex' };
