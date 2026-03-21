@@ -183,7 +183,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 16. config-v2 | 1/1 | Complete    | 2026-03-21 |
-| 17. router-agent | 0/2 | Not started | - |
+| 17. router-agent | 1/2 | In Progress|  |
 | 18. debugger-agent | 0/? | Not started | - |
 | 19. reviewer-agent | 0/? | Not started | - |
 | 20. tester-agent | 0/? | Not started | - |
