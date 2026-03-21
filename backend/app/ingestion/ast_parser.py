@@ -131,7 +131,7 @@ def _parse_python(
         sig = _extract_signature(cnode, source_bytes)
         docstring = _extract_docstring(cnode, source_bytes)
         body_text = _body_text(cnode, source_bytes)
-        preview = body_text[:300]
+        preview = _body_preview(body_text)
         emb = f"{sig}\n{docstring or ''}\n{preview}"
         nodes.append(
             CodeNode(
@@ -165,7 +165,7 @@ def _parse_python(
         sig = _extract_signature(fnode, source_bytes)
         docstring = _extract_docstring(fnode, source_bytes)
         body_text = _body_text(fnode, source_bytes)
-        preview = body_text[:300]
+        preview = _body_preview(body_text)
         emb = f"{sig}\n{docstring or ''}\n{preview}"
         cnode_obj = CodeNode(
             node_id=node_id,
@@ -236,7 +236,7 @@ def _parse_typescript(
         node_id = f"{rel_path}::{cname}"
         sig = _ts_signature(cnode, source_bytes)
         body_text = source_bytes[cnode.start_byte:cnode.end_byte].decode("utf-8", errors="replace")
-        preview = body_text[:300]
+        preview = _body_preview(body_text)
         nodes.append(CodeNode(
             node_id=node_id, name=cname, type="class", file_path=abs_path,
             line_start=cnode.start_point[0] + 1, line_end=cnode.end_point[0] + 1,
@@ -254,7 +254,7 @@ def _parse_typescript(
         node_id = f"{rel_path}::{fname}"
         sig = _ts_signature(fnode, source_bytes)
         body_text = source_bytes[fnode.start_byte:fnode.end_byte].decode("utf-8", errors="replace")
-        preview = body_text[:300]
+        preview = _body_preview(body_text)
         nodes.append(CodeNode(
             node_id=node_id, name=fname, type="function", file_path=abs_path,
             line_start=fnode.start_point[0] + 1, line_end=fnode.end_point[0] + 1,
@@ -272,7 +272,7 @@ def _parse_typescript(
         node_id = f"{rel_path}::{mname}"
         sig = _ts_signature(mnode, source_bytes)
         body_text = source_bytes[mnode.start_byte:mnode.end_byte].decode("utf-8", errors="replace")
-        preview = body_text[:300]
+        preview = _body_preview(body_text)
         nodes.append(CodeNode(
             node_id=node_id, name=mname, type="method", file_path=abs_path,
             line_start=mnode.start_point[0] + 1, line_end=mnode.end_point[0] + 1,
@@ -292,7 +292,7 @@ def _parse_typescript(
         node_id = f"{rel_path}::{aname}"
         sig = source_bytes[anode.start_byte:anode.end_byte].decode("utf-8", errors="replace").split("\n")[0][:120]
         body_text = source_bytes[anode.start_byte:anode.end_byte].decode("utf-8", errors="replace")
-        preview = body_text[:300]
+        preview = _body_preview(body_text)
         nodes.append(CodeNode(
             node_id=node_id, name=aname, type="function", file_path=abs_path,
             line_start=anode.start_point[0] + 1, line_end=anode.end_point[0] + 1,
@@ -354,6 +354,21 @@ def _body_text(node, source_bytes: bytes) -> str:
     if body:
         return source_bytes[body.start_byte:body.end_byte].decode("utf-8", errors="replace")
     return source_bytes[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+
+
+def _body_preview(body_text: str, head: int = 1000, tail: int = 3000) -> str:
+    """Return a preview of a function body for indexing and LLM context.
+
+    For short bodies (<= head+tail chars), returns the full text.
+    For long bodies (e.g. factory functions with large instruction strings),
+    returns the first `head` chars + '\\n[...]\\n' + last `tail` chars.
+    This ensures both the early setup code AND the key return/construction
+    statement at the end (e.g. Team(members=[...])) are captured.
+    """
+    total = head + tail
+    if len(body_text) <= total:
+        return body_text
+    return body_text[:head] + "\n[...]\n" + body_text[-tail:]
 
 
 def _compute_complexity(body_text: str) -> int:
