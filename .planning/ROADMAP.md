@@ -161,7 +161,11 @@ Plans:
   4. A path containing `..` is rejected immediately with an error — no file is written
   5. A file with an extension outside the allowed set is rejected; an existing file with `overwrite=False` returns an error without modifying the file
   6. `test_mcp_tools.py` covers all these behaviours with mocked GitHub API — no live network calls
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 23-01-PLAN.md — Add httpx+tenacity deps + implement backend/app/mcp/tools.py (post_review_comments + write_test_file)
+- [ ] 23-02-PLAN.md — Write test_mcp_tools.py (12+ offline tests: comment cap, retry, 422 skip, path guards, extension filter, overwrite)
 
 ### Phase 24: query-endpoint-v2
 **Goal**: The `/query` endpoint is wired to the LangGraph orchestrator and passes a full regression suite so V2 is live without breaking any existing V1 consumer
@@ -208,8 +212,8 @@ Plans:
 | 19. reviewer-agent | 2/2 | Complete    | 2026-03-21 |
 | 20. tester-agent | 2/2 | Complete    | 2026-03-21 |
 | 21. critic-agent | 2/2 | Complete    | 2026-03-21 |
-| 22. orchestrator | 2/2 | Complete   | 2026-03-21 |
-| 23. mcp-tools | 0/? | Not started | - |
+| 22. orchestrator | 2/2 | Complete    | 2026-03-21 |
+| 23. mcp-tools | 0/2 | Not started | - |
 | 24. query-endpoint-v2 | 0/? | Not started | - |
 | 25. extension-intent-selector | 0/? | Not started | - |
 | 26. extension-result-rendering | 0/? | Not started | - |
