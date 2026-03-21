@@ -4,6 +4,12 @@
   padding: 0;
 }
 
+/* Strip WebKit's default button chrome — must come before all button rules */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 body {
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
@@ -24,8 +30,9 @@ body {
 
 /* ── Panel: Header — index status ─────────────────── */
 .panel-header {
-  padding: 8px 10px 7px;
-  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 7px 12px 8px;
+  background: var(--vscode-sideBarSectionHeader-background, rgba(128,128,128,0.08));
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border));
   flex-shrink: 0;
 }
 
@@ -117,12 +124,14 @@ body {
 
 /* ── Section bar (shared by chat + general) ────────── */
 .section-bar {
-  padding: 4px 10px;
+  padding: 4px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
   min-height: 26px;
+  background: var(--vscode-sideBarSectionHeader-background, rgba(128,128,128,0.08));
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border));
 }
 
 .section-label {
@@ -156,7 +165,7 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 10px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -329,7 +338,7 @@ body {
 
 /* ── Input area ────────────────────────────────────── */
 .input-area {
-  padding: 7px 10px;
+  padding: 7px 12px;
   border-top: 1px solid var(--vscode-panel-border);
   display: flex;
   gap: 6px;
@@ -344,7 +353,8 @@ body {
   border: 1px solid var(--vscode-input-border, transparent);
   border-radius: 4px;
   padding: 6px 8px;
-  font-family: var(--vscode-font-family);
+  /* Explicit fallback prevents WebKit from defaulting to monospace */
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
   font-size: var(--vscode-font-size);
   resize: none;
   min-height: 32px;
@@ -388,11 +398,14 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  border-top: 1px solid var(--vscode-panel-border);
 }
 
 .general-section-bar {
   cursor: pointer;
   user-select: none;
+  /* override the section-bar bottom border — general uses border-top on panel-general */
+  border-bottom: none;
 }
 
 .general-section-bar:hover {
