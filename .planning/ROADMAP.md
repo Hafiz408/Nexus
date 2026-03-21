@@ -81,7 +81,11 @@ Plans:
   3. The returned list contains at most 5 suspects, each with node_id, file_path, line_start, anomaly_score, and a reasoning string
   4. The diagnosis narrative mentions only functions that appear in the traversal path — no hallucinated function names
   5. `test_debugger.py` confirms traversal order, anomaly scoring, impact radius, and diagnosis correctness using mock graph — no live API calls
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — Implement app/agent/debugger.py (Pydantic models + traversal + scoring + debug() function)
+- [ ] 18-02-PLAN.md — Write test_debugger.py (10 offline tests: traversal, scoring, impact radius, diagnosis, fallback)
 
 ### Phase 19: reviewer-agent
 **Goal**: The Reviewer agent assembles graph-grounded context and produces structured code findings that cite real nodes so developers receive actionable, non-hallucinated review feedback
@@ -183,8 +187,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 16. config-v2 | 1/1 | Complete    | 2026-03-21 |
-| 17. router-agent | 2/2 | Complete   | 2026-03-21 |
-| 18. debugger-agent | 0/? | Not started | - |
+| 17. router-agent | 2/2 | Complete    | 2026-03-21 |
+| 18. debugger-agent | 0/2 | In progress | - |
 | 19. reviewer-agent | 0/? | Not started | - |
 | 20. tester-agent | 0/? | Not started | - |
 | 21. critic-agent | 0/? | Not started | - |
