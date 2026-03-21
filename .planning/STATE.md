@@ -6,15 +6,15 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 22 — orchestrator
-Plan: 02 — complete
-Status: Phase 22 Plan 02 complete; 6 orchestrator integration tests all passing offline; TST-07 marked complete; 164 tests passing
-Last activity: 2026-03-22 — Completed 22-02-PLAN.md (6 integration tests for LangGraph orchestrator: all 4 routing paths + critic retry loop + hard-cap termination; _ExplainResult converted to Pydantic BaseModel for MemorySaver serialization)
+Phase: 23 — mcp-tools
+Plan: 01 — complete
+Status: Phase 23 Plan 01 complete; MCP tool layer created (post_review_comments + write_test_file); MCP-01 through MCP-06 marked complete; 164 tests passing
+Last activity: 2026-03-22 — Completed 23-01-PLAN.md (MCP tool layer: post_review_comments with 10-cap/overflow/5xx-retry/422-fallback, write_test_file with path traversal guard/extension allowlist; httpx + tenacity added to requirements.txt)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 22 complete; next: Phase 23 (API integration)
+**Current focus:** v2.0 multi-agent team — Phase 23 Plan 01 complete; next: Phase 23 Plan 02 or Phase 24
 
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 93%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Last activity: 2026-03-22 — Completed 22-02-PLAN.md (6 integration tests for L
 - [Phase 22-orchestrator]: _ExplainResult converted from plain class to Pydantic BaseModel — MemorySaver cannot msgpack-serialize plain Python classes; all state fields must be Pydantic-compatible for checkpointing
 - [Phase 22-orchestrator]: G=None in orchestrator test base_state — MemorySaver cannot serialize nx.DiGraph even with Optional[object] typing; explain_node try/except handles None-graph gracefully
 - [Phase 22-orchestrator]: LangChain LCEL mock pattern: set mock.return_value and mock.invoke.return_value — LCEL pipe calls llm via __call__ not .invoke() so both paths must be covered
+- [Phase 23-mcp-tools]: [Phase 23-mcp-tools]: httpx.Client used as context manager in post_review_comments() for consistent mock patch target; tenacity 5xx-only retry predicate; '..' path traversal guard before Path ops; falsy github_token check
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -93,3 +94,4 @@ Last activity: 2026-03-22 — Completed 22-02-PLAN.md (6 integration tests for L
 - 2026-03-22: Phase 21 Plan 02 complete — Critic agent test suite: 10 offline tests, mock_settings (max_critic_loops=2, critic_threshold=0.7) + module-level helper builders; TST-05 marked complete; 158 tests passing
 - 2026-03-22: Phase 22 Plan 01 complete — Orchestrator module created; NexusState (12 fields) + build_graph() factory; LangGraph StateGraph router→specialist→critic pipeline with conditional retry loop; langgraph + langgraph-checkpoint-sqlite added to requirements.txt; ORCH-01, ORCH-02, ORCH-03 marked complete; 158 tests passing
 - 2026-03-22: Phase 22 Plan 02 complete — Orchestrator test suite: 6 offline integration tests, MemorySaver + G=None + source-module get_llm patch + per-agent mocks; _ExplainResult converted to Pydantic BaseModel for MemorySaver serialization; TST-07 marked complete; 164 tests passing
+- 2026-03-22: Phase 23 Plan 01 complete — MCP tool layer created; post_review_comments() (10-cap + overflow + 5xx retry + 422 per-finding fallback) + write_test_file() (path traversal guard + extension allowlist + overwrite protection); httpx + tenacity added to requirements.txt; MCP-01 through MCP-06 marked complete; 164 tests passing

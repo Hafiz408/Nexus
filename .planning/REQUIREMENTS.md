@@ -54,12 +54,12 @@
 
 ### MCP Tool Layer
 
-- [ ] **MCP-01**: GitHub MCP posts Reviewer findings as inline PR comments (max 10 per call; excess → summary comment); skips silently if no PR context or `github_token` not set
-- [ ] **MCP-02**: GitHub MCP retries on 5xx errors (3 attempts, exponential backoff); skips invalid-line findings (422) with warning
-- [ ] **MCP-03**: Filesystem MCP writes Tester output to derived test file path; creates parent directories
-- [ ] **MCP-04**: Filesystem MCP rejects any path containing `..` (path traversal protection)
-- [ ] **MCP-05**: Filesystem MCP rejects extensions outside `.py`, `.ts`, `.js`, `.tsx`, `.jsx`, `.java`, `.go`
-- [ ] **MCP-06**: Filesystem MCP returns error (not overwrite) when file exists and `overwrite=False`
+- [x] **MCP-01**: GitHub MCP posts Reviewer findings as inline PR comments (max 10 per call; excess → summary comment); skips silently if no PR context or `github_token` not set
+- [x] **MCP-02**: GitHub MCP retries on 5xx errors (3 attempts, exponential backoff); skips invalid-line findings (422) with warning
+- [x] **MCP-03**: Filesystem MCP writes Tester output to derived test file path; creates parent directories
+- [x] **MCP-04**: Filesystem MCP rejects any path containing `..` (path traversal protection)
+- [x] **MCP-05**: Filesystem MCP rejects extensions outside `.py`, `.ts`, `.js`, `.tsx`, `.jsx`, `.java`, `.go`
+- [x] **MCP-06**: Filesystem MCP returns error (not overwrite) when file exists and `overwrite=False`
 
 ### Test Suite
 
@@ -155,12 +155,12 @@
 | ORCH-02 | Phase 22: orchestrator | Complete |
 | ORCH-03 | Phase 22: orchestrator | Complete |
 | TST-07 | Phase 22: orchestrator | Complete |
-| MCP-01 | Phase 23: mcp-tools | Pending |
-| MCP-02 | Phase 23: mcp-tools | Pending |
-| MCP-03 | Phase 23: mcp-tools | Pending |
-| MCP-04 | Phase 23: mcp-tools | Pending |
-| MCP-05 | Phase 23: mcp-tools | Pending |
-| MCP-06 | Phase 23: mcp-tools | Pending |
+| MCP-01 | Phase 23: mcp-tools | Complete |
+| MCP-02 | Phase 23: mcp-tools | Complete |
+| MCP-03 | Phase 23: mcp-tools | Complete |
+| MCP-04 | Phase 23: mcp-tools | Complete |
+| MCP-05 | Phase 23: mcp-tools | Complete |
+| MCP-06 | Phase 23: mcp-tools | Complete |
 | TST-06 | Phase 23: mcp-tools | Pending |
 | TST-08 | Phase 24: query-endpoint-v2 | Pending |
 | TST-09 | Phase 24: query-endpoint-v2 | Pending |
