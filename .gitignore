@@ -20,3 +20,16 @@ venv/
 
 # OS
 .DS_Store
+
+# GSD planning directory — local workflow only, not for remote
+.planning/
+
+# Tool artifacts
+.playwright-mcp/
+.superpowers/
+
+# Temp/preview files
+nexus-preview*.png
+nexus-preview*.html
+nexus_v2_prd.md
+nexus_v2_starter_prompt.md
