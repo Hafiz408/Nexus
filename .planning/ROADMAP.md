@@ -144,7 +144,11 @@ Plans:
   2. Sending the same thread_id in two successive requests continues the prior conversation (SqliteSaver checkpointing working)
   3. A V1 query sent without `intent_hint` returns the same answer quality as before — zero regressions on the explain path
   4. `test_orchestrator.py` passes all 6 integration tests (explain, debug, review, test, retry loop, max_loops termination) using mock LLM and mock graph
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 22-01-PLAN.md — Add langgraph deps to requirements.txt + implement app/agent/orchestrator.py (NexusState + build_graph())
+- [ ] 22-02-PLAN.md — Write test_orchestrator.py (6 integration tests: all 4 intents + retry loop + max_loops termination)
 
 ### Phase 23: mcp-tools
 **Goal**: GitHub MCP and Filesystem MCP give agents the ability to post PR comments and write test files safely so the output of review and test sessions has real-world effect
@@ -203,8 +207,8 @@ Plans:
 | 18. debugger-agent | 2/2 | Complete    | 2026-03-21 |
 | 19. reviewer-agent | 2/2 | Complete    | 2026-03-21 |
 | 20. tester-agent | 2/2 | Complete    | 2026-03-21 |
-| 21. critic-agent | 2/2 | Complete   | 2026-03-21 |
-| 22. orchestrator | 0/? | Not started | - |
+| 21. critic-agent | 2/2 | Complete    | 2026-03-21 |
+| 22. orchestrator | 0/2 | In progress | - |
 | 23. mcp-tools | 0/? | Not started | - |
 | 24. query-endpoint-v2 | 0/? | Not started | - |
 | 25. extension-intent-selector | 0/? | Not started | - |
