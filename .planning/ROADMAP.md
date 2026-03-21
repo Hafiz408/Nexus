@@ -32,7 +32,7 @@
 - [x] **Phase 19: reviewer-agent** — Caller/callee context assembly + structured Finding schema (completed 2026-03-21)
 - [x] **Phase 20: tester-agent** — Framework detection + dependency-aware test generation (completed 2026-03-21)
 - [x] **Phase 21: critic-agent** — LLM-as-judge quality gate with 2-loop hard cap (completed 2026-03-21)
-- [ ] **Phase 22: orchestrator** — LangGraph StateGraph wiring all agents with checkpointing
+- [x] **Phase 22: orchestrator** — LangGraph StateGraph wiring all agents with checkpointing (completed 2026-03-21)
 - [ ] **Phase 23: mcp-tools** — GitHub PR commenting + Filesystem safe test file writing
 - [ ] **Phase 24: query-endpoint-v2** — Wire orchestrator into /query; confirm zero V1 regressions
 - [ ] **Phase 25: extension-intent-selector** — 5-option intent selector UI + intent_hint wiring
@@ -208,7 +208,7 @@ Plans:
 | 19. reviewer-agent | 2/2 | Complete    | 2026-03-21 |
 | 20. tester-agent | 2/2 | Complete    | 2026-03-21 |
 | 21. critic-agent | 2/2 | Complete    | 2026-03-21 |
-| 22. orchestrator | 1/2 | In Progress|  |
+| 22. orchestrator | 2/2 | Complete   | 2026-03-21 |
 | 23. mcp-tools | 0/? | Not started | - |
 | 24. query-endpoint-v2 | 0/? | Not started | - |
 | 25. extension-intent-selector | 0/? | Not started | - |

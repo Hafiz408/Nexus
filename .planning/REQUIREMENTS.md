@@ -69,7 +69,7 @@
 - [x] **TST-04**: `test_tester.py` — framework detection; mock targets; file path convention; ≥3 test functions; mock statements present
 - [x] **TST-05**: `test_critic.py` — groundedness math; retry routing; loop cap; feedback cleared on pass
 - [ ] **TST-06**: `test_mcp_tools.py` — GitHub API mocked; 10-comment limit; path traversal rejected; extension filter; retry on 5xx
-- [ ] **TST-07**: `test_orchestrator.py` — 6 integration tests (explain/debug/review/test/retry/max_loops) all pass
+- [x] **TST-07**: `test_orchestrator.py` — 6 integration tests (explain/debug/review/test/retry/max_loops) all pass
 - [ ] **TST-08**: All V1 tests (`pytest backend/tests/`) continue to pass (zero regressions)
 - [ ] **TST-09**: All V2 agent tests use mock LLM + mock graph (no live API calls in test suite)
 
@@ -154,7 +154,7 @@
 | ORCH-01 | Phase 22: orchestrator | Complete |
 | ORCH-02 | Phase 22: orchestrator | Complete |
 | ORCH-03 | Phase 22: orchestrator | Complete |
-| TST-07 | Phase 22: orchestrator | Pending |
+| TST-07 | Phase 22: orchestrator | Complete |
 | MCP-01 | Phase 23: mcp-tools | Pending |
 | MCP-02 | Phase 23: mcp-tools | Pending |
 | MCP-03 | Phase 23: mcp-tools | Pending |

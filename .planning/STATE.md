@@ -7,14 +7,14 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 22 — orchestrator
-Plan: 01 — complete
-Status: Phase 22 Plan 01 complete; orchestrator.py NexusState + build_graph() LangGraph pipeline; ORCH-01, ORCH-02, ORCH-03 marked complete; 158 tests passing
-Last activity: 2026-03-22 — Completed 22-01-PLAN.md (NexusState 12-field TypedDict + build_graph() factory + 6 node functions wiring router→specialist→critic with conditional retry loop; langgraph deps added to requirements.txt)
+Plan: 02 — complete
+Status: Phase 22 Plan 02 complete; 6 orchestrator integration tests all passing offline; TST-07 marked complete; 164 tests passing
+Last activity: 2026-03-22 — Completed 22-02-PLAN.md (6 integration tests for LangGraph orchestrator: all 4 routing paths + critic retry loop + hard-cap termination; _ExplainResult converted to Pydantic BaseModel for MemorySaver serialization)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 22 Plan 01 complete; next: Phase 22 Plan 02 (orchestrator tests) or Phase 23 (API integration)
+**Current focus:** v2.0 multi-agent team — Phase 22 complete; next: Phase 23 (API integration)
 
-**Progress:** [█████████░] 92%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -62,6 +62,9 @@ Last activity: 2026-03-22 — Completed 22-01-PLAN.md (NexusState 12-field Typed
 - [Phase 22-orchestrator]: G typed as Optional[object] in NexusState so SqliteSaver does not attempt JSON serialization of nx.DiGraph
 - [Phase 22-orchestrator]: _explain_node uses chain.invoke() (sync) not explore_stream() (async generator) — asyncio.run() inside FastAPI raises RuntimeError: event loop already running
 - [Phase 22-orchestrator]: loop_count incremented in critic_node on RETRY path only — specialist nodes have no loop awareness
+- [Phase 22-orchestrator]: _ExplainResult converted from plain class to Pydantic BaseModel — MemorySaver cannot msgpack-serialize plain Python classes; all state fields must be Pydantic-compatible for checkpointing
+- [Phase 22-orchestrator]: G=None in orchestrator test base_state — MemorySaver cannot serialize nx.DiGraph even with Optional[object] typing; explain_node try/except handles None-graph gracefully
+- [Phase 22-orchestrator]: LangChain LCEL mock pattern: set mock.return_value and mock.invoke.return_value — LCEL pipe calls llm via __call__ not .invoke() so both paths must be covered
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -89,3 +92,4 @@ Last activity: 2026-03-22 — Completed 22-01-PLAN.md (NexusState 12-field Typed
 - 2026-03-22: Phase 21 Plan 01 complete — Critic agent module created; CriticResult (7 fields) + critique() deterministic quality gate; composite scoring 0.40/0.35/0.25 groundedness/relevance/actionability; hard cap at loop_count>=2; per-type groundedness dispatch; CRIT-01, CRIT-02, CRIT-03, CRIT-04 marked complete; 148 tests passing
 - 2026-03-22: Phase 21 Plan 02 complete — Critic agent test suite: 10 offline tests, mock_settings (max_critic_loops=2, critic_threshold=0.7) + module-level helper builders; TST-05 marked complete; 158 tests passing
 - 2026-03-22: Phase 22 Plan 01 complete — Orchestrator module created; NexusState (12 fields) + build_graph() factory; LangGraph StateGraph router→specialist→critic pipeline with conditional retry loop; langgraph + langgraph-checkpoint-sqlite added to requirements.txt; ORCH-01, ORCH-02, ORCH-03 marked complete; 158 tests passing
+- 2026-03-22: Phase 22 Plan 02 complete — Orchestrator test suite: 6 offline integration tests, MemorySaver + G=None + source-module get_llm patch + per-agent mocks; _ExplainResult converted to Pydantic BaseModel for MemorySaver serialization; TST-07 marked complete; 164 tests passing
