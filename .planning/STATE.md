@@ -7,14 +7,14 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 19 — reviewer-agent
-Plan: 01 — complete
-Status: Phase 19 Plan 01 complete; Reviewer agent module created; REVW-01, REVW-02, REVW-03 marked complete; ready for Phase 20
-Last activity: 2026-03-22 — Completed 19-01-PLAN.md (Reviewer agent: Finding+ReviewResult models, _assemble_context(), review() with groundedness filter; 124 tests passing)
+Plan: 02 — complete
+Status: Phase 19 Plan 02 complete; Reviewer agent test suite created; TST-03 marked complete; Phase 19 fully complete; ready for Phase 20
+Last activity: 2026-03-22 — Completed 19-02-PLAN.md (Reviewer agent tests: 10 offline tests, reviewer_graph + mock_settings + mock_llm_factory fixtures; TST-03 marked complete; 134 tests passing)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
 **Current focus:** v2.0 multi-agent team — Phase 19 complete, next: Phase 20 (reviewer-agent tests)
 
-**Progress:** [█████████░] 86%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Last activity: 2026-03-22 — Completed 19-01-PLAN.md (Reviewer agent: Finding+R
 - [Phase 19-reviewer-agent]: Groundedness post-filter applied after LLM call to drop findings with file_path not in retrieved_nodes set
 - [Phase 19-reviewer-agent]: range_clause injected via REVIEWER_PROMPT.partial() per-call, not baked into REVIEWER_SYSTEM constant
 - [Phase 19-reviewer-agent]: get_llm() and get_settings() imported inside review() body (lazy) — same pattern as router.py and debugger.py
+- [Phase 19-reviewer-agent]: LCEL mock pattern for with_structured_output: mock_structured.return_value = fixture_result — RunnableSequence calls structured_llm via __call__, not .invoke()
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -69,3 +70,4 @@ Last activity: 2026-03-22 — Completed 19-01-PLAN.md (Reviewer agent: Finding+R
 - 2026-03-22: Phase 18 Plan 01 complete — Debugger agent module created; SuspectNode + DebugResult models + debug() with 5-factor anomaly scoring + BFS traversal; DBUG-01, DBUG-02, DBUG-03, DBUG-04, DBUG-05 marked complete; 114 tests passing
 - 2026-03-22: Phase 18 Plan 02 complete — Debugger agent test suite: 10 offline tests, debug_graph + mock_settings + mock_llm_factory fixtures; TST-02 marked complete; 124 tests passing
 - 2026-03-22: Phase 19 Plan 01 complete — Reviewer agent module created; Finding (7 fields) + ReviewResult (3 fields) models; _assemble_context() 1-hop CALLS-edge traversal; review() with LCEL structured-output chain and groundedness post-filter; REVW-01, REVW-02, REVW-03 marked complete; 124 tests passing
+- 2026-03-22: Phase 19 Plan 02 complete — Reviewer agent test suite: 10 offline tests, reviewer_graph (5-node DiGraph) + mock_settings (reviewer_context_hops=1) + mock_llm_factory (source-level patch with __call__ return_value) fixtures; TST-03 marked complete; 134 tests passing

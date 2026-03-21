@@ -65,7 +65,7 @@
 
 - [x] **TST-01**: `test_router_agent.py` — 12 labelled queries at 100% accuracy; intent_hint bypass; low-confidence fallback
 - [x] **TST-02**: `test_debugger.py` — traversal visits correct nodes; anomaly_score > 0; impact radius correct; diagnosis references traversal
-- [ ] **TST-03**: `test_reviewer.py` — context includes callers + callees; findings schema valid; no hallucinated node references
+- [x] **TST-03**: `test_reviewer.py` — context includes callers + callees; findings schema valid; no hallucinated node references
 - [ ] **TST-04**: `test_tester.py` — framework detection; mock targets; file path convention; ≥3 test functions; mock statements present
 - [ ] **TST-05**: `test_critic.py` — groundedness math; retry routing; loop cap; feedback cleared on pass
 - [ ] **TST-06**: `test_mcp_tools.py` — GitHub API mocked; 10-comment limit; path traversal rejected; extension filter; retry on 5xx
@@ -139,7 +139,7 @@
 | REVW-01 | Phase 19: reviewer-agent | Complete |
 | REVW-02 | Phase 19: reviewer-agent | Complete |
 | REVW-03 | Phase 19: reviewer-agent | Complete |
-| TST-03 | Phase 19: reviewer-agent | Pending |
+| TST-03 | Phase 19: reviewer-agent | Complete |
 | TEST-01 | Phase 20: tester-agent | Pending |
 | TEST-02 | Phase 20: tester-agent | Pending |
 | TEST-03 | Phase 20: tester-agent | Pending |
