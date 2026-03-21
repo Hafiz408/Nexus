@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 15 of 16 (Extension UI Revamp) — IN PROGRESS
-Plan: 0 of TBD in current phase
-Status: UI polish in progress — section headers, button chrome fix, layout alignment underway
-Last activity: 2026-03-21 — Phases 15 (UI Revamp) and 16 (E2E Sign-off) added to roadmap
+Plan: 1 of TBD in current phase
+Status: UI polish in progress — textarea auto-grow and citation collapse complete
+Last activity: 2026-03-21 — 15-01 complete: textarea auto-grow + citation collapse implemented
 
 ## Accumulated Context
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 13-file-watcher P01 | 2 | 2 tasks | 4 files |
 | Phase 14-ragas-eval P01 | 2min | 2 tasks | 2 files |
 | Phase 14-ragas-eval P02 | 2min | 2 tasks | 2 files |
+| Phase 15-extension-ui-revamp P01 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,9 @@ Recent decisions affecting current work:
 - [Phase 14-ragas-eval]: eval/ directory at repo root (sibling to backend/ and extension/) holds all evaluation artifacts (14-01)
 - [Phase 14-ragas-eval]: col_map substring matching handles faithfulness/answer_relevancy/response_relevancy column name variation between ragas 0.4.x minor versions (14-02)
 - [Phase 14-ragas-eval]: naive_retrieve wraps CodeNode hydration in try/except — skips malformed G.nodes entries without crashing evaluation loop (14-02)
+- [Phase 15-extension-ui-revamp]: scrollHeight read synchronously from e.target in onChange (not from ref after setState) — React batches state so ref DOM is stale after setState (15-01)
+- [Phase 15-extension-ui-revamp]: min-height: 32px removed from .input-area textarea — fights auto-grow reset causing additive growth loop (15-01)
+- [Phase 15-extension-ui-revamp]: expandedCitations as Set<string> at component level — correct single-reset on clear, no per-message component needed (15-01)
 
 ### Pending Todos
 
@@ -175,6 +179,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19
-Stopped at: Completed 14-02-PLAN.md — eval/run_ragas.py RAGAS evaluation runner created, eval/results/.gitkeep committed. Phase 14-ragas-eval COMPLETE.
+Last session: 2026-03-21
+Stopped at: Completed 15-01-PLAN.md — textarea auto-grow and citation collapse implemented in extension/src/webview/App.tsx and index.css
 Resume file: None
