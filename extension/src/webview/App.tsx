@@ -254,7 +254,7 @@ export function App(): React.JSX.Element {
   }) => (
     <div className="section-header" onClick={onToggle}>
       <div className="section-header-title">
-        <span className="section-chevron">{expanded ? '∨' : '›'}</span>
+        <span className="section-chevron">{expanded ? '▾' : '▸'}</span>
         {title}
         {badges}
       </div>
@@ -419,7 +419,7 @@ export function App(): React.JSX.Element {
               disabled={isStreaming}
               rows={1}
             />
-            <button onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
+            <button className="send-btn" onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
               {isStreaming ? '…' : 'Ask'}
             </button>
           </div>
@@ -441,7 +441,7 @@ export function App(): React.JSX.Element {
           actions={
             logs.length > 0 ? (
               <button
-                className="icon-btn"
+                className="icon-btn icon-btn-hoverable"
                 title="Clear activity log"
                 onClick={() => setLogs([])}
               >
