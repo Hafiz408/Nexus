@@ -218,7 +218,7 @@ Plans:
 | 21. critic-agent | 2/2 | Complete    | 2026-03-21 |
 | 22. orchestrator | 2/2 | Complete    | 2026-03-21 |
 | 23. mcp-tools | 2/2 | Complete    | 2026-03-21 |
-| 24. query-endpoint-v2 | 0/2 | Not started | - |
+| 24. query-endpoint-v2 | 1/2 | In Progress|  |
 | 25. extension-intent-selector | 0/? | Not started | - |
 | 26. extension-result-rendering | 0/? | Not started | - |
 

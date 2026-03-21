@@ -6,15 +6,15 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 23 — mcp-tools
-Plan: 02 — complete
-Status: Phase 23 Plan 02 complete; MCP tool test suite created (18 offline tests covering all TST-06 behaviours); TST-06 marked complete; 182 tests passing
-Last activity: 2026-03-22 — Completed 23-02-PLAN.md (MCP tools test suite: test_mcp_tools.py with 18 offline tests: 10-cap/overflow, 5xx tenacity retry, 422 per-finding fallback, no-op guards, path traversal, extension allowlist, overwrite protection)
+Phase: 24 — query-endpoint-v2
+Plan: 01 — complete
+Status: Phase 24 Plan 01 complete; V2 branch wired into /query endpoint; QueryRequest extended with 5 optional V2 fields; 9 V1 tests passing; TST-08 marked complete
+Last activity: 2026-03-22 — Completed 24-01-PLAN.md (QueryRequest V2 fields + v2_event_generator branch gated on intent_hint; lazy imports; asyncio.to_thread(graph.invoke))
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 23 complete; next: Phase 24
+**Current focus:** v2.0 multi-agent team — Phase 24 Plan 01 complete; next: Phase 24 Plan 02 (if exists) or Phase 25
 
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 94%
 
 ## Performance Metrics
 
@@ -67,6 +67,9 @@ Last activity: 2026-03-22 — Completed 23-02-PLAN.md (MCP tools test suite: tes
 - [Phase 22-orchestrator]: LangChain LCEL mock pattern: set mock.return_value and mock.invoke.return_value — LCEL pipe calls llm via __call__ not .invoke() so both paths must be covered
 - [Phase 23-mcp-tools]: [Phase 23-mcp-tools]: httpx.Client used as context manager in post_review_comments() for consistent mock patch target; tenacity 5xx-only retry predicate; '..' path traversal guard before Path ops; falsy github_token check
 - [Phase 23-mcp-tools]: Patch target is 'app.mcp.tools.httpx.Client' (module-level binding), not 'httpx.Client' directly — patching at the import site intercepts the already-bound name
+- [Phase 24-query-endpoint-v2]: V2 branch gated on intent_hint not None and not 'auto'; both None and 'auto' fall through to V1 SSE path
+- [Phase 24-query-endpoint-v2]: SqliteSaver checkpointer uses data/checkpoints.db (not data/nexus.db) with per-request uuid4 thread_id
+- [Phase 24-query-endpoint-v2]: asyncio.to_thread(graph.invoke, ...) prevents blocking FastAPI event loop from synchronous LangGraph invoke
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -97,3 +100,4 @@ Last activity: 2026-03-22 — Completed 23-02-PLAN.md (MCP tools test suite: tes
 - 2026-03-22: Phase 22 Plan 02 complete — Orchestrator test suite: 6 offline integration tests, MemorySaver + G=None + source-module get_llm patch + per-agent mocks; _ExplainResult converted to Pydantic BaseModel for MemorySaver serialization; TST-07 marked complete; 164 tests passing
 - 2026-03-22: Phase 23 Plan 01 complete — MCP tool layer created; post_review_comments() (10-cap + overflow + 5xx retry + 422 per-finding fallback) + write_test_file() (path traversal guard + extension allowlist + overwrite protection); httpx + tenacity added to requirements.txt; MCP-01 through MCP-06 marked complete; 164 tests passing
 - 2026-03-22: Phase 23 Plan 02 complete — MCP tools test suite: test_mcp_tools.py with 18 offline tests (10-cap/overflow, 5xx tenacity retry, 422 per-finding fallback, no-op guards, path traversal, extension allowlist, overwrite protection); TST-06 marked complete; 182 tests passing
+- 2026-03-22: Phase 24 Plan 01 complete — V2 branch wired into /query endpoint; QueryRequest extended with intent_hint, target_node_id, selected_file, selected_range, repo_root (all Optional=None); v2_event_generator uses lazy imports + asyncio.to_thread(graph.invoke) + SqliteSaver(checkpoints.db) + uuid4 thread_id; 9 V1 tests passing; TST-08 marked complete; 182 tests passing
