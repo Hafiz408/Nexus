@@ -473,7 +473,7 @@ export function App(): React.JSX.Element {
       </div>
 
       {/* ③ ACTIVITY */}
-      <div className="panel-section">
+      <div className="panel-section panel-section-activity">
         <SectionHeader
           expanded={activityExpanded}
           onToggle={() => setActivityExpanded((v) => !v)}
@@ -483,17 +483,6 @@ export function App(): React.JSX.Element {
               {errorCount > 0 && <span className="log-badge error">{errorCount}</span>}
               {warnCount > 0 && <span className="log-badge warning">{warnCount}</span>}
             </>
-          }
-          actions={
-            logs.length > 0 ? (
-              <button
-                className="icon-btn icon-btn-hoverable"
-                title="Clear activity log"
-                onClick={() => setLogs([])}
-              >
-                ×
-              </button>
-            ) : null
           }
         />
         {activityExpanded && (

@@ -139,6 +139,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri, 'out', 'webview', 'index.js')
     );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, 'out', 'webview', 'index.css')
+    );
     const nonce = getNonce();
 
     return `<!DOCTYPE html>
@@ -149,6 +152,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nexus</title>
+  <link rel="stylesheet" href="${styleUri}">
 </head>
 <body>
   <div id="root"></div>
