@@ -129,7 +129,11 @@ Plans:
   3. After exactly 2 retry loops the output is accepted regardless of score — the loop never runs a third time
   4. Groundedness is computed by comparing cited node IDs against `retrieved_nodes` without an additional LLM call
   5. `test_critic.py` verifies the scoring formula, retry routing, hard cap at 2 loops, and feedback clearing on a passing score
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — Implement app/agent/critic.py (CriticResult model + critique() pure function)
+- [ ] 21-02-PLAN.md — Write test_critic.py (10 offline tests: scoring formula, retry routing, hard cap, feedback semantics)
 
 ### Phase 22: orchestrator
 **Goal**: A single LangGraph StateGraph wires all agents into one coherent pipeline with persistent checkpointing so every query follows the correct path and conversation state survives across requests
@@ -198,8 +202,8 @@ Plans:
 | 17. router-agent | 2/2 | Complete    | 2026-03-21 |
 | 18. debugger-agent | 2/2 | Complete    | 2026-03-21 |
 | 19. reviewer-agent | 2/2 | Complete    | 2026-03-21 |
-| 20. tester-agent | 2/2 | Complete   | 2026-03-21 |
-| 21. critic-agent | 0/? | Not started | - |
+| 20. tester-agent | 2/2 | Complete    | 2026-03-21 |
+| 21. critic-agent | 0/2 | Not started | - |
 | 22. orchestrator | 0/? | Not started | - |
 | 23. mcp-tools | 0/? | Not started | - |
 | 24. query-endpoint-v2 | 0/? | Not started | - |
