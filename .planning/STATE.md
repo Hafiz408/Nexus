@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 
 ## Current Position
 
-Phase: 15 of 16 (Extension UI Revamp) — IN PROGRESS
-Plan: 1 of TBD in current phase
-Status: UI polish in progress — textarea auto-grow and citation collapse complete
-Last activity: 2026-03-21 — 15-01 complete: textarea auto-grow + citation collapse implemented
+Phase: 15 of 16 (Extension UI Revamp) — COMPLETE
+Plan: 2 of 2 in current phase
+Status: UI polish complete — textarea auto-grow, citation collapse, progress bar, and light-theme fixes done
+Last activity: 2026-03-21 — 15-02 complete: progress bar animation, files_processed label, light-theme green dot override
 
 ## Accumulated Context
 
@@ -64,6 +64,7 @@ Progress: [██████████] 100%
 | Phase 14-ragas-eval P01 | 2min | 2 tasks | 2 files |
 | Phase 14-ragas-eval P02 | 2min | 2 tasks | 2 files |
 | Phase 15-extension-ui-revamp P01 | 2 | 2 tasks | 2 files |
+| Phase 15 P02 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,9 @@ Recent decisions affecting current work:
 - [Phase 15-extension-ui-revamp]: scrollHeight read synchronously from e.target in onChange (not from ref after setState) — React batches state so ref DOM is stale after setState (15-01)
 - [Phase 15-extension-ui-revamp]: min-height: 32px removed from .input-area textarea — fights auto-grow reset causing additive growth loop (15-01)
 - [Phase 15-extension-ui-revamp]: expandedCitations as Set<string> at component level — correct single-reset on clear, no per-message component needed (15-01)
+- [Phase 15]: progress-bar-fill uses translateX sweep animation — GPU-composited, avoids layout reflow at 2px height
+- [Phase 15]: log-progress changed to flex-direction column with .log-progress-row inner wrapper — separates spinner+text from progress bar cleanly
+- [Phase 15]: body.vscode-light .status-dot.complete override #2e7d32 — sufficient contrast on Light+ white backgrounds
 
 ### Pending Todos
 
@@ -180,5 +184,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-21
-Stopped at: Completed 15-01-PLAN.md — textarea auto-grow and citation collapse implemented in extension/src/webview/App.tsx and index.css
+Stopped at: Completed 15-02-PLAN.md — progress bar CSS animation + files_processed label + light-theme green dot override in extension/src/webview/App.tsx and index.css
 Resume file: None

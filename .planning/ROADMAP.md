@@ -274,7 +274,7 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 
 **Goal:** The VS Code sidebar panel looks and behaves like a first-class published extension — section headers bold and collapsible (▾/▸ chevrons, no box chrome on buttons), ↺ and Ask stay inline with their rows, content indentation aligns with section title text, Activity section shows live indexing progress with a spinner row, citation chips compact and non-flooding.
 **Depends on:** Phase 14
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 15-01-PLAN.md — Textarea auto-grow + citation collapse with "+N more" chip
