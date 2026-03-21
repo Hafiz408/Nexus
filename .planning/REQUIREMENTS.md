@@ -67,7 +67,7 @@
 - [x] **TST-02**: `test_debugger.py` — traversal visits correct nodes; anomaly_score > 0; impact radius correct; diagnosis references traversal
 - [x] **TST-03**: `test_reviewer.py` — context includes callers + callees; findings schema valid; no hallucinated node references
 - [x] **TST-04**: `test_tester.py` — framework detection; mock targets; file path convention; ≥3 test functions; mock statements present
-- [ ] **TST-05**: `test_critic.py` — groundedness math; retry routing; loop cap; feedback cleared on pass
+- [x] **TST-05**: `test_critic.py` — groundedness math; retry routing; loop cap; feedback cleared on pass
 - [ ] **TST-06**: `test_mcp_tools.py` — GitHub API mocked; 10-comment limit; path traversal rejected; extension filter; retry on 5xx
 - [ ] **TST-07**: `test_orchestrator.py` — 6 integration tests (explain/debug/review/test/retry/max_loops) all pass
 - [ ] **TST-08**: All V1 tests (`pytest backend/tests/`) continue to pass (zero regressions)
@@ -150,7 +150,7 @@
 | CRIT-02 | Phase 21: critic-agent | Complete |
 | CRIT-03 | Phase 21: critic-agent | Complete |
 | CRIT-04 | Phase 21: critic-agent | Complete |
-| TST-05 | Phase 21: critic-agent | Pending |
+| TST-05 | Phase 21: critic-agent | Complete |
 | ORCH-01 | Phase 22: orchestrator | Pending |
 | ORCH-02 | Phase 22: orchestrator | Pending |
 | ORCH-03 | Phase 22: orchestrator | Pending |

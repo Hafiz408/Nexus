@@ -7,14 +7,14 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 21 — critic-agent
-Plan: 01 — complete
-Status: Phase 21 Plan 01 complete; Critic agent module created; CRIT-01, CRIT-02, CRIT-03, CRIT-04 marked complete; 148 tests passing
-Last activity: 2026-03-22 — Completed 21-01-PLAN.md (Critic agent: CriticResult model + critique() deterministic quality gate; composite scoring 0.4/0.35/0.25; hard cap at loop_count>=2; groundedness dispatch per result type)
+Plan: 02 — complete
+Status: Phase 21 Plan 02 complete; Critic agent test suite created; TST-05 marked complete; 158 tests passing
+Last activity: 2026-03-22 — Completed 21-02-PLAN.md (10 offline unit tests for critique(): scoring formula, retry routing, hard cap at loop_count>=2, loop=1 boundary, feedback=None on pass, per-type groundedness dispatch)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 21 Plan 01 complete; next: Phase 21 Plan 02 (critic tests) or Phase 22 (orchestrator)
+**Current focus:** v2.0 multi-agent team — Phase 21 complete; next: Phase 22 (orchestrator)
 
-**Progress:** [█████████░] 91%
+**Progress:** [█████████░] 93%
 
 ## Performance Metrics
 
@@ -56,6 +56,9 @@ Last activity: 2026-03-22 — Completed 21-01-PLAN.md (Critic agent: CriticResul
 - [Phase 21-critic-agent]: Groundedness dispatch per result type: DebugResult uses traversal_path/suspects, ReviewResult uses retrieved_nodes/findings, TestResult always 1.0
 - [Phase 21-critic-agent]: Lazy specialist imports inside private helpers to prevent circular imports when orchestrator imports all agents together
 - [Phase 21-critic-agent]: Hard cap checked before quality gate — loop_count >= max_loops forces passed=True unconditionally (CRIT-03)
+- [Phase 21-critic-agent TST-05]: Module-level helper builders (make_debug_result, make_review_result, make_test_result) used instead of fixtures to allow arbitrary argument construction per test
+- [Phase 21-critic-agent TST-05]: critic_threshold=0.0 override in test_feedback_none_on_pass forces pass path — tests feedback=None invariant independently of score arithmetic
+- [Phase 21-critic-agent TST-05]: Loop boundary test (loop_count=1) added to confirm hard cap fence-post: cap fires at max_loops (2), not max_loops-1 (1)
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -81,3 +84,4 @@ Last activity: 2026-03-22 — Completed 21-01-PLAN.md (Critic agent: CriticResul
 - 2026-03-22: Phase 20 Plan 01 complete — Tester agent module created; _detect_framework (marker file heuristics) + _get_callees (CALLS-edge enumeration) + _derive_test_path (deterministic convention mapping) + test() public API with lazy imports; TST-04 partial; 134 tests passing
 - 2026-03-22: Phase 20 Plan 02 complete — Tester agent test suite: 10 offline tests, tester_graph (4-node DiGraph: target + 2 CALLS callees + 1 isolated) + mock_settings + mock_llm_factory fixtures; pytest.ini added to prevent test() function name collision; TST-04 marked complete; 148 tests passing
 - 2026-03-22: Phase 21 Plan 01 complete — Critic agent module created; CriticResult (7 fields) + critique() deterministic quality gate; composite scoring 0.40/0.35/0.25 groundedness/relevance/actionability; hard cap at loop_count>=2; per-type groundedness dispatch; CRIT-01, CRIT-02, CRIT-03, CRIT-04 marked complete; 148 tests passing
+- 2026-03-22: Phase 21 Plan 02 complete — Critic agent test suite: 10 offline tests, mock_settings (max_critic_loops=2, critic_threshold=0.7) + module-level helper builders; TST-05 marked complete; 158 tests passing
