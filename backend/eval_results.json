@@ -1,0 +1,247 @@
+{
+  "repo": "/Users/mohammedhafiz/Desktop/Personal/super_tutor",
+  "timestamp": "2026-03-21T18:12:20",
+  "summary": {
+    "total": 10,
+    "answered": 8,
+    "correct": 8,
+    "cited": 7,
+    "accuracy_pct": 80
+  },
+  "results": [
+    {
+      "question": "Where is the model provider configured?",
+      "category": "factual",
+      "answered": true,
+      "correct": true,
+      "cited": true,
+      "answer": "The model provider is configured in the `Settings` class in `config.py` via the `agent_provider` field (config.py:7-74). This setting is then used by the `get_model()` function in `model_factory.py` to determine which LLM provider to initialize (model_factory.py:36-42).",
+      "missing_kws": [],
+      "latency_s": 1.9,
+      "error": null,
+      "citations": [
+        "backend/app/agents/model_factory.py::get_model",
+        "backend/app/agents/model_factory.py::_build_model",
+        "backend/app/config.py::Settings",
+        "backend/app/agents/model_factory.py::get_fallback_model",
+        "backend/tests/test_config.py::test_settings_no_provider_specific_keys",
+        "backend/app/models/session.py::SessionRequest",
+        "backend/app/models/tutor.py::TutorStreamRequest",
+        "backend/app/models/chat.py::ChatStreamRequest",
+        "backend/app/config.py::warn_if_api_key_missing",
+        "backend/tests/test_config.py::test_settings_has_agent_api_key"
+      ]
+    },
+    {
+      "question": "What is the default agent model?",
+      "category": "factual",
+      "answered": true,
+      "correct": true,
+      "cited": true,
+      "answer": "The default agent model is `\"gpt-4o\"` as defined in `app/config.py:7-74` at line 21:\n\n```python\nagent_model: str = \"gpt-4o\"        # model ID valid for chosen provider\n```",
+      "missing_kws": [],
+      "latency_s": 1.4,
+      "error": null,
+      "citations": [
+        "backend/app/agents/model_factory.py::get_model",
+        "backend/app/agents/model_factory.py::get_fallback_model",
+        "backend/app/agents/research_agent.py::build_research_agent",
+        "backend/app/agents/quiz_agent.py::build_quiz_agent",
+        "backend/app/agents/model_factory.py::_build_model",
+        "backend/app/agents/flashcard_agent.py::build_flashcard_agent",
+        "backend/app/agents/notes_agent.py::build_notes_agent",
+        "backend/app/config.py::Settings",
+        "backend/tests/test_config.py::test_agent_api_key_defaults_to_empty_string",
+        "backend/tests/test_config.py::test_settings_has_agent_api_key"
+      ]
+    },
+    {
+      "question": "What database does the backend use for session history?",
+      "category": "factual",
+      "answered": true,
+      "correct": true,
+      "cited": false,
+      "answer": "The backend uses SQLite databases for session history:\n\n1. **Session status tracking** is stored in a SQLite database managed by `session_status.py` (e.g., `session_status.db`), which tracks session statuses like \"pending\", \"failed\", or \"complete\" in a `session_status` table (session_status.py:24-41).\n\n2. **Session traces/data** are stored in a separate SQLite database (e.g., `sessions.db`) accessed via `SqliteDb` (e.g., in `traces_db` parameter), which stores detailed session data like notes, flashcards, and quiz questions (routers/sessions.py:209-263, workflows/session_workflow.py:552-643).",
+      "missing_kws": [],
+      "latency_s": 1.9,
+      "error": null,
+      "citations": [
+        "backend/app/utils/session_status.py::_get_conn",
+        "backend/app/routers/sessions.py::get_session",
+        "backend/app/models/session.py::SessionResult",
+        "backend/app/workflows/session_workflow.py::run_workflow_background",
+        "backend/app/models/session.py::SessionRequest",
+        "frontend/src/app/hooks/useRecentSessions.ts::useRecentSessions",
+        "backend/app/models/chat.py::ChatStreamRequest",
+        "backend/app/models/tutor.py::TutorStreamRequest",
+        "backend/tests/test_sessions_router.py::client",
+        "backend/tests/test_session_storage.py::tmp_session_db"
+      ]
+    },
+    {
+      "question": "How many members does the agent team have?",
+      "category": "count",
+      "answered": true,
+      "correct": true,
+      "cited": true,
+      "answer": "The agent team has 5 members: Explainer, Researcher, ContentWriter, QuizMaster, and Advisor. This is defined in `app/agents/tutor_team.py:300-341` where the `Team` is constructed with `members=[explainer, researcher, content_writer, quiz_master, advisor]`.",
+      "missing_kws": [],
+      "latency_s": 1.9,
+      "error": null,
+      "citations": [
+        "backend/tests/test_workflow_steps.py::_make_async_agent",
+        "backend/app/agents/tutor_team.py::build_tutor_team",
+        "backend/app/agents/research_agent.py::build_research_agent",
+        "backend/app/agents/model_factory.py::get_model",
+        "backend/app/agents/quiz_agent.py::build_quiz_agent",
+        "backend/app/agents/notes_agent.py::build_notes_agent",
+        "backend/app/agents/flashcard_agent.py::build_flashcard_agent",
+        "backend/app/main.py::_wrap_with_agentos",
+        "backend/tests/test_config.py::test_settings_has_agent_api_key",
+        "backend/app/agents/guardrails.py::validate_team_output"
+      ]
+    },
+    {
+      "question": "How many agents are in the TutorTeam?",
+      "category": "count",
+      "answered": false,
+      "correct": false,
+      "cited": true,
+      "answer": "I'm not certain based on the retrieved context.",
+      "missing_kws": [
+        "5, five"
+      ],
+      "latency_s": 1.1,
+      "error": null,
+      "citations": [
+        "backend/app/agents/notes_agent.py::build_notes_agent",
+        "backend/app/agents/tutor_team.py::build_tutor_team",
+        "backend/app/agents/quiz_agent.py::build_quiz_agent",
+        "backend/app/agents/research_agent.py::build_research_agent",
+        "backend/app/agents/flashcard_agent.py::build_flashcard_agent",
+        "backend/app/config.py::Settings",
+        "backend/app/agents/chat_agent.py::build_chat_agent",
+        "backend/app/main.py::_wrap_with_agentos",
+        "backend/app/models/tutor.py::TutorStreamRequest",
+        "backend/tests/test_tutor_e2e.py::TestTutorE2E"
+      ]
+    },
+    {
+      "question": "What is the role of the Explainer agent?",
+      "category": "architectural",
+      "answered": true,
+      "correct": true,
+      "cited": true,
+      "answer": "The Explainer agent is one of the specialists in the TutorTeam and is used when the student asks a question about the material, wants a concept clarified, or initiates a greeting. It is delegated to by the TutorTeam coordinator agent based on the student's intent, such as \"hello\", \"what can you do?\", or \"explain this concept to me\".\n\nThe Explainer agent is built in `tutor_team.py:77-341` as part of the TutorTeam's members list, where it is responsible for handling direct questions and clarifications about the study material.",
+      "missing_kws": [],
+      "latency_s": 1.9,
+      "error": null,
+      "citations": [
+        "backend/app/agents/notes_agent.py::build_notes_agent",
+        "backend/app/agents/research_agent.py::build_research_agent",
+        "backend/app/agents/model_factory.py::get_model",
+        "backend/app/agents/quiz_agent.py::build_quiz_agent",
+        "backend/app/agents/flashcard_agent.py::build_flashcard_agent",
+        "backend/app/agents/tutor_team.py::build_tutor_team",
+        "backend/app/agents/chat_agent.py::build_chat_agent",
+        "backend/app/main.py::_wrap_with_agentos",
+        "backend/app/agents/guardrails.py::_classify",
+        "backend/app/agents/research_agent.py::run_research"
+      ]
+    },
+    {
+      "question": "What guardrails are applied to the tutor team?",
+      "category": "architectural",
+      "answered": true,
+      "correct": true,
+      "cited": true,
+      "answer": "The tutor team applies the following guardrails:\n\n1. **TopicRelevanceGuardrail** (`guardrails.py:61-202`): A pre-hook LLM-as-judge guardrail that rejects messages unrelated to the session topic before coordinator dispatch. It uses an LLM classifier and has a list of always-allowed patterns (e.g., greetings, quiz results) to bypass classification.\n\n2. **validate_team_output** (`guardrails.py:205-225`): A post-hook guardrail that rejects empty or trivially short team responses (less than 20 characters) after the full team run completes.",
+      "missing_kws": [],
+      "latency_s": 2.0,
+      "error": null,
+      "citations": [
+        "backend/app/agents/tutor_team.py::build_tutor_team",
+        "backend/app/agents/guardrails.py::TopicRelevanceGuardrail",
+        "backend/tests/test_tutor_e2e.py::test_off_topic_message_is_rejected",
+        "backend/app/agents/notes_agent.py::build_notes_agent",
+        "backend/app/config.py::Settings",
+        "backend/app/routers/tutor.py::tutor_stream",
+        "backend/app/agents/quiz_agent.py::build_quiz_agent",
+        "backend/tests/test_tutor_e2e.py::TestTutorE2E",
+        "backend/app/agents/guardrails.py::validate_team_output",
+        "backend/app/models/tutor.py::TutorStreamRequest"
+      ]
+    },
+    {
+      "question": "How does the get_model function decide which provider to use?",
+      "category": "architectural",
+      "answered": true,
+      "correct": true,
+      "cited": true,
+      "answer": "The `get_model` function in `/Users/mohammedhafiz/Desktop/Personal/super_tutor/backend/app/agents/model_factory.py:36-42` decides which provider to use by:\n\n1. Retrieving settings via `get_settings()` (which provides `agent_provider`, `agent_model`, and `agent_api_key`).\n2. Converting the provider name to lowercase with `settings.agent_provider.lower()`.\n3. Passing the provider, model ID, and API key to the `_build_model` function to instantiate the appropriate model class based on the provider.\n\nThe actual provider selection logic (e.g., \"anthropic\", \"groq\", \"openai\") is implemented in `_build_model` (lines 12-33 in the same file).",
+      "missing_kws": [],
+      "latency_s": 2.8,
+      "error": null,
+      "citations": [
+        "backend/app/agents/model_factory.py::get_model",
+        "backend/app/agents/model_factory.py::_build_model",
+        "backend/app/agents/model_factory.py::get_fallback_model",
+        "backend/tests/test_config.py::test_settings_no_provider_specific_keys",
+        "backend/app/models/tutor.py::TutorStreamRequest",
+        "backend/app/models/session.py::SessionRequest",
+        "backend/app/agents/guardrails.py::_classify",
+        "backend/app/models/chat.py::ChatStreamRequest",
+        "backend/app/config.py::warn_if_api_key_missing",
+        "backend/tests/test_sessions_router.py::client"
+      ]
+    },
+    {
+      "question": "How does session history get passed to member agents?",
+      "category": "flow",
+      "answered": false,
+      "correct": false,
+      "cited": false,
+      "answer": "I'm not certain based on the retrieved context.",
+      "missing_kws": [
+        "session_state, add_session_state_to_context, add_history_to_context"
+      ],
+      "latency_s": 1.3,
+      "error": null,
+      "citations": [
+        "backend/app/workflows/session_workflow.py::build_session_workflow",
+        "backend/app/routers/sessions.py::get_session",
+        "backend/app/models/session.py::SessionResult",
+        "backend/app/agents/guardrails.py::__init__",
+        "backend/app/models/session.py::SessionRequest",
+        "backend/tests/test_tutor_e2e.py::session_id",
+        "backend/tests/test_workflow_steps.py::TestResearchStepWritesToSessionState",
+        "backend/app/models/tutor.py::TutorStreamRequest",
+        "frontend/src/app/hooks/useRecentSessions.ts::useRecentSessions",
+        "frontend/src/app/study/[sessionId]/page.tsx::updateSession"
+      ]
+    },
+    {
+      "question": "What SSE events does the tutor router emit?",
+      "category": "flow",
+      "answered": true,
+      "correct": true,
+      "cited": false,
+      "answer": "Based on the provided context, the tutor router (`/Users/mohammedhafiz/Desktop/Personal/super_tutor/backend/app/routers/tutor.py:25-190`) emits the following SSE events:\n\n1. `stream_start` - Indicates the start of the tutor stream (mentioned in the docstring)\n2. `token` - Contains token data in the format `{\"token\": \"<text>\"}`\n3. `done` - Final event signaling the end of the stream with empty data `{\"data\": {}}`\n4. `rejected` - When a topic guardrail is triggered, with a reason in the format:\n   ```json\n   {\"reason\": \"That's outside what we're studying today. Let's stay focused on the session material.\"}\n   ```\n5. `error` - When an error occurs, with error details in the format:\n   ```json\n   {\"error\": \"Something went wrong. Please try again.\"}\n   ```\n   or for rate limit errors:\n   ```json\n   {\"error\": \"Both primary and backup models failed. Please try again later.\"}\n   ```",
+      "missing_kws": [],
+      "latency_s": 2.9,
+      "error": null,
+      "citations": [
+        "backend/app/routers/tutor.py::tutor_stream",
+        "backend/tests/test_upload_router.py::parse_sse_events",
+        "backend/app/models/tutor.py::TutorStreamRequest",
+        "backend/app/models/session.py::SessionResult",
+        "backend/tests/test_tutor_e2e.py::TestTutorE2E",
+        "backend/app/models/chat.py::ChatStreamRequest",
+        "backend/tests/test_tutor_e2e.py::tutor_session_id",
+        "frontend/src/app/study/[sessionId]/page.tsx::sendTutorMessage",
+        "backend/app/routers/upload.py::create_upload_session",
+        "backend/tests/test_upload_router.py::test_valid_pdf_produces_sse_stream"
+      ]
+    }
+  ]
+}
