@@ -385,7 +385,6 @@ export function App(): React.JSX.Element {
           <div className="message-list">
             {messages.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">◎</div>
                 <div className="empty-state-title">Ask your codebase</div>
                 <div className="empty-state-hint">
                   Functions, patterns, architecture — just ask.
