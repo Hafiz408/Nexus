@@ -7,12 +7,12 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 24 — query-endpoint-v2
-Plan: 01 — complete
-Status: Phase 24 Plan 01 complete; V2 branch wired into /query endpoint; QueryRequest extended with 5 optional V2 fields; 9 V1 tests passing; TST-08 marked complete
-Last activity: 2026-03-22 — Completed 24-01-PLAN.md (QueryRequest V2 fields + v2_event_generator branch gated on intent_hint; lazy imports; asyncio.to_thread(graph.invoke))
+Plan: 02 — complete
+Status: Phase 24 Plan 02 complete; 8 V2 endpoint tests added to test_query_router_v2.py; all 190 tests passing; TST-09 marked complete
+Last activity: 2026-03-22 — Completed 24-02-PLAN.md (8 offline V2 endpoint tests; debug/review/test/explain intent routing + auto/None sentinel fall-through + error propagation)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 24 Plan 01 complete; next: Phase 24 Plan 02 (if exists) or Phase 25
+**Current focus:** v2.0 multi-agent team — Phase 24 complete (both plans); next: Phase 25
 
 **Progress:** [█████████░] 94%
 
@@ -70,6 +70,7 @@ Last activity: 2026-03-22 — Completed 24-01-PLAN.md (QueryRequest V2 fields + 
 - [Phase 24-query-endpoint-v2]: V2 branch gated on intent_hint not None and not 'auto'; both None and 'auto' fall through to V1 SSE path
 - [Phase 24-query-endpoint-v2]: SqliteSaver checkpointer uses data/checkpoints.db (not data/nexus.db) with per-request uuid4 thread_id
 - [Phase 24-query-endpoint-v2]: asyncio.to_thread(graph.invoke, ...) prevents blocking FastAPI event loop from synchronous LangGraph invoke
+- [Phase 24-query-endpoint-v2 TST-09]: build_graph patched at source module (app.agent.orchestrator.build_graph) for V2 endpoint tests — lazy import inside v2_event_generator body is not bound in query_router module __dict__; source-module patch intercepts the binding (consistent with Phase 17 router-agent pattern)
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -101,3 +102,4 @@ Last activity: 2026-03-22 — Completed 24-01-PLAN.md (QueryRequest V2 fields + 
 - 2026-03-22: Phase 23 Plan 01 complete — MCP tool layer created; post_review_comments() (10-cap + overflow + 5xx retry + 422 per-finding fallback) + write_test_file() (path traversal guard + extension allowlist + overwrite protection); httpx + tenacity added to requirements.txt; MCP-01 through MCP-06 marked complete; 164 tests passing
 - 2026-03-22: Phase 23 Plan 02 complete — MCP tools test suite: test_mcp_tools.py with 18 offline tests (10-cap/overflow, 5xx tenacity retry, 422 per-finding fallback, no-op guards, path traversal, extension allowlist, overwrite protection); TST-06 marked complete; 182 tests passing
 - 2026-03-22: Phase 24 Plan 01 complete — V2 branch wired into /query endpoint; QueryRequest extended with intent_hint, target_node_id, selected_file, selected_range, repo_root (all Optional=None); v2_event_generator uses lazy imports + asyncio.to_thread(graph.invoke) + SqliteSaver(checkpoints.db) + uuid4 thread_id; 9 V1 tests passing; TST-08 marked complete; 182 tests passing
+- 2026-03-22: Phase 24 Plan 02 complete — V2 endpoint test suite: test_query_router_v2.py with 8 offline tests (debug/review/test/explain routing + auto/None sentinel fall-through + error propagation); build_graph patched at source module (app.agent.orchestrator.build_graph); TST-09 marked complete; 190 tests passing

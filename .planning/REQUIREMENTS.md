@@ -71,7 +71,7 @@
 - [x] **TST-06**: `test_mcp_tools.py` — GitHub API mocked; 10-comment limit; path traversal rejected; extension filter; retry on 5xx
 - [x] **TST-07**: `test_orchestrator.py` — 6 integration tests (explain/debug/review/test/retry/max_loops) all pass
 - [x] **TST-08**: All V1 tests (`pytest backend/tests/`) continue to pass (zero regressions)
-- [ ] **TST-09**: All V2 agent tests use mock LLM + mock graph (no live API calls in test suite)
+- [x] **TST-09**: All V2 agent tests use mock LLM + mock graph (no live API calls in test suite)
 
 ### VS Code Extension
 
@@ -163,7 +163,7 @@
 | MCP-06 | Phase 23: mcp-tools | Complete |
 | TST-06 | Phase 23: mcp-tools | Complete |
 | TST-08 | Phase 24: query-endpoint-v2 | Complete |
-| TST-09 | Phase 24: query-endpoint-v2 | Pending |
+| TST-09 | Phase 24: query-endpoint-v2 | Complete |
 | EXT-01 | Phase 25: extension-intent-selector | Pending |
 | EXT-02 | Phase 25: extension-intent-selector | Pending |
 | EXT-03 | Phase 25: extension-intent-selector | Pending |
