@@ -28,7 +28,16 @@ interface ChatMessage {
 interface IndexStatus {
   status: 'pending' | 'running' | 'complete' | 'failed' | 'not_indexed';
   nodes_indexed?: number;
+  edges_indexed?: number;
+  files_processed?: number;
   error?: string | null;
+}
+
+interface LogEntry {
+  id: string;
+  level: 'info' | 'warning' | 'error';
+  message: string;
+  time: string;
 }
 
 type IncomingMessage =
@@ -36,7 +45,8 @@ type IncomingMessage =
   | { type: 'citations'; citations: Citation[] }
   | { type: 'done'; retrieval_stats: Record<string, unknown> }
   | { type: 'error'; message: string }
-  | { type: 'indexStatus'; status: IndexStatus };
+  | { type: 'indexStatus'; status: IndexStatus }
+  | { type: 'log'; level: LogEntry['level']; message: string };
 
 // Initialize vscode API once at module level
 const vscode = acquireVsCodeApi();
@@ -46,14 +56,11 @@ function newId(): string {
   return String(++messageIdCounter);
 }
 
-// ── Markdown renderer — produces React elements, no innerHTML ──────────────
+// ── Markdown renderer — produces React elements ────────────────────────────
 
 type ReactChildren = React.ReactNode[];
 
-/** Apply inline formatting (bold, italic, inline code) to a text string.
- *  Returns an array of React nodes. */
 function applyInline(text: string, key: string): React.ReactNode {
-  // Split on **bold**, *italic*, `code` patterns
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
   return parts.map((part, i) => {
     const k = `${key}-${i}`;
@@ -70,7 +77,6 @@ function applyInline(text: string, key: string): React.ReactNode {
   });
 }
 
-/** Convert markdown text to an array of React block elements. */
 function renderMarkdown(text: string): React.ReactElement {
   const lines = text.split('\n');
   const blocks: ReactChildren = [];
@@ -89,9 +95,7 @@ function renderMarkdown(text: string): React.ReactElement {
   const flushCode = () => {
     if (codeLines.length > 0) {
       blocks.push(
-        <pre key={blockKey++}>
-          <code>{codeLines.join('\n')}</code>
-        </pre>
+        <pre key={blockKey++}><code>{codeLines.join('\n')}</code></pre>
       );
       codeLines = [];
     }
@@ -101,22 +105,12 @@ function renderMarkdown(text: string): React.ReactElement {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Fenced code block toggle
     if (line.startsWith('```')) {
-      if (inCode) {
-        flushCode();
-      } else {
-        flushList();
-        inCode = true;
-      }
+      if (inCode) { flushCode(); } else { flushList(); inCode = true; }
       continue;
     }
-    if (inCode) {
-      codeLines.push(line);
-      continue;
-    }
+    if (inCode) { codeLines.push(line); continue; }
 
-    // Headers
     const h3 = line.match(/^### (.+)/);
     const h2 = line.match(/^## (.+)/);
     const h1 = line.match(/^# (.+)/);
@@ -124,28 +118,18 @@ function renderMarkdown(text: string): React.ReactElement {
       flushList();
       const match = (h3 || h2 || h1)!;
       const Tag = h3 ? 'h3' : h2 ? 'h2' : 'h1';
-      blocks.push(
-        <Tag key={blockKey++}>{applyInline(match[1], String(blockKey))}</Tag>
-      );
+      blocks.push(<Tag key={blockKey++}>{applyInline(match[1], String(blockKey))}</Tag>);
       continue;
     }
 
-    // List items  - item  or  * item  or  1. item
     const li = line.match(/^[ \t]*[-*] (.+)$/) || line.match(/^[ \t]*\d+\. (.+)$/);
     if (li) {
-      listItems.push(
-        <li key={listItems.length}>{applyInline(li[1], `li-${listItems.length}`)}</li>
-      );
+      listItems.push(<li key={listItems.length}>{applyInline(li[1], `li-${listItems.length}`)}</li>);
       continue;
     }
 
-    // Blank line — flush list, start new paragraph break
-    if (line.trim() === '') {
-      flushList();
-      continue;
-    }
+    if (line.trim() === '') { flushList(); continue; }
 
-    // Regular paragraph line — accumulate consecutive lines into one <p>
     flushList();
     const paraLines: string[] = [line];
     while (i + 1 < lines.length) {
@@ -156,9 +140,7 @@ function renderMarkdown(text: string): React.ReactElement {
         next.startsWith('```') ||
         next.match(/^[ \t]*[-*] /) ||
         next.match(/^[ \t]*\d+\. /)
-      ) {
-        break;
-      }
+      ) break;
       i++;
       paraLines.push(next);
     }
@@ -172,7 +154,6 @@ function renderMarkdown(text: string): React.ReactElement {
     blocks.push(<p key={blockKey++}>{paraContent}</p>);
   }
 
-  // Flush any remaining list or code block
   flushList();
   if (inCode) flushCode();
 
@@ -186,66 +167,54 @@ export function App(): React.JSX.Element {
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [indexStatus, setIndexStatus] = useState<IndexStatus>({ status: 'not_indexed' });
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logsExpanded, setLogsExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom when messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // CHAT-02: Listen for messages from extension host
+  const addLog = useCallback((level: LogEntry['level'], message: string) => {
+    const now = new Date();
+    const time = now.toTimeString().slice(0, 8);
+    setLogs((prev) =>
+      [{ id: `${Date.now()}-${Math.random()}`, level, message, time }, ...prev].slice(0, 100)
+    );
+  }, []);
+
+  // Listen for messages from extension host
   useEffect(() => {
     const handleMessage = (event: MessageEvent): void => {
       const msg = event.data as IncomingMessage;
 
       switch (msg.type) {
         case 'token':
-          // Append token to last assistant message (streaming)
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === 'assistant' && last.isStreaming) {
-              return [
-                ...prev.slice(0, -1),
-                { ...last, content: last.content + msg.content },
-              ];
+              return [...prev.slice(0, -1), { ...last, content: last.content + msg.content }];
             }
-            // Start new assistant message
-            return [
-              ...prev,
-              {
-                id: newId(),
-                role: 'assistant',
-                content: msg.content,
-                isStreaming: true,
-              },
-            ];
+            return [...prev, { id: newId(), role: 'assistant', content: msg.content, isStreaming: true }];
           });
           break;
 
         case 'citations':
-          // Attach citations to last assistant message
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === 'assistant') {
-              return [
-                ...prev.slice(0, -1),
-                { ...last, citations: msg.citations },
-              ];
+              return [...prev.slice(0, -1), { ...last, citations: msg.citations }];
             }
             return prev;
           });
           break;
 
         case 'done':
-          // Mark last assistant message as no longer streaming
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === 'assistant') {
-              return [
-                ...prev.slice(0, -1),
-                { ...last, isStreaming: false },
-              ];
+              return [...prev.slice(0, -1), { ...last, isStreaming: false }];
             }
             return prev;
           });
@@ -255,181 +224,267 @@ export function App(): React.JSX.Element {
         case 'error':
           setMessages((prev) => [
             ...prev,
-            {
-              id: newId(),
-              role: 'assistant',
-              content: `Error: ${msg.message}`,
-              isStreaming: false,
-            },
+            { id: newId(), role: 'assistant', content: `Error: ${msg.message}`, isStreaming: false },
           ]);
           setIsStreaming(false);
+          addLog('error', `Error: ${msg.message}`);
           break;
 
-        case 'indexStatus':
-          setIndexStatus(msg.status);
+        case 'indexStatus': {
+          const s = msg.status;
+          setIndexStatus(s);
+          if (s.status === 'running') {
+            addLog('info', 'Indexing started…');
+          } else if (s.status === 'complete') {
+            if (s.nodes_indexed === 0) {
+              addLog('warning', '0 nodes indexed — verify repo contains .py/.ts files');
+            } else {
+              const parts = [`${s.nodes_indexed} nodes`];
+              if (s.files_processed) parts.push(`${s.files_processed} files`);
+              if (s.edges_indexed) parts.push(`${s.edges_indexed} edges`);
+              addLog('info', `Index complete: ${parts.join(' · ')}`);
+            }
+          } else if (s.status === 'failed') {
+            addLog('error', `Index failed${s.error ? ': ' + s.error : ''}`);
+          }
+          break;
+        }
+
+        case 'log':
+          addLog(msg.level, msg.message);
           break;
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [addLog]);
 
   const handleSend = useCallback((): void => {
     const question = inputValue.trim();
-    if (!question || isStreaming) {
-      return;
-    }
+    if (!question || isStreaming) return;
 
-    setMessages((prev) => [
-      ...prev,
-      { id: newId(), role: 'user', content: question },
-    ]);
+    setMessages((prev) => [...prev, { id: newId(), role: 'user', content: question }]);
     setInputValue('');
     setIsStreaming(true);
 
-    // Send query to extension host (which proxies to backend SSE)
+    const preview = question.length > 55 ? `${question.slice(0, 55)}…` : question;
+    addLog('info', `Query: "${preview}"`);
     vscode.postMessage({ type: 'query', question });
-  }, [inputValue, isStreaming]);
+  }, [inputValue, isStreaming, addLog]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-    // Send on Enter, allow Shift+Enter for newline
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
 
-  // CHAT-03: Citation click sends openFile to extension host
   const handleCitationClick = (citation: Citation): void => {
-    vscode.postMessage({
-      type: 'openFile',
-      filePath: citation.file_path,
-      lineStart: citation.line_start,
-    });
+    vscode.postMessage({ type: 'openFile', filePath: citation.file_path, lineStart: citation.line_start });
   };
 
-  // CHAT-04: Status bar actions
   const handleIndexWorkspace = (): void => {
     vscode.postMessage({ type: 'indexWorkspace' });
   };
 
-  const renderStatusBar = (): React.JSX.Element => {
-    const { status, nodes_indexed, error } = indexStatus;
+  // ── Header section ────────────────────────────────────────────────────────
+  const renderHeader = (): React.JSX.Element => {
+    const { status, nodes_indexed, files_processed, edges_indexed, error } = indexStatus;
 
     let dotClass = 'status-dot idle';
-    let label: React.ReactNode = 'Not indexed';
-    let action: React.ReactNode = (
-      <button className="status-btn" onClick={handleIndexWorkspace} title="Index workspace">
-        ↺
-      </button>
-    );
+    let statusText: React.ReactNode = 'Not indexed';
+    let metaText: string | null = null;
 
     if (status === 'running' || status === 'pending') {
       dotClass = 'status-dot running';
-      label = (
+      statusText = (
         <>
           <span className="spinner" />
           <span>Indexing{nodes_indexed !== undefined ? ` — ${nodes_indexed} nodes` : '…'}</span>
         </>
       );
-      action = null;
     } else if (status === 'complete') {
       if (nodes_indexed === 0) {
         dotClass = 'status-dot failed';
-        label = <span title="No Python/TypeScript functions found">0 nodes — check path</span>;
+        statusText = '0 nodes — check repo';
       } else {
         dotClass = 'status-dot complete';
-        label = <span>{nodes_indexed?.toLocaleString()} nodes</span>;
+        statusText = `${nodes_indexed?.toLocaleString()} nodes`;
+        const metaParts: string[] = [];
+        if (files_processed) metaParts.push(`${files_processed} files`);
+        if (edges_indexed) metaParts.push(`${edges_indexed} edges`);
+        if (metaParts.length) metaText = metaParts.join(' · ');
       }
     } else if (status === 'failed') {
       dotClass = 'status-dot failed';
-      label = <span title={error ?? undefined}>Index failed</span>;
+      statusText = 'Index failed';
+      if (error) metaText = error;
     }
 
     return (
-      <div className="status-bar">
-        <div className="status-bar-left">
-          <span className={dotClass} />
-          {label}
+      <div className="panel-header">
+        <div className="header-main">
+          <div className="header-status">
+            <span className={dotClass} />
+            <span>{statusText}</span>
+          </div>
+          <button
+            className="icon-btn"
+            onClick={handleIndexWorkspace}
+            title={status === 'complete' ? 'Re-index workspace' : 'Index workspace'}
+          >
+            ↺
+          </button>
         </div>
-        {action}
+        {metaText && <div className="header-meta">{metaText}</div>}
       </div>
     );
   };
 
+  // ── General (activity log) section ───────────────────────────────────────
+  const warnCount = logs.filter((l) => l.level === 'warning').length;
+  const errorCount = logs.filter((l) => l.level === 'error').length;
+
+  const renderGeneral = (): React.JSX.Element => (
+    <div className="panel-general">
+      <div
+        className="section-bar general-section-bar"
+        onClick={() => setLogsExpanded((v) => !v)}
+      >
+        <div className="section-label">
+          <span>{logsExpanded ? '▾' : '▸'}</span>
+          <span>Activity</span>
+          {errorCount > 0 && <span className="log-badge error">{errorCount}</span>}
+          {warnCount > 0 && <span className="log-badge warning">{warnCount}</span>}
+        </div>
+        {logs.length > 0 && (
+          <button
+            className="icon-btn"
+            title="Clear activity log"
+            onClick={(e) => { e.stopPropagation(); setLogs([]); }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {logsExpanded && (
+        <div className="log-list">
+          {logs.length === 0 ? (
+            <div className="log-entry log-info">
+              <span className="log-message" style={{ opacity: 0.4 }}>No activity yet</span>
+            </div>
+          ) : (
+            logs.map((entry) => (
+              <div key={entry.id} className={`log-entry log-${entry.level}`}>
+                <span className="log-time">{entry.time}</span>
+                <span className="log-message">{entry.message}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div id="root">
-      {/* CHAT-04: Index status bar */}
-      {renderStatusBar()}
+      {/* ① Header — index status */}
+      {renderHeader()}
 
-      {/* CHAT-01: Message list */}
-      <div className="message-list">
-        {messages.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">⌘</div>
-            <div className="empty-state-title">Nexus</div>
-            <div className="empty-state-hint">
-              Ask anything about your codebase — functions, patterns, architecture.
+      {/* ② Chat — message history + input */}
+      <div className="panel-chat">
+        <div className="section-bar chat-section-bar">
+          <span className="section-label">Chat</span>
+          {messages.length > 0 && (
+            <button
+              className="icon-btn"
+              title="Clear conversation"
+              disabled={isStreaming}
+              onClick={() => setMessages([])}
+            >
+              ⊘
+            </button>
+          )}
+        </div>
+
+        <div className="message-list">
+          {messages.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">⌘</div>
+              <div className="empty-state-title">Ask your codebase</div>
+              <div className="empty-state-hint">
+                Functions, patterns, architecture — just ask.
+              </div>
             </div>
-          </div>
-        ) : (
-          messages.map((msg, idx) => {
-            const isLastStreaming = msg.isStreaming && idx === messages.length - 1;
+          ) : (
+            messages.map((msg, idx) => {
+              const isLastStreaming = msg.isStreaming && idx === messages.length - 1;
 
-            if (msg.role === 'user') {
+              if (msg.role === 'user') {
+                return (
+                  <div key={msg.id} className="message message-user">
+                    <div className="message-bubble">{msg.content}</div>
+                  </div>
+                );
+              }
+
               return (
-                <div key={msg.id} className="message message-user">
-                  <div className="message-bubble">{msg.content}</div>
+                <div key={msg.id} className="message message-assistant">
+                  <div className={`message-bubble${isLastStreaming ? ' streaming-cursor' : ''}`}>
+                    {renderMarkdown(msg.content)}
+                  </div>
+                  {msg.citations && msg.citations.length > 0 && (
+                    <div className="citations">
+                      <div className="citations-label">Sources</div>
+                      <div className="citations-chips">
+                        {msg.citations.map((c) => {
+                          const filename = c.file_path.split('/').pop() ?? c.file_path;
+                          const label =
+                            filename.length > 18
+                              ? `${filename.slice(0, 16)}…:${c.line_start}`
+                              : `${filename}:${c.line_start}`;
+                          return (
+                            <button
+                              key={c.node_id}
+                              className="citation-chip"
+                              onClick={() => handleCitationClick(c)}
+                              title={`${c.file_path}:${c.line_start}–${c.line_end}`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
-            }
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
-            return (
-              <div key={msg.id} className="message message-assistant">
-                <div className={`message-bubble${isLastStreaming ? ' streaming-cursor' : ''}`}>
-                  {renderMarkdown(msg.content)}
-                </div>
-                {/* CHAT-03: Citation chips */}
-                {msg.citations && msg.citations.length > 0 && (
-                  <div className="citations">
-                    <div className="citations-label">Sources</div>
-                    <div className="citations-chips">
-                      {msg.citations.map((c) => (
-                        <button
-                          key={c.node_id}
-                          className="citation-chip"
-                          onClick={() => handleCitationClick(c)}
-                          title={`${c.file_path}:${c.line_start}-${c.line_end}`}
-                        >
-                          {c.file_path.split('/').pop()}:{c.line_start}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-        <div ref={messagesEndRef} />
+        <div className="input-area">
+          <textarea
+            ref={textareaRef}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about your codebase…"
+            disabled={isStreaming}
+            rows={1}
+          />
+          <button onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
+            {isStreaming ? '…' : 'Ask'}
+          </button>
+        </div>
       </div>
 
-      {/* Input area */}
-      <div className="input-area">
-        <textarea
-          ref={textareaRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask about your codebase…"
-          disabled={isStreaming}
-          rows={1}
-        />
-        <button onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
-          {isStreaming ? '…' : 'Ask'}
-        </button>
-      </div>
+      {/* ③ General — activity log */}
+      {renderGeneral()}
     </div>
   );
 }

@@ -19,36 +19,51 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-/* ── Status bar ─────────────────────────────────── */
-.status-bar {
-  padding: 5px 10px;
-  background: var(--vscode-sideBarSectionHeader-background, var(--vscode-sideBar-background));
-  border-bottom: 1px solid var(--vscode-panel-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  min-height: 30px;
-}
-
-.status-bar-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-  min-width: 0;
   overflow: hidden;
 }
 
-.status-bar-left span {
+/* ── Panel: Header — index status ─────────────────── */
+.panel-header {
+  padding: 8px 10px 7px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  flex-shrink: 0;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-status > span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.header-meta {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 14px; /* align under status text, past the dot */
+}
+
+/* ── Status dot ────────────────────────────────────── */
 .status-dot {
   width: 7px;
   height: 7px;
@@ -56,73 +71,130 @@ body {
   flex-shrink: 0;
 }
 
-.status-dot.complete  { background: #4caf50; }
-.status-dot.running   { background: #ff9800; }
-.status-dot.failed    { background: var(--vscode-errorForeground); }
-.status-dot.idle      { background: var(--vscode-descriptionForeground); opacity: 0.5; }
+.status-dot.complete { background: #4caf50; }
+.status-dot.running  { background: #ff9800; }
+.status-dot.failed   { background: var(--vscode-errorForeground); }
+.status-dot.idle     { background: var(--vscode-descriptionForeground); opacity: 0.35; }
 
-.status-btn {
+/* ── Reusable icon button ──────────────────────────── */
+.icon-btn {
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 2px 5px;
   border-radius: 3px;
   color: var(--vscode-descriptionForeground);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
   flex-shrink: 0;
   display: flex;
   align-items: center;
 }
 
-.status-btn:hover {
+.icon-btn:hover {
   background: var(--vscode-toolbar-hoverBackground);
   color: var(--vscode-foreground);
 }
 
-/* ── Message list ───────────────────────────────── */
-.message-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
-/* ── Empty state ────────────────────────────────── */
+/* ── Spinner ───────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Section bar (shared by chat + general) ────────── */
+.section-bar {
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  min-height: 26px;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.65;
+}
+
+/* ── Panel: Chat ───────────────────────────────────── */
+.panel-chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.chat-section-bar {
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+/* ── Message list ──────────────────────────────────── */
+.message-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Empty state ───────────────────────────────────── */
 .empty-state {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
-  gap: 8px;
+  padding: 20px 16px;
+  gap: 5px;
   color: var(--vscode-descriptionForeground);
   text-align: center;
 }
 
 .empty-state-icon {
-  font-size: 28px;
-  opacity: 0.5;
+  font-size: 24px;
+  opacity: 0.35;
   margin-bottom: 4px;
 }
 
 .empty-state-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--vscode-foreground);
-  opacity: 0.7;
+  opacity: 0.55;
 }
 
 .empty-state-hint {
   font-size: 11px;
   line-height: 1.5;
-  max-width: 200px;
+  max-width: 185px;
 }
 
-/* ── Messages ───────────────────────────────────── */
+/* ── Messages ──────────────────────────────────────── */
 .message {
   display: flex;
   flex-direction: column;
@@ -136,7 +208,7 @@ body {
 .message-user .message-bubble {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
-  padding: 7px 11px;
+  padding: 6px 10px;
   border-radius: 10px 10px 2px 10px;
   font-size: var(--vscode-font-size);
   line-height: 1.5;
@@ -162,8 +234,8 @@ body {
 .message-bubble p { margin-bottom: 8px; }
 .message-bubble p:last-child { margin-bottom: 0; }
 .message-bubble ul,
-.message-bubble ol { margin: 6px 0 8px 18px; }
-.message-bubble li { margin-bottom: 3px; }
+.message-bubble ol { margin: 4px 0 8px 16px; }
+.message-bubble li { margin-bottom: 2px; }
 .message-bubble strong { font-weight: 600; }
 .message-bubble em { font-style: italic; }
 .message-bubble code {
@@ -177,9 +249,9 @@ body {
   background: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.1));
   border: 1px solid var(--vscode-panel-border);
   border-radius: 4px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   overflow-x: auto;
-  margin: 8px 0;
+  margin: 6px 0;
 }
 .message-bubble pre code {
   background: none;
@@ -190,7 +262,7 @@ body {
 .message-bubble h2,
 .message-bubble h3 {
   font-weight: 600;
-  margin: 10px 0 5px;
+  margin: 8px 0 4px;
   line-height: 1.3;
 }
 .message-bubble h1 { font-size: 1.1em; }
@@ -200,51 +272,53 @@ body {
 .streaming-cursor::after {
   content: '▋';
   animation: blink 1s step-end infinite;
-  font-size: 0.85em;
+  font-size: 0.8em;
   opacity: 0.7;
 }
 
-@keyframes blink {
-  50% { opacity: 0; }
-}
+@keyframes blink { 50% { opacity: 0; } }
 
-/* ── Citations ──────────────────────────────────── */
+/* ── Citations ─────────────────────────────────────── */
 .citations {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .citations-label {
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--vscode-descriptionForeground);
   font-weight: 600;
+  opacity: 0.6;
 }
 
 .citations-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
 }
 
 .citation-chip {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
   background: var(--vscode-badge-background);
   color: var(--vscode-badge-foreground);
   border-radius: 3px;
-  padding: 2px 7px;
+  padding: 1px 5px;
   font-family: var(--vscode-editor-font-family);
-  font-size: 10px;
+  font-size: 9px;
   cursor: pointer;
   border: none;
   line-height: 1.5;
-  opacity: 0.85;
+  opacity: 0.8;
   transition: opacity 0.1s;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .citation-chip:hover {
@@ -253,9 +327,9 @@ body {
   color: var(--vscode-foreground);
 }
 
-/* ── Input area ─────────────────────────────────── */
+/* ── Input area ────────────────────────────────────── */
 .input-area {
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-top: 1px solid var(--vscode-panel-border);
   display: flex;
   gap: 6px;
@@ -269,12 +343,12 @@ body {
   color: var(--vscode-input-foreground);
   border: 1px solid var(--vscode-input-border, transparent);
   border-radius: 4px;
-  padding: 7px 9px;
+  padding: 6px 8px;
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
   resize: none;
-  min-height: 34px;
-  max-height: 120px;
+  min-height: 32px;
+  max-height: 100px;
   line-height: 1.4;
 }
 
@@ -292,7 +366,7 @@ body {
   color: var(--vscode-button-foreground);
   border: none;
   border-radius: 4px;
-  padding: 7px 13px;
+  padding: 6px 12px;
   cursor: pointer;
   font-size: var(--vscode-font-size);
   font-weight: 500;
@@ -309,18 +383,65 @@ body {
   cursor: not-allowed;
 }
 
-/* ── Spinner ────────────────────────────────────── */
-.spinner {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border: 1.5px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+/* ── Panel: General — activity logs ────────────────── */
+.panel-general {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.general-section-bar {
+  cursor: pointer;
+  user-select: none;
 }
+
+.general-section-bar:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.log-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0px 4px;
+  border-radius: 7px;
+  line-height: 1.5;
+}
+
+.log-badge.warning {
+  background: rgba(255, 152, 0, 0.18);
+  color: #ff9800;
+}
+
+.log-badge.error {
+  background: rgba(244, 67, 54, 0.15);
+  color: var(--vscode-errorForeground);
+}
+
+.log-list {
+  max-height: 130px;
+  overflow-y: auto;
+  padding: 2px 0 4px;
+}
+
+.log-entry {
+  padding: 2px 10px;
+  font-size: 10px;
+  display: flex;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.log-time {
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.5;
+  flex-shrink: 0;
+  font-family: var(--vscode-editor-font-family);
+}
+
+.log-message {
+  word-break: break-word;
+}
+
+.log-entry.log-info    .log-message { color: var(--vscode-foreground); opacity: 0.75; }
+.log-entry.log-warning .log-message { color: #ff9800; }
+.log-entry.log-error   .log-message { color: var(--vscode-errorForeground); }
