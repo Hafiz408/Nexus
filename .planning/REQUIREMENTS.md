@@ -47,10 +47,10 @@
 
 ### Critic Agent
 
-- [ ] **CRIT-01**: Critic scores every specialist output on groundedness (citation accuracy), relevance, and actionability; produces an overall weighted score (0.4×G + 0.35×R + 0.25×A)
-- [ ] **CRIT-02**: When overall score < 0.7 and loops < 2, critic routes back to the source agent with specific feedback
-- [ ] **CRIT-03**: After 2 retry loops, critic forces `max_loops` path regardless of score (hard cap — never infinite)
-- [ ] **CRIT-04**: Groundedness is pre-computed from cited node IDs vs. `retrieved_nodes` set (not LLM-estimated)
+- [x] **CRIT-01**: Critic scores every specialist output on groundedness (citation accuracy), relevance, and actionability; produces an overall weighted score (0.4×G + 0.35×R + 0.25×A)
+- [x] **CRIT-02**: When overall score < 0.7 and loops < 2, critic routes back to the source agent with specific feedback
+- [x] **CRIT-03**: After 2 retry loops, critic forces `max_loops` path regardless of score (hard cap — never infinite)
+- [x] **CRIT-04**: Groundedness is pre-computed from cited node IDs vs. `retrieved_nodes` set (not LLM-estimated)
 
 ### MCP Tool Layer
 
@@ -146,10 +146,10 @@
 | TEST-04 | Phase 20: tester-agent | Complete |
 | TEST-05 | Phase 20: tester-agent | Complete |
 | TST-04 | Phase 20: tester-agent | Complete |
-| CRIT-01 | Phase 21: critic-agent | Pending |
-| CRIT-02 | Phase 21: critic-agent | Pending |
-| CRIT-03 | Phase 21: critic-agent | Pending |
-| CRIT-04 | Phase 21: critic-agent | Pending |
+| CRIT-01 | Phase 21: critic-agent | Complete |
+| CRIT-02 | Phase 21: critic-agent | Complete |
+| CRIT-03 | Phase 21: critic-agent | Complete |
+| CRIT-04 | Phase 21: critic-agent | Complete |
 | TST-05 | Phase 21: critic-agent | Pending |
 | ORCH-01 | Phase 22: orchestrator | Pending |
 | ORCH-02 | Phase 22: orchestrator | Pending |

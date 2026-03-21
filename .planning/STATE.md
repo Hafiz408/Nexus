@@ -6,15 +6,15 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 20 — tester-agent
-Plan: 02 — complete
-Status: Phase 20 Plan 02 complete; Tester agent test suite created; TST-04 marked complete; Phase 20 fully complete; ready for Phase 21
-Last activity: 2026-03-22 — Completed 20-02-PLAN.md (Tester agent tests: 10 offline tests, tester_graph + mock_settings + mock_llm_factory fixtures; TST-04 marked complete; 148 tests passing)
+Phase: 21 — critic-agent
+Plan: 01 — complete
+Status: Phase 21 Plan 01 complete; Critic agent module created; CRIT-01, CRIT-02, CRIT-03, CRIT-04 marked complete; 148 tests passing
+Last activity: 2026-03-22 — Completed 21-01-PLAN.md (Critic agent: CriticResult model + critique() deterministic quality gate; composite scoring 0.4/0.35/0.25; hard cap at loop_count>=2; groundedness dispatch per result type)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 20 complete, next: Phase 21 (graph agent)
+**Current focus:** v2.0 multi-agent team — Phase 21 Plan 01 complete; next: Phase 21 Plan 02 (critic tests) or Phase 22 (orchestrator)
 
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 91%
 
 ## Performance Metrics
 
@@ -53,6 +53,9 @@ Last activity: 2026-03-22 — Completed 20-02-PLAN.md (Tester agent tests: 10 of
 - [Phase 20-tester-agent]: get_llm() and get_settings() imported inside test() body (lazy) — consistent with router.py, debugger.py, reviewer.py pattern
 - [Phase 20-tester-agent]: _derive_test_path() derives test_file_path from (func_name, framework) deterministically — LLM never generates file paths
 - [Phase 20-tester-agent]: Import alias 'test as run_test' required in test_tester.py — pytest collects production test() function from module namespace causing fixture resolution error
+- [Phase 21-critic-agent]: Groundedness dispatch per result type: DebugResult uses traversal_path/suspects, ReviewResult uses retrieved_nodes/findings, TestResult always 1.0
+- [Phase 21-critic-agent]: Lazy specialist imports inside private helpers to prevent circular imports when orchestrator imports all agents together
+- [Phase 21-critic-agent]: Hard cap checked before quality gate — loop_count >= max_loops forces passed=True unconditionally (CRIT-03)
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -77,3 +80,4 @@ Last activity: 2026-03-22 — Completed 20-02-PLAN.md (Tester agent tests: 10 of
 - 2026-03-22: Phase 19 Plan 02 complete — Reviewer agent test suite: 10 offline tests, reviewer_graph (5-node DiGraph) + mock_settings (reviewer_context_hops=1) + mock_llm_factory (source-level patch with __call__ return_value) fixtures; TST-03 marked complete; 134 tests passing
 - 2026-03-22: Phase 20 Plan 01 complete — Tester agent module created; _detect_framework (marker file heuristics) + _get_callees (CALLS-edge enumeration) + _derive_test_path (deterministic convention mapping) + test() public API with lazy imports; TST-04 partial; 134 tests passing
 - 2026-03-22: Phase 20 Plan 02 complete — Tester agent test suite: 10 offline tests, tester_graph (4-node DiGraph: target + 2 CALLS callees + 1 isolated) + mock_settings + mock_llm_factory fixtures; pytest.ini added to prevent test() function name collision; TST-04 marked complete; 148 tests passing
+- 2026-03-22: Phase 21 Plan 01 complete — Critic agent module created; CriticResult (7 fields) + critique() deterministic quality gate; composite scoring 0.40/0.35/0.25 groundedness/relevance/actionability; hard cap at loop_count>=2; per-type groundedness dispatch; CRIT-01, CRIT-02, CRIT-03, CRIT-04 marked complete; 148 tests passing
