@@ -19,10 +19,11 @@ Critical patterns (from RESEARCH.md):
 from __future__ import annotations
 
 import sqlite3
-from typing import Optional, TypedDict, Union
+from typing import Any, List, Optional, TypedDict, Union
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from pydantic import BaseModel
 
 
 # ---------------------------------------------------------------------------
@@ -62,15 +63,19 @@ class NexusState(TypedDict):
 
 
 # ---------------------------------------------------------------------------
-# Minimal explain result carrier (not a Pydantic model — no LLM schema needed)
+# Minimal explain result carrier — Pydantic model for MemorySaver compatibility
 # ---------------------------------------------------------------------------
 
-class _ExplainResult:
-    """Simple data carrier for the explain path result."""
-    def __init__(self, answer: str, nodes: list, stats: dict):
-        self.answer = answer
-        self.nodes = nodes
-        self.stats = stats
+class _ExplainResult(BaseModel):
+    """Data carrier for the explain path result.
+
+    Pydantic BaseModel (not a plain class) so MemorySaver can serialize/deserialize
+    this via msgpack/jsonplus when checkpointing graph state. Plain Python classes
+    are not msgpack-serializable and raise TypeError at checkpoint write time.
+    """
+    answer: str
+    nodes: List[Any] = []
+    stats: dict = {}
 
 
 # ---------------------------------------------------------------------------
