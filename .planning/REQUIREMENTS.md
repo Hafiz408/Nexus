@@ -12,9 +12,9 @@
 
 ### Orchestration
 
-- [ ] **ORCH-01**: System routes every query through a LangGraph StateGraph with typed `NexusState` (replacing V1 single LangChain runnable)
-- [ ] **ORCH-02**: Graph compiles with `SqliteSaver` checkpointer so conversation state persists across requests
-- [ ] **ORCH-03**: All V1 queries (without `intent_hint`) continue to work unchanged via the `explain` default path
+- [x] **ORCH-01**: System routes every query through a LangGraph StateGraph with typed `NexusState` (replacing V1 single LangChain runnable)
+- [x] **ORCH-02**: Graph compiles with `SqliteSaver` checkpointer so conversation state persists across requests
+- [x] **ORCH-03**: All V1 queries (without `intent_hint`) continue to work unchanged via the `explain` default path
 
 ### Router Agent
 
@@ -151,9 +151,9 @@
 | CRIT-03 | Phase 21: critic-agent | Complete |
 | CRIT-04 | Phase 21: critic-agent | Complete |
 | TST-05 | Phase 21: critic-agent | Complete |
-| ORCH-01 | Phase 22: orchestrator | Pending |
-| ORCH-02 | Phase 22: orchestrator | Pending |
-| ORCH-03 | Phase 22: orchestrator | Pending |
+| ORCH-01 | Phase 22: orchestrator | Complete |
+| ORCH-02 | Phase 22: orchestrator | Complete |
+| ORCH-03 | Phase 22: orchestrator | Complete |
 | TST-07 | Phase 22: orchestrator | Pending |
 | MCP-01 | Phase 23: mcp-tools | Pending |
 | MCP-02 | Phase 23: mcp-tools | Pending |

@@ -6,15 +6,15 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 21 — critic-agent
-Plan: 02 — complete
-Status: Phase 21 Plan 02 complete; Critic agent test suite created; TST-05 marked complete; 158 tests passing
-Last activity: 2026-03-22 — Completed 21-02-PLAN.md (10 offline unit tests for critique(): scoring formula, retry routing, hard cap at loop_count>=2, loop=1 boundary, feedback=None on pass, per-type groundedness dispatch)
+Phase: 22 — orchestrator
+Plan: 01 — complete
+Status: Phase 22 Plan 01 complete; orchestrator.py NexusState + build_graph() LangGraph pipeline; ORCH-01, ORCH-02, ORCH-03 marked complete; 158 tests passing
+Last activity: 2026-03-22 — Completed 22-01-PLAN.md (NexusState 12-field TypedDict + build_graph() factory + 6 node functions wiring router→specialist→critic with conditional retry loop; langgraph deps added to requirements.txt)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 21 complete; next: Phase 22 (orchestrator)
+**Current focus:** v2.0 multi-agent team — Phase 22 Plan 01 complete; next: Phase 22 Plan 02 (orchestrator tests) or Phase 23 (API integration)
 
-**Progress:** [█████████░] 93%
+**Progress:** [█████████░] 92%
 
 ## Performance Metrics
 
@@ -59,6 +59,9 @@ Last activity: 2026-03-22 — Completed 21-02-PLAN.md (10 offline unit tests for
 - [Phase 21-critic-agent TST-05]: Module-level helper builders (make_debug_result, make_review_result, make_test_result) used instead of fixtures to allow arbitrary argument construction per test
 - [Phase 21-critic-agent TST-05]: critic_threshold=0.0 override in test_feedback_none_on_pass forces pass path — tests feedback=None invariant independently of score arithmetic
 - [Phase 21-critic-agent TST-05]: Loop boundary test (loop_count=1) added to confirm hard cap fence-post: cap fires at max_loops (2), not max_loops-1 (1)
+- [Phase 22-orchestrator]: G typed as Optional[object] in NexusState so SqliteSaver does not attempt JSON serialization of nx.DiGraph
+- [Phase 22-orchestrator]: _explain_node uses chain.invoke() (sync) not explore_stream() (async generator) — asyncio.run() inside FastAPI raises RuntimeError: event loop already running
+- [Phase 22-orchestrator]: loop_count incremented in critic_node on RETRY path only — specialist nodes have no loop awareness
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -85,3 +88,4 @@ Last activity: 2026-03-22 — Completed 21-02-PLAN.md (10 offline unit tests for
 - 2026-03-22: Phase 20 Plan 02 complete — Tester agent test suite: 10 offline tests, tester_graph (4-node DiGraph: target + 2 CALLS callees + 1 isolated) + mock_settings + mock_llm_factory fixtures; pytest.ini added to prevent test() function name collision; TST-04 marked complete; 148 tests passing
 - 2026-03-22: Phase 21 Plan 01 complete — Critic agent module created; CriticResult (7 fields) + critique() deterministic quality gate; composite scoring 0.40/0.35/0.25 groundedness/relevance/actionability; hard cap at loop_count>=2; per-type groundedness dispatch; CRIT-01, CRIT-02, CRIT-03, CRIT-04 marked complete; 148 tests passing
 - 2026-03-22: Phase 21 Plan 02 complete — Critic agent test suite: 10 offline tests, mock_settings (max_critic_loops=2, critic_threshold=0.7) + module-level helper builders; TST-05 marked complete; 158 tests passing
+- 2026-03-22: Phase 22 Plan 01 complete — Orchestrator module created; NexusState (12 fields) + build_graph() factory; LangGraph StateGraph router→specialist→critic pipeline with conditional retry loop; langgraph + langgraph-checkpoint-sqlite added to requirements.txt; ORCH-01, ORCH-02, ORCH-03 marked complete; 158 tests passing
