@@ -118,6 +118,17 @@ None - no external service configuration required.
 - Textarea auto-grow and citation collapse complete; extension UI ready for Phase 16 E2E smoke test
 - No blockers
 
+## Self-Check: PASSED
+
+- extension/src/webview/App.tsx: FOUND
+- extension/src/webview/index.css: FOUND
+- .planning/phases/15-extension-ui-revamp/15-01-SUMMARY.md: FOUND
+- Commit 88333cb (Task 1): FOUND
+- Commit 616e6bc (Task 2): FOUND
+- Build exits 0: VERIFIED
+- scrollHeight in bundle: VERIFIED
+- citation-chip-more in bundle: VERIFIED
+
 ---
 *Phase: 15-extension-ui-revamp*
 *Completed: 2026-03-21*
