@@ -4,14 +4,14 @@
   padding: 0;
 }
 
-/* Strip WebKit's default button chrome — must come before all button rules */
+/* Strip WebKit's default button chrome */
 button {
   -webkit-appearance: none;
   appearance: none;
 }
 
 body {
-  font-family: var(--vscode-font-family);
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
   font-size: var(--vscode-font-size);
   color: var(--vscode-foreground);
   background: var(--vscode-sideBar-background);
@@ -28,79 +28,86 @@ body {
   overflow: hidden;
 }
 
-/* ── Panel: Header — index status ─────────────────── */
-.panel-header {
-  padding: 7px 12px 8px;
-  background: var(--vscode-sideBarSectionHeader-background, rgba(128,128,128,0.08));
-  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border));
+/* ══ Section shell ════════════════════════════════════ */
+.panel-section {
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
+  min-height: 0;
 }
 
-.header-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.header-status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  font-weight: 500;
-  min-width: 0;
+/* Chat section expands to fill remaining space */
+.panel-section-chat {
   flex: 1;
 }
 
-.header-status > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.header-meta {
-  margin-top: 3px;
-  font-size: 10px;
-  color: var(--vscode-descriptionForeground);
-  opacity: 0.65;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding-left: 14px; /* align under status text, past the dot */
-}
-
-/* ── Status dot ────────────────────────────────────── */
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+/* ══ Section header (matches VS Code TreeView style) ═ */
+.section-header {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  background: var(--vscode-sideBarSectionHeader-background, rgba(128,128,128,0.08));
+  border-top: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border));
+  cursor: pointer;
+  user-select: none;
   flex-shrink: 0;
 }
 
-.status-dot.complete { background: #4caf50; }
-.status-dot.running  { background: #ff9800; }
-.status-dot.failed   { background: var(--vscode-errorForeground); }
-.status-dot.idle     { background: var(--vscode-descriptionForeground); opacity: 0.35; }
+/* No top border on the very first section */
+.panel-section:first-child .section-header {
+  border-top: none;
+}
 
-/* ── Reusable icon button ──────────────────────────── */
+.section-header-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.section-chevron {
+  font-size: 10px;
+  opacity: 0.7;
+  flex-shrink: 0;
+  width: 12px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 6px;
+  flex-shrink: 0;
+}
+
+/* ══ Icon button ══════════════════════════════════════ */
 .icon-btn {
   background: transparent;
   border: none;
+  outline: none;
   cursor: pointer;
-  padding: 2px 5px;
+  padding: 3px 5px;
   border-radius: 3px;
-  color: var(--vscode-descriptionForeground);
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
   font-size: 13px;
   line-height: 1;
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  opacity: 0.7;
 }
 
 .icon-btn:hover {
   background: var(--vscode-toolbar-hoverBackground);
-  color: var(--vscode-foreground);
+  opacity: 1;
 }
 
 .icon-btn:disabled {
@@ -108,7 +115,7 @@ body {
   cursor: not-allowed;
 }
 
-/* ── Spinner ───────────────────────────────────────── */
+/* ══ Spinner ══════════════════════════════════════════ */
 .spinner {
   display: inline-block;
   width: 8px;
@@ -122,45 +129,52 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Section bar (shared by chat + general) ────────── */
-.section-bar {
-  padding: 4px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* ══ Status dot ═══════════════════════════════════════ */
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   flex-shrink: 0;
-  min-height: 26px;
-  background: var(--vscode-sideBarSectionHeader-background, rgba(128,128,128,0.08));
-  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border));
 }
 
-.section-label {
+.status-dot.complete { background: #4caf50; }
+.status-dot.running  { background: #ff9800; }
+.status-dot.failed   { background: var(--vscode-errorForeground); }
+.status-dot.idle     { background: var(--vscode-descriptionForeground); opacity: 0.35; }
+
+/* ══ Section 1: Index body ════════════════════════════ */
+.index-body {
+  padding: 9px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.index-status-row {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--vscode-descriptionForeground);
-  opacity: 0.65;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--vscode-foreground);
 }
 
-/* ── Panel: Chat ───────────────────────────────────── */
-.panel-chat {
+.index-meta {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  padding-left: 14px; /* visually aligns with text after the dot */
+}
+
+/* ══ Section 2: Chat body ═════════════════════════════ */
+.chat-body {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-.chat-section-bar {
-  border-bottom: 1px solid var(--vscode-panel-border);
-}
-
-/* ── Message list ──────────────────────────────────── */
+/* ── Message list ─────────────────────────────────── */
 .message-list {
   flex: 1;
   min-height: 0;
@@ -171,7 +185,7 @@ body {
   gap: 10px;
 }
 
-/* ── Empty state ───────────────────────────────────── */
+/* ── Empty state ──────────────────────────────────── */
 .empty-state {
   flex: 1;
   display: flex;
@@ -185,8 +199,8 @@ body {
 }
 
 .empty-state-icon {
-  font-size: 24px;
-  opacity: 0.35;
+  font-size: 22px;
+  opacity: 0.3;
   margin-bottom: 4px;
 }
 
@@ -194,7 +208,7 @@ body {
   font-size: 12px;
   font-weight: 600;
   color: var(--vscode-foreground);
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .empty-state-hint {
@@ -203,16 +217,14 @@ body {
   max-width: 185px;
 }
 
-/* ── Messages ──────────────────────────────────────── */
+/* ── Messages ─────────────────────────────────────── */
 .message {
   display: flex;
   flex-direction: column;
   max-width: 100%;
 }
 
-.message-user {
-  align-items: flex-end;
-}
+.message-user { align-items: flex-end; }
 
 .message-user .message-bubble {
   background: var(--vscode-button-background);
@@ -226,9 +238,7 @@ body {
   word-break: break-word;
 }
 
-.message-assistant {
-  align-items: flex-start;
-}
+.message-assistant { align-items: flex-start; }
 
 .message-assistant .message-bubble {
   background: transparent;
@@ -239,7 +249,7 @@ body {
   word-break: break-word;
 }
 
-/* Markdown content inside assistant bubble */
+/* Markdown in assistant bubble */
 .message-bubble p { margin-bottom: 8px; }
 .message-bubble p:last-child { margin-bottom: 0; }
 .message-bubble ul,
@@ -262,18 +272,10 @@ body {
   overflow-x: auto;
   margin: 6px 0;
 }
-.message-bubble pre code {
-  background: none;
-  padding: 0;
-  font-size: calc(var(--vscode-editor-font-size) - 1px);
-}
+.message-bubble pre code { background: none; padding: 0; }
 .message-bubble h1,
 .message-bubble h2,
-.message-bubble h3 {
-  font-weight: 600;
-  margin: 8px 0 4px;
-  line-height: 1.3;
-}
+.message-bubble h3 { font-weight: 600; margin: 8px 0 4px; line-height: 1.3; }
 .message-bubble h1 { font-size: 1.1em; }
 .message-bubble h2 { font-size: 1.05em; }
 .message-bubble h3 { font-size: 1em; }
@@ -287,7 +289,7 @@ body {
 
 @keyframes blink { 50% { opacity: 0; } }
 
-/* ── Citations ─────────────────────────────────────── */
+/* ── Citations ────────────────────────────────────── */
 .citations {
   margin-top: 6px;
   display: flex;
@@ -336,7 +338,7 @@ body {
   color: var(--vscode-foreground);
 }
 
-/* ── Input area ────────────────────────────────────── */
+/* ── Input area ───────────────────────────────────── */
 .input-area {
   padding: 7px 12px;
   border-top: 1px solid var(--vscode-panel-border);
@@ -353,7 +355,6 @@ body {
   border: 1px solid var(--vscode-input-border, transparent);
   border-radius: 4px;
   padding: 6px 8px;
-  /* Explicit fallback prevents WebKit from defaulting to monospace */
   font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
   font-size: var(--vscode-font-size);
   resize: none;
@@ -393,55 +394,38 @@ body {
   cursor: not-allowed;
 }
 
-/* ── Panel: General — activity logs ────────────────── */
-.panel-general {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid var(--vscode-panel-border);
-}
-
-.general-section-bar {
-  cursor: pointer;
-  user-select: none;
-  /* override the section-bar bottom border — general uses border-top on panel-general */
-  border-bottom: none;
-}
-
-.general-section-bar:hover {
-  background: var(--vscode-list-hoverBackground);
+/* ══ Section 3: Activity body ═════════════════════════ */
+.activity-body {
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 2px 0 4px;
 }
 
 .log-badge {
   font-size: 9px;
   font-weight: 700;
-  padding: 0px 4px;
+  padding: 1px 5px;
   border-radius: 7px;
   line-height: 1.5;
 }
 
-.log-badge.warning {
-  background: rgba(255, 152, 0, 0.18);
-  color: #ff9800;
-}
-
-.log-badge.error {
-  background: rgba(244, 67, 54, 0.15);
-  color: var(--vscode-errorForeground);
-}
-
-.log-list {
-  max-height: 130px;
-  overflow-y: auto;
-  padding: 2px 0 4px;
-}
+.log-badge.warning { background: rgba(255,152,0,0.18); color: #ff9800; }
+.log-badge.error   { background: rgba(244,67,54,0.15); color: var(--vscode-errorForeground); }
 
 .log-entry {
-  padding: 2px 10px;
+  padding: 2px 12px;
   font-size: 10px;
   display: flex;
   gap: 6px;
   line-height: 1.5;
+  align-items: flex-start;
+}
+
+.log-progress {
+  padding-top: 5px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  margin-bottom: 2px;
 }
 
 .log-time {
@@ -451,9 +435,7 @@ body {
   font-family: var(--vscode-editor-font-family);
 }
 
-.log-message {
-  word-break: break-word;
-}
+.log-message { word-break: break-word; }
 
 .log-entry.log-info    .log-message { color: var(--vscode-foreground); opacity: 0.75; }
 .log-entry.log-warning .log-message { color: #ff9800; }
