@@ -564,3 +564,50 @@ body.vscode-light .status-dot.complete { background: #2e7d32; }
   0%   { transform: translateX(-250%); }
   100% { transform: translateX(400%); }
 }
+
+/* ═══════════════════════════════════════════════════════
+   Intent selector pills
+   Five equal-width pills above the input area.
+   !important required on background/border — global button
+   reset at top of file uses !important and wins otherwise.
+   ═══════════════════════════════════════════════════════ */
+.intent-selector {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 3px;
+  padding: 6px 12px 4px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
+}
+
+.intent-pill {
+  flex: 1;
+  padding: 3px 0;
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+  border-radius: 3px;
+  border: 1px solid var(--vscode-button-secondaryBackground,
+                        rgba(128,128,128,0.3)) !important;
+  color: var(--vscode-foreground);
+  background: transparent !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+
+.intent-pill.active {
+  background: var(--vscode-button-background) !important;
+  color: var(--vscode-button-foreground) !important;
+  border-color: transparent !important;
+}
+
+.intent-pill:hover:not(.active) {
+  background: var(--vscode-toolbar-hoverBackground,
+               rgba(128,128,128,0.15)) !important;
+}
+
+.intent-pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

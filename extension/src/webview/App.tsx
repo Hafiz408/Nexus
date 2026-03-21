@@ -48,6 +48,19 @@ type IncomingMessage =
 
 const vscode = acquireVsCodeApi();
 
+// ── Intent selector ────────────────────────────────────────────────────────
+type IntentOption = 'auto' | 'explain' | 'debug' | 'review' | 'test';
+
+const INTENT_LABELS: Record<IntentOption, string> = {
+  auto:    'Ask',
+  explain: 'Explain',
+  debug:   'Debug',
+  review:  'Review',
+  test:    'Test',
+};
+
+const INTENT_OPTIONS: IntentOption[] = ['auto', 'explain', 'debug', 'review', 'test'];
+
 let counter = 0;
 const newId = () => String(++counter);
 
@@ -129,6 +142,7 @@ export function App(): React.JSX.Element {
   const [indexExpanded, setIndexExpanded] = useState(true);
   const [activityExpanded, setActivityExpanded] = useState(false);
   const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
+  const [selectedIntent, setSelectedIntent] = useState<IntentOption>('auto');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -243,8 +257,12 @@ export function App(): React.JSX.Element {
     }
     setIsStreaming(true);
     addLog('info', `Query: "${question.length > 55 ? question.slice(0, 55) + '…' : question}"`);
-    vscode.postMessage({ type: 'query', question });
-  }, [inputValue, isStreaming, addLog]);
+    vscode.postMessage({
+      type: 'query',
+      question,
+      intent_hint: selectedIntent !== 'auto' ? selectedIntent : undefined,
+    });
+  }, [inputValue, isStreaming, addLog, selectedIntent]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -456,6 +474,20 @@ export function App(): React.JSX.Element {
             <div ref={messagesEndRef} />
           </div>
 
+          <div className="intent-selector">
+            {INTENT_OPTIONS.map((intent) => (
+              <button
+                key={intent}
+                className={`intent-pill${selectedIntent === intent ? ' active' : ''}`}
+                onClick={() => setSelectedIntent(intent)}
+                disabled={isStreaming}
+                title={INTENT_LABELS[intent]}
+              >
+                {INTENT_LABELS[intent]}
+              </button>
+            ))}
+          </div>
+
           <div className="input-area">
             <textarea
               ref={textareaRef}
@@ -466,7 +498,7 @@ export function App(): React.JSX.Element {
               disabled={isStreaming}
             />
             <button className="send-btn" onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
-              {isStreaming ? '…' : 'Ask'}
+              {isStreaming ? '…' : INTENT_LABELS[selectedIntent]}
             </button>
           </div>
         </div>
