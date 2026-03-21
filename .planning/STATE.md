@@ -5,14 +5,20 @@
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** A developer can ask any question about a codebase and get a streamed, cited, graph-grounded answer with exact file:line highlights in VS Code.
-**Current focus:** Phase 14 — RAGAS Eval
+**Current focus:** Phase 15 — Extension UI Revamp
 
 ## Current Position
 
-Phase: 14 of 14 (RAGAS Eval) — COMPLETE
-Plan: 2 of 2 in current phase — COMPLETE
-Status: Phase 14-ragas-eval plan 02 complete — eval/run_ragas.py RAGAS evaluation runner created, eval/results/.gitkeep committed
-Last activity: 2026-03-19 — Plan 14-02 complete: eval/run_ragas.py dual-mode RAGAS evaluation runner created, eval/results/.gitkeep committed
+Phase: 15 of 16 (Extension UI Revamp) — IN PROGRESS
+Plan: 0 of TBD in current phase
+Status: UI polish in progress — section headers, button chrome fix, layout alignment underway
+Last activity: 2026-03-21 — Phases 15 (UI Revamp) and 16 (E2E Sign-off) added to roadmap
+
+## Accumulated Context
+
+### Roadmap Evolution
+- Phase 15 added: Extension UI Revamp — polish sidebar to match native VS Code extension quality
+- Phase 16 added: V1 End-to-End Smoke Test and Sign-off — final verification before V1 tag
 
 Progress: [██████████] 100%
 

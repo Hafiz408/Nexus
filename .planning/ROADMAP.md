@@ -269,3 +269,21 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 | 12. Highlighter | 0/TBD | Complete    | 2026-03-19 |
 | 13. File Watcher | 1/1 | Complete    | 2026-03-19 |
 | 14. RAGAS Eval | 2/2 | Complete    | 2026-03-19 |
+
+### Phase 15: Extension UI Revamp
+
+**Goal:** The VS Code sidebar panel looks and behaves like a first-class published extension — section headers bold and collapsible (▾/▸ chevrons, no box chrome on buttons), ↺ and Ask stay inline with their rows, content indentation aligns with section title text, Activity section shows live indexing progress with a spinner row, citation chips compact and non-flooding.
+**Depends on:** Phase 14
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 15 to break down)
+
+### Phase 16: V1 End-to-End Smoke Test and Sign-off
+
+**Goal:** A single clean run confirms the full system works end-to-end: Docker stack up → index a real repo → ask 3 representative questions → verify streamed cited answers → confirm citation file:line jumps work → V1 officially signed off and tagged.
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 16 to break down)
