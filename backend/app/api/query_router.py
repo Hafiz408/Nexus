@@ -47,6 +47,68 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
             detail=f"repo '{request_body.repo_path}' has not been indexed or indexing is not complete",
         )
 
+    # V2 path: intent_hint is a named intent (not None and not "auto")
+    if request_body.intent_hint and request_body.intent_hint != "auto":
+        async def v2_event_generator():
+            try:
+                # Lazy imports — established project pattern (all V2 agents use this)
+                # Prevents import-time ValidationError when API keys are absent.
+                from app.agent.orchestrator import build_graph  # noqa: PLC0415
+                import sqlite3 as _sqlite3  # noqa: PLC0415
+                from langgraph.checkpoint.sqlite import SqliteSaver  # noqa: PLC0415
+
+                G = await asyncio.to_thread(_get_graph, request_body.repo_path, request)
+                # SqliteSaver DB is SEPARATE from data/nexus.db (locked decision, STATE.md)
+                conn = _sqlite3.connect("data/checkpoints.db", check_same_thread=False)
+                graph = build_graph(checkpointer=SqliteSaver(conn))
+
+                initial_state = {
+                    "question": request_body.question,
+                    "repo_path": request_body.repo_path,
+                    "intent_hint": request_body.intent_hint,
+                    "G": G,
+                    "target_node_id": request_body.target_node_id,
+                    "selected_file": request_body.selected_file,
+                    "selected_range": request_body.selected_range,
+                    "repo_root": request_body.repo_root,
+                    "intent": None,
+                    "specialist_result": None,
+                    "critic_result": None,
+                    "loop_count": 0,
+                }
+                # Thread ID scoped per request for isolation (no cross-request state bleed)
+                from uuid import uuid4  # noqa: PLC0415
+                thread_id = f"{request_body.repo_path}::{uuid4()}"
+
+                # graph.invoke() is synchronous — offload to thread pool to avoid
+                # blocking the FastAPI event loop (established pattern, STATE.md Phase 22)
+                result_state = await asyncio.to_thread(
+                    graph.invoke,
+                    initial_state,
+                    {"configurable": {"thread_id": thread_id}},
+                )
+
+                specialist = result_state["specialist_result"]
+                intent = result_state["intent"]
+
+                # Pydantic v2: model_dump(mode="json") recursively serializes nested models
+                # e.g. _ExplainResult.nodes contains CodeNode objects — mode="json" is required
+                if hasattr(specialist, "model_dump"):
+                    result_dict = specialist.model_dump(mode="json")
+                else:
+                    result_dict = {"answer": str(specialist)}
+
+                payload = json.dumps({"type": "result", "intent": intent, "result": result_dict})
+                yield f"event: result\ndata: {payload}\n\n"
+                yield f"event: done\ndata: {json.dumps({'type': 'done'})}\n\n"
+
+            except Exception as exc:  # noqa: BLE001
+                payload = json.dumps({"type": "error", "message": str(exc)})
+                yield f"event: error\ndata: {payload}\n\n"
+
+        return StreamingResponse(v2_event_generator(), media_type="text/event-stream")
+
+    # V1 path (unchanged — zero modifications below this comment)
     async def event_generator():
         try:
             # Load graph from cache (lazy, async-safe via to_thread)
