@@ -264,7 +264,8 @@ def debug(question: str, G: nx.DiGraph, settings=None) -> DebugResult:
     prompt = DEBUGGER_PROMPT.partial(traversal_names=", ".join(traversal_names) or "none")
     chain = prompt | llm
     response = chain.invoke({"question": question, "suspects_text": suspects_text})
-    diagnosis = response.content if hasattr(response, "content") else str(response)
+    raw_content = response.content if hasattr(response, "content") else response
+    diagnosis = raw_content if isinstance(raw_content, str) else str(raw_content)
 
     # Step 9: Return
     return DebugResult(
