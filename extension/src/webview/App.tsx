@@ -128,6 +128,7 @@ export function App(): React.JSX.Element {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [indexExpanded, setIndexExpanded] = useState(true);
   const [activityExpanded, setActivityExpanded] = useState(false);
+  const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -226,6 +227,11 @@ export function App(): React.JSX.Element {
     },
     []
   );
+
+  const handleClear = useCallback(() => {
+    setMessages([]);
+    setExpandedCitations(new Set());
+  }, []);
 
   const handleSend = useCallback((): void => {
     const question = inputValue.trim();
@@ -359,7 +365,7 @@ export function App(): React.JSX.Element {
                 className="icon-btn"
                 title="Clear conversation"
                 disabled={isStreaming}
-                onClick={() => setMessages([])}
+                onClick={handleClear}
               >
                 ⊘
               </button>
@@ -397,23 +403,41 @@ export function App(): React.JSX.Element {
                       <div className="citations">
                         <div className="citations-label">Sources</div>
                         <div className="citations-chips">
-                          {msg.citations.map((c) => {
-                            const filename = c.file_path.split('/').pop() ?? c.file_path;
-                            const label =
-                              filename.length > 18
-                                ? `${filename.slice(0, 16)}…:${c.line_start}`
-                                : `${filename}:${c.line_start}`;
+                          {(() => {
+                            const CITATION_PREVIEW = 5;
+                            const isExpanded = expandedCitations.has(msg.id);
+                            const shownCitations = isExpanded ? msg.citations : msg.citations.slice(0, CITATION_PREVIEW);
+                            const hiddenCount = msg.citations.length - CITATION_PREVIEW;
                             return (
-                              <button
-                                key={c.node_id}
-                                className="citation-chip"
-                                onClick={() => handleCitationClick(c)}
-                                title={`${c.file_path}:${c.line_start}–${c.line_end}`}
-                              >
-                                {label}
-                              </button>
+                              <>
+                                {shownCitations.map((c) => {
+                                  const filename = c.file_path.split('/').pop() ?? c.file_path;
+                                  const label = filename.length > 18
+                                    ? `${filename.slice(0, 16)}…:${c.line_start}`
+                                    : `${filename}:${c.line_start}`;
+                                  return (
+                                    <button
+                                      key={c.node_id}
+                                      className="citation-chip"
+                                      onClick={() => handleCitationClick(c)}
+                                      title={`${c.file_path}:${c.line_start}–${c.line_end}`}
+                                    >
+                                      {label}
+                                    </button>
+                                  );
+                                })}
+                                {!isExpanded && hiddenCount > 0 && (
+                                  <button
+                                    className="citation-chip citation-chip-more"
+                                    onClick={() => setExpandedCitations(prev => new Set([...prev, msg.id]))}
+                                    title={`Show ${hiddenCount} more citations`}
+                                  >
+                                    +{hiddenCount} more
+                                  </button>
+                                )}
+                              </>
                             );
-                          })}
+                          })()}
                         </div>
                       </div>
                     )}

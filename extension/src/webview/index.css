@@ -387,6 +387,18 @@ body {
   background: var(--vscode-list-hoverBackground);
   color: var(--vscode-foreground);
 }
+.citation-chip-more {
+  opacity: 0.55;
+  background: transparent;
+  border: 1px dashed var(--vscode-badge-background);
+  color: var(--vscode-descriptionForeground);
+}
+.citation-chip-more:hover {
+  opacity: 1;
+  background: var(--vscode-list-hoverBackground);
+  border-color: transparent;
+  color: var(--vscode-foreground);
+}
 
 /* Input area */
 .input-area {
