@@ -19,8 +19,11 @@ LLM invocation pattern in review():
   chain = prompt | structured_llm
   result = chain.invoke(...)
   So mock: llm.with_structured_output returns a mock_structured;
-           mock_structured.__or__ returns mock_chain;
-           mock_chain.invoke returns the fixture ReviewResult.
+           mock_structured is called as a callable by RunnableSequence.__call__,
+           so mock_structured.return_value = fixture_result is the correct pattern.
+  Note: mock_structured.__or__ is NOT used — the pipe operator belongs to the
+  ChatPromptTemplate (prompt.__or__), creating a RunnableSequence that invokes
+  structured_llm via __call__, not .invoke().
 """
 
 import pytest
@@ -84,8 +87,8 @@ def mock_llm_factory():
                        chain = prompt | structured_llm
                        result = chain.invoke(...)
     So: mock_llm.with_structured_output -> mock_structured
-        mock_structured.__or__ -> mock_chain (supports pipe operator)
-        mock_chain.invoke -> fixture ReviewResult
+        mock_structured.return_value = fixture_result
+        (LCEL RunnableSequence calls structured_llm via __call__, not .invoke())
 
     Patch target: 'app.core.model_factory.get_llm'
     """
@@ -112,11 +115,8 @@ def mock_llm_factory():
             summary="One warning found in target function.",
         )
 
-        mock_chain = MagicMock()
-        mock_chain.invoke.return_value = fixture_result
-
         mock_structured = MagicMock()
-        mock_structured.__or__ = MagicMock(return_value=mock_chain)
+        mock_structured.return_value = fixture_result  # called via __call__ by RunnableSequence
 
         mock_llm = MagicMock()
         mock_llm.with_structured_output.return_value = mock_structured
@@ -245,10 +245,8 @@ def test_empty_findings_valid(mock_settings, reviewer_graph):
     )
 
     with patch("app.core.model_factory.get_llm") as mock_factory:
-        mock_chain = MagicMock()
-        mock_chain.invoke.return_value = empty_result
         mock_structured = MagicMock()
-        mock_structured.__or__ = MagicMock(return_value=mock_chain)
+        mock_structured.return_value = empty_result  # called via __call__ by RunnableSequence
         mock_llm = MagicMock()
         mock_llm.with_structured_output.return_value = mock_structured
         mock_factory.return_value = mock_llm
