@@ -297,7 +297,11 @@ export function App(): React.JSX.Element {
     nodeLabel = (
       <>
         <span className="spinner" />
-        <span>Indexing{nodes_indexed !== undefined ? ` — ${nodes_indexed} nodes` : '…'}</span>
+        <span>
+          {files_processed !== undefined
+            ? `Indexing — ${files_processed} files…`
+            : 'Indexing…'}
+        </span>
       </>
     );
   } else if (status === 'complete') {
@@ -348,6 +352,11 @@ export function App(): React.JSX.Element {
               <span className={dotClass} />
               {nodeLabel}
             </div>
+            {isIndexing && (
+              <div className="progress-bar-track">
+                <div className="progress-bar-fill" />
+              </div>
+            )}
             {metaLabel && <div className="index-meta">{metaLabel}</div>}
           </div>
         )}
@@ -493,12 +502,17 @@ export function App(): React.JSX.Element {
             {/* Live progress row — pinned at top while indexing */}
             {isIndexing && (
               <div className="log-entry log-info log-progress">
-                <span className="spinner" style={{ marginTop: 2 }} />
-                <span className="log-message">
-                  {files_processed !== undefined
-                    ? `Indexing — parsing ${files_processed} files…`
-                    : 'Indexing started…'}
-                </span>
+                <div className="log-progress-row">
+                  <span className="spinner" />
+                  <span className="log-message">
+                    {files_processed !== undefined
+                      ? `Indexing — parsing ${files_processed} files…`
+                      : 'Indexing started…'}
+                  </span>
+                </div>
+                <div className="progress-bar-track">
+                  <div className="progress-bar-fill" />
+                </div>
               </div>
             )}
             {logs.length === 0 && !isIndexing ? (
