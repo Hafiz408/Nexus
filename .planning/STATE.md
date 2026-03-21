@@ -6,15 +6,15 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 19 — reviewer-agent
+Phase: 20 — tester-agent
 Plan: 02 — complete
-Status: Phase 19 Plan 02 complete; Reviewer agent test suite created; TST-03 marked complete; Phase 19 fully complete; ready for Phase 20
-Last activity: 2026-03-22 — Completed 19-02-PLAN.md (Reviewer agent tests: 10 offline tests, reviewer_graph + mock_settings + mock_llm_factory fixtures; TST-03 marked complete; 134 tests passing)
+Status: Phase 20 Plan 02 complete; Tester agent test suite created; TST-04 marked complete; Phase 20 fully complete; ready for Phase 21
+Last activity: 2026-03-22 — Completed 20-02-PLAN.md (Tester agent tests: 10 offline tests, tester_graph + mock_settings + mock_llm_factory fixtures; TST-04 marked complete; 148 tests passing)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 19 complete, next: Phase 20 (reviewer-agent tests)
+**Current focus:** v2.0 multi-agent team — Phase 20 complete, next: Phase 21 (graph agent)
 
-**Progress:** [█████████░] 89%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Last activity: 2026-03-22 — Completed 19-02-PLAN.md (Reviewer agent tests: 10 
 - [Phase 20-tester-agent]: Tester uses two-model pattern: _LLMTestOutput for LLM call (test_code only), TestResult assembled deterministically post-call
 - [Phase 20-tester-agent]: get_llm() and get_settings() imported inside test() body (lazy) — consistent with router.py, debugger.py, reviewer.py pattern
 - [Phase 20-tester-agent]: _derive_test_path() derives test_file_path from (func_name, framework) deterministically — LLM never generates file paths
+- [Phase 20-tester-agent]: Import alias 'test as run_test' required in test_tester.py — pytest collects production test() function from module namespace causing fixture resolution error
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -74,3 +75,5 @@ Last activity: 2026-03-22 — Completed 19-02-PLAN.md (Reviewer agent tests: 10 
 - 2026-03-22: Phase 18 Plan 02 complete — Debugger agent test suite: 10 offline tests, debug_graph + mock_settings + mock_llm_factory fixtures; TST-02 marked complete; 124 tests passing
 - 2026-03-22: Phase 19 Plan 01 complete — Reviewer agent module created; Finding (7 fields) + ReviewResult (3 fields) models; _assemble_context() 1-hop CALLS-edge traversal; review() with LCEL structured-output chain and groundedness post-filter; REVW-01, REVW-02, REVW-03 marked complete; 124 tests passing
 - 2026-03-22: Phase 19 Plan 02 complete — Reviewer agent test suite: 10 offline tests, reviewer_graph (5-node DiGraph) + mock_settings (reviewer_context_hops=1) + mock_llm_factory (source-level patch with __call__ return_value) fixtures; TST-03 marked complete; 134 tests passing
+- 2026-03-22: Phase 20 Plan 01 complete — Tester agent module created; _detect_framework (marker file heuristics) + _get_callees (CALLS-edge enumeration) + _derive_test_path (deterministic convention mapping) + test() public API with lazy imports; TST-04 partial; 134 tests passing
+- 2026-03-22: Phase 20 Plan 02 complete — Tester agent test suite: 10 offline tests, tester_graph (4-node DiGraph: target + 2 CALLS callees + 1 isolated) + mock_settings + mock_llm_factory fixtures; pytest.ini added to prevent test() function name collision; TST-04 marked complete; 148 tests passing

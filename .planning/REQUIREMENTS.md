@@ -66,7 +66,7 @@
 - [x] **TST-01**: `test_router_agent.py` — 12 labelled queries at 100% accuracy; intent_hint bypass; low-confidence fallback
 - [x] **TST-02**: `test_debugger.py` — traversal visits correct nodes; anomaly_score > 0; impact radius correct; diagnosis references traversal
 - [x] **TST-03**: `test_reviewer.py` — context includes callers + callees; findings schema valid; no hallucinated node references
-- [ ] **TST-04**: `test_tester.py` — framework detection; mock targets; file path convention; ≥3 test functions; mock statements present
+- [x] **TST-04**: `test_tester.py` — framework detection; mock targets; file path convention; ≥3 test functions; mock statements present
 - [ ] **TST-05**: `test_critic.py` — groundedness math; retry routing; loop cap; feedback cleared on pass
 - [ ] **TST-06**: `test_mcp_tools.py` — GitHub API mocked; 10-comment limit; path traversal rejected; extension filter; retry on 5xx
 - [ ] **TST-07**: `test_orchestrator.py` — 6 integration tests (explain/debug/review/test/retry/max_loops) all pass
@@ -145,7 +145,7 @@
 | TEST-03 | Phase 20: tester-agent | Complete |
 | TEST-04 | Phase 20: tester-agent | Complete |
 | TEST-05 | Phase 20: tester-agent | Complete |
-| TST-04 | Phase 20: tester-agent | Pending |
+| TST-04 | Phase 20: tester-agent | Complete |
 | CRIT-01 | Phase 21: critic-agent | Pending |
 | CRIT-02 | Phase 21: critic-agent | Pending |
 | CRIT-03 | Phase 21: critic-agent | Pending |

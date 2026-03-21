@@ -30,7 +30,7 @@
 - [x] **Phase 17: router-agent** — Intent classifier with 100% accuracy gate before agent work begins (completed 2026-03-21)
 - [x] **Phase 18: debugger-agent** — Call graph traversal + anomaly-scored suspect ranking (completed 2026-03-21)
 - [x] **Phase 19: reviewer-agent** — Caller/callee context assembly + structured Finding schema (completed 2026-03-21)
-- [ ] **Phase 20: tester-agent** — Framework detection + dependency-aware test generation
+- [x] **Phase 20: tester-agent** — Framework detection + dependency-aware test generation (completed 2026-03-21)
 - [ ] **Phase 21: critic-agent** — LLM-as-judge quality gate with 2-loop hard cap
 - [ ] **Phase 22: orchestrator** — LangGraph StateGraph wiring all agents with checkpointing
 - [ ] **Phase 23: mcp-tools** — GitHub PR commenting + Filesystem safe test file writing
@@ -198,7 +198,7 @@ Plans:
 | 17. router-agent | 2/2 | Complete    | 2026-03-21 |
 | 18. debugger-agent | 2/2 | Complete    | 2026-03-21 |
 | 19. reviewer-agent | 2/2 | Complete    | 2026-03-21 |
-| 20. tester-agent | 1/2 | In Progress|  |
+| 20. tester-agent | 2/2 | Complete   | 2026-03-21 |
 | 21. critic-agent | 0/? | Not started | - |
 | 22. orchestrator | 0/? | Not started | - |
 | 23. mcp-tools | 0/? | Not started | - |
