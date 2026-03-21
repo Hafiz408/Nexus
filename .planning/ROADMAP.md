@@ -176,7 +176,11 @@ Plans:
   2. Sending a POST /query with `intent_hint=debug` returns a debug-structured response routed through the Debugger agent
   3. All V1 tests in `backend/tests/` pass green after the orchestrator is wired in — zero regressions
   4. Every test in the V2 test suite uses mock LLM and mock graph — the full suite runs offline with no live API calls
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 24-01-PLAN.md — Extend schemas.py + wire V2 branch in query_router.py (additive schema fields + orchestrator integration)
+- [ ] 24-02-PLAN.md — Write test_query_router_v2.py (8 offline tests: all intents, auto/None sentinels, error propagation)
 
 ### Phase 25: extension-intent-selector
 **Goal**: The VS Code sidebar exposes a clear intent selector so users can direct Nexus to explain, debug, review, or generate tests without typing intent into the query
@@ -213,8 +217,8 @@ Plans:
 | 20. tester-agent | 2/2 | Complete    | 2026-03-21 |
 | 21. critic-agent | 2/2 | Complete    | 2026-03-21 |
 | 22. orchestrator | 2/2 | Complete    | 2026-03-21 |
-| 23. mcp-tools | 2/2 | Complete   | 2026-03-21 |
-| 24. query-endpoint-v2 | 0/? | Not started | - |
+| 23. mcp-tools | 2/2 | Complete    | 2026-03-21 |
+| 24. query-endpoint-v2 | 0/2 | Not started | - |
 | 25. extension-intent-selector | 0/? | Not started | - |
 | 26. extension-result-rendering | 0/? | Not started | - |
 
