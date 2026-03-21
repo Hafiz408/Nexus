@@ -274,10 +274,11 @@ Phases execute in sequence: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 �
 
 **Goal:** The VS Code sidebar panel looks and behaves like a first-class published extension — section headers bold and collapsible (▾/▸ chevrons, no box chrome on buttons), ↺ and Ask stay inline with their rows, content indentation aligns with section title text, Activity section shows live indexing progress with a spinner row, citation chips compact and non-flooding.
 **Depends on:** Phase 14
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 15 to break down)
+- [ ] 15-01-PLAN.md — Textarea auto-grow + citation collapse with "+N more" chip
+- [ ] 15-02-PLAN.md — Progress bar (Index body + Activity row) + files_processed label + light-theme green dot
 
 ### Phase 16: V1 End-to-End Smoke Test and Sign-off
 
