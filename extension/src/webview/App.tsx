@@ -129,6 +129,7 @@ export function App(): React.JSX.Element {
   const [indexExpanded, setIndexExpanded] = useState(true);
   const [activityExpanded, setActivityExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -216,11 +217,24 @@ export function App(): React.JSX.Element {
     return () => window.removeEventListener('message', handle);
   }, [addLog]);
 
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+      setInputValue(e.target.value);
+      const el = e.target;
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    },
+    []
+  );
+
   const handleSend = useCallback((): void => {
     const question = inputValue.trim();
     if (!question || isStreaming) return;
     setMessages((prev) => [...prev, { id: newId(), role: 'user', content: question }]);
     setInputValue('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     setIsStreaming(true);
     addLog('info', `Query: "${question.length > 55 ? question.slice(0, 55) + '…' : question}"`);
     vscode.postMessage({ type: 'query', question });
@@ -412,12 +426,12 @@ export function App(): React.JSX.Element {
 
           <div className="input-area">
             <textarea
+              ref={textareaRef}
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Ask about your codebase…"
               disabled={isStreaming}
-              rows={1}
             />
             <button className="send-btn" onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
               {isStreaming ? '…' : 'Ask'}

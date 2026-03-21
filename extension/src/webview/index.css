@@ -410,8 +410,8 @@ body {
     -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
   font-size: var(--vscode-font-size, 13px);
   resize: none;
-  min-height: 32px;
   max-height: 100px;
+  overflow-y: auto;
   line-height: 1.4;
 }
 
