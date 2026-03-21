@@ -64,7 +64,7 @@
 ### Test Suite
 
 - [x] **TST-01**: `test_router_agent.py` — 12 labelled queries at 100% accuracy; intent_hint bypass; low-confidence fallback
-- [ ] **TST-02**: `test_debugger.py` — traversal visits correct nodes; anomaly_score > 0; impact radius correct; diagnosis references traversal
+- [x] **TST-02**: `test_debugger.py` — traversal visits correct nodes; anomaly_score > 0; impact radius correct; diagnosis references traversal
 - [ ] **TST-03**: `test_reviewer.py` — context includes callers + callees; findings schema valid; no hallucinated node references
 - [ ] **TST-04**: `test_tester.py` — framework detection; mock targets; file path convention; ≥3 test functions; mock statements present
 - [ ] **TST-05**: `test_critic.py` — groundedness math; retry routing; loop cap; feedback cleared on pass
@@ -135,7 +135,7 @@
 | DBUG-03 | Phase 18: debugger-agent | Complete |
 | DBUG-04 | Phase 18: debugger-agent | Complete |
 | DBUG-05 | Phase 18: debugger-agent | Complete |
-| TST-02 | Phase 18: debugger-agent | Pending |
+| TST-02 | Phase 18: debugger-agent | Complete |
 | REVW-01 | Phase 19: reviewer-agent | Pending |
 | REVW-02 | Phase 19: reviewer-agent | Pending |
 | REVW-03 | Phase 19: reviewer-agent | Pending |

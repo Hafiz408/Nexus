@@ -7,14 +7,14 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 18 — debugger-agent
-Plan: 01 — complete
-Status: Phase 18 Plan 01 complete; Debugger agent module created; DBUG-01 through DBUG-05 marked complete; ready for next plan
-Last activity: 2026-03-22 — Completed 18-01-PLAN.md (Debugger agent: SuspectNode, DebugResult, debug() with 5-factor anomaly scoring)
+Plan: 02 — complete
+Status: Phase 18 Plan 02 complete; Debugger agent test suite created; TST-02 marked complete; ready for Phase 19
+Last activity: 2026-03-22 — Completed 18-02-PLAN.md (Debugger agent tests: 10 offline tests, 3 fixtures, 124 total passing)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
-**Current focus:** v2.0 multi-agent team — Phase 18 Plan 01 complete, next: Phase 19 (reviewer-agent)
+**Current focus:** v2.0 multi-agent team — Phase 18 complete, next: Phase 19 (reviewer-agent)
 
-**Progress:** [████████░░] 80%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -43,6 +43,8 @@ Last activity: 2026-03-22 — Completed 18-01-PLAN.md (Debugger agent: SuspectNo
 - [Phase 18-debugger-agent]: Anomaly score weights 0.30/0.25/0.20/0.15/0.10 for complexity/error-absence/keyword-match/out-degree/inverted-PageRank
 - [Phase 18-debugger-agent]: Debugger entry node fallback uses highest in_degree (most-called) node when no function name matches bug description
 - [Phase 18-debugger-agent]: Lazy import pattern applied to both get_settings() and get_llm() inside debug() body — consistent with Phase 17 router.py pattern
+- [Phase 18-debugger-agent]: mock_settings fixture injects debugger_max_hops=4 directly into debug() to bypass postgres env var requirement in tests
+- [Phase 18-debugger-agent]: Traversal path upper bound 6 (all 6 nodes in debug_graph reachable from entry within max_hops=4)
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -62,3 +64,4 @@ Last activity: 2026-03-22 — Completed 18-01-PLAN.md (Debugger agent: SuspectNo
 - 2026-03-22: Phase 17 Plan 01 complete — Router agent module created; IntentResult model + route() function; ROUT-01, ROUT-03, ROUT-04 marked complete
 - 2026-03-22: Phase 17 Plan 02 complete — Router agent test suite: 21 tests offline, 12/12 labelled queries PASSED, accuracy gate cleared; ROUT-02, TST-01 marked complete
 - 2026-03-22: Phase 18 Plan 01 complete — Debugger agent module created; SuspectNode + DebugResult models + debug() with 5-factor anomaly scoring + BFS traversal; DBUG-01, DBUG-02, DBUG-03, DBUG-04, DBUG-05 marked complete; 114 tests passing
+- 2026-03-22: Phase 18 Plan 02 complete — Debugger agent test suite: 10 offline tests, debug_graph + mock_settings + mock_llm_factory fixtures; TST-02 marked complete; 124 tests passing

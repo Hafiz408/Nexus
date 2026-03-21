@@ -28,7 +28,7 @@
 
 - [x] **Phase 16: config-v2** — V2 environment configuration with safe defaults (completed 2026-03-21)
 - [x] **Phase 17: router-agent** — Intent classifier with 100% accuracy gate before agent work begins (completed 2026-03-21)
-- [ ] **Phase 18: debugger-agent** — Call graph traversal + anomaly-scored suspect ranking
+- [x] **Phase 18: debugger-agent** — Call graph traversal + anomaly-scored suspect ranking (completed 2026-03-21)
 - [ ] **Phase 19: reviewer-agent** — Caller/callee context assembly + structured Finding schema
 - [ ] **Phase 20: tester-agent** — Framework detection + dependency-aware test generation
 - [ ] **Phase 21: critic-agent** — LLM-as-judge quality gate with 2-loop hard cap
@@ -188,7 +188,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 16. config-v2 | 1/1 | Complete    | 2026-03-21 |
 | 17. router-agent | 2/2 | Complete    | 2026-03-21 |
-| 18. debugger-agent | 1/2 | In Progress|  |
+| 18. debugger-agent | 2/2 | Complete   | 2026-03-21 |
 | 19. reviewer-agent | 0/? | Not started | - |
 | 20. tester-agent | 0/? | Not started | - |
 | 21. critic-agent | 0/? | Not started | - |
