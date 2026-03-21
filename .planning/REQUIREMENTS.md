@@ -75,9 +75,9 @@
 
 ### VS Code Extension
 
-- [ ] **EXT-01**: Sidebar shows intent selector with 5 options: Auto, Explain, Debug, Review, Test (pill-style segmented control)
-- [ ] **EXT-02**: Selected intent is sent as `intent_hint` in query request body (`auto` → omit field)
-- [ ] **EXT-03**: Send button label changes per selected intent: Ask / Explain / Debug / Review / Test
+- [x] **EXT-01**: Sidebar shows intent selector with 5 options: Auto, Explain, Debug, Review, Test (pill-style segmented control)
+- [x] **EXT-02**: Selected intent is sent as `intent_hint` in query request body (`auto` → omit field)
+- [x] **EXT-03**: Send button label changes per selected intent: Ask / Explain / Debug / Review / Test
 - [ ] **EXT-04**: Debug response renders suspects panel: ranked list with file:line, anomaly score bar, and traversal breadcrumb chain
 - [ ] **EXT-05**: Debug response renders impact radius as collapsible list; suspect references are clickable (opens file at line via Highlighter.ts)
 - [ ] **EXT-06**: Review response renders findings list with severity badges (critical=red, warning=amber, info=blue), category label, description, expandable suggestion
@@ -164,9 +164,9 @@
 | TST-06 | Phase 23: mcp-tools | Complete |
 | TST-08 | Phase 24: query-endpoint-v2 | Complete |
 | TST-09 | Phase 24: query-endpoint-v2 | Complete |
-| EXT-01 | Phase 25: extension-intent-selector | Pending |
-| EXT-02 | Phase 25: extension-intent-selector | Pending |
-| EXT-03 | Phase 25: extension-intent-selector | Pending |
+| EXT-01 | Phase 25: extension-intent-selector | Complete |
+| EXT-02 | Phase 25: extension-intent-selector | Complete |
+| EXT-03 | Phase 25: extension-intent-selector | Complete |
 | EXT-04 | Phase 26: extension-result-rendering | Pending |
 | EXT-05 | Phase 26: extension-result-rendering | Pending |
 | EXT-06 | Phase 26: extension-result-rendering | Pending |

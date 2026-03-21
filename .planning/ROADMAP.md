@@ -35,7 +35,7 @@
 - [x] **Phase 22: orchestrator** — LangGraph StateGraph wiring all agents with checkpointing (completed 2026-03-21)
 - [x] **Phase 23: mcp-tools** — GitHub PR commenting + Filesystem safe test file writing (completed 2026-03-21)
 - [x] **Phase 24: query-endpoint-v2** — Wire orchestrator into /query; confirm zero V1 regressions (completed 2026-03-21)
-- [ ] **Phase 25: extension-intent-selector** — 5-option intent selector UI + intent_hint wiring
+- [x] **Phase 25: extension-intent-selector** — 5-option intent selector UI + intent_hint wiring (completed 2026-03-21)
 - [ ] **Phase 26: extension-result-rendering** — Structured debug/review/test result panels
 
 ---
@@ -222,7 +222,7 @@ Plans:
 | 22. orchestrator | 2/2 | Complete    | 2026-03-21 |
 | 23. mcp-tools | 2/2 | Complete    | 2026-03-21 |
 | 24. query-endpoint-v2 | 2/2 | Complete    | 2026-03-21 |
-| 25. extension-intent-selector | 0/1 | Not started | - |
+| 25. extension-intent-selector | 1/1 | Complete   | 2026-03-21 |
 | 26. extension-result-rendering | 0/? | Not started | - |
 
 ---
