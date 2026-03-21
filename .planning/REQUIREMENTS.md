@@ -39,11 +39,11 @@
 
 ### Tester Agent
 
-- [ ] **TEST-01**: Tester detects test framework from repo structure (pytest, jest, vitest, junit)
-- [ ] **TEST-02**: Tester identifies all CALLS-edge callees of target functions as mock targets
-- [ ] **TEST-03**: Tester generates runnable test code covering happy path, error cases, and edge cases
-- [ ] **TEST-04**: Tester derives correct test file path following per-framework conventions (pytest: `tests/test_<name>.py`, jest: `__tests__/<name>.test.ts`, vitest: `<name>.test.ts`)
-- [ ] **TEST-05**: Generated test code uses correct mock/patch syntax for the detected framework
+- [x] **TEST-01**: Tester detects test framework from repo structure (pytest, jest, vitest, junit)
+- [x] **TEST-02**: Tester identifies all CALLS-edge callees of target functions as mock targets
+- [x] **TEST-03**: Tester generates runnable test code covering happy path, error cases, and edge cases
+- [x] **TEST-04**: Tester derives correct test file path following per-framework conventions (pytest: `tests/test_<name>.py`, jest: `__tests__/<name>.test.ts`, vitest: `<name>.test.ts`)
+- [x] **TEST-05**: Generated test code uses correct mock/patch syntax for the detected framework
 
 ### Critic Agent
 
@@ -140,11 +140,11 @@
 | REVW-02 | Phase 19: reviewer-agent | Complete |
 | REVW-03 | Phase 19: reviewer-agent | Complete |
 | TST-03 | Phase 19: reviewer-agent | Complete |
-| TEST-01 | Phase 20: tester-agent | Pending |
-| TEST-02 | Phase 20: tester-agent | Pending |
-| TEST-03 | Phase 20: tester-agent | Pending |
-| TEST-04 | Phase 20: tester-agent | Pending |
-| TEST-05 | Phase 20: tester-agent | Pending |
+| TEST-01 | Phase 20: tester-agent | Complete |
+| TEST-02 | Phase 20: tester-agent | Complete |
+| TEST-03 | Phase 20: tester-agent | Complete |
+| TEST-04 | Phase 20: tester-agent | Complete |
+| TEST-05 | Phase 20: tester-agent | Complete |
 | TST-04 | Phase 20: tester-agent | Pending |
 | CRIT-01 | Phase 21: critic-agent | Pending |
 | CRIT-02 | Phase 21: critic-agent | Pending |

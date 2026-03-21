@@ -14,7 +14,7 @@ Last activity: 2026-03-22 — Completed 19-02-PLAN.md (Reviewer agent tests: 10 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
 **Current focus:** v2.0 multi-agent team — Phase 19 complete, next: Phase 20 (reviewer-agent tests)
 
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 89%
 
 ## Performance Metrics
 
@@ -49,6 +49,9 @@ Last activity: 2026-03-22 — Completed 19-02-PLAN.md (Reviewer agent tests: 10 
 - [Phase 19-reviewer-agent]: range_clause injected via REVIEWER_PROMPT.partial() per-call, not baked into REVIEWER_SYSTEM constant
 - [Phase 19-reviewer-agent]: get_llm() and get_settings() imported inside review() body (lazy) — same pattern as router.py and debugger.py
 - [Phase 19-reviewer-agent]: LCEL mock pattern for with_structured_output: mock_structured.return_value = fixture_result — RunnableSequence calls structured_llm via __call__, not .invoke()
+- [Phase 20-tester-agent]: Tester uses two-model pattern: _LLMTestOutput for LLM call (test_code only), TestResult assembled deterministically post-call
+- [Phase 20-tester-agent]: get_llm() and get_settings() imported inside test() body (lazy) — consistent with router.py, debugger.py, reviewer.py pattern
+- [Phase 20-tester-agent]: _derive_test_path() derives test_file_path from (func_name, framework) deterministically — LLM never generates file paths
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
