@@ -97,7 +97,11 @@ Plans:
   3. When a user has selected a code range, findings target that specific range rather than the whole file
   4. No Finding references a node ID that does not appear in `retrieved_nodes` (groundedness enforced)
   5. `test_reviewer.py` validates context assembly, schema completeness, and absence of hallucinated node references using mock graph
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 19-01-PLAN.md — Implement app/agent/reviewer.py (Finding + ReviewResult models + review() function)
+- [ ] 19-02-PLAN.md — Write test_reviewer.py (10 offline tests: context assembly, schema, groundedness, range, edge cases)
 
 ### Phase 20: tester-agent
 **Goal**: The Tester agent automatically generates runnable, framework-appropriate test code that covers the target function's behaviour so developers get a working test file with minimal effort
@@ -188,8 +192,8 @@ Plans:
 |-------|----------------|--------|-----------|
 | 16. config-v2 | 1/1 | Complete    | 2026-03-21 |
 | 17. router-agent | 2/2 | Complete    | 2026-03-21 |
-| 18. debugger-agent | 2/2 | Complete   | 2026-03-21 |
-| 19. reviewer-agent | 0/? | Not started | - |
+| 18. debugger-agent | 2/2 | Complete    | 2026-03-21 |
+| 19. reviewer-agent | 0/2 | Not started | - |
 | 20. tester-agent | 0/? | Not started | - |
 | 21. critic-agent | 0/? | Not started | - |
 | 22. orchestrator | 0/? | Not started | - |
