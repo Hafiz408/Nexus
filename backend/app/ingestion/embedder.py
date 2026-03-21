@@ -6,6 +6,7 @@ for exact-match lookup. Provider is selected via EMBEDDING_PROVIDER
 in .env — see app.core.model_factory for supported providers.
 """
 
+import logging
 import sqlite3
 
 from pgvector.psycopg2 import register_vector
@@ -15,6 +16,8 @@ from app.config import get_settings
 from app.core.model_factory import get_embedding_client
 from app.db.database import get_db_connection
 from app.models.schemas import CodeNode
+
+logger = logging.getLogger(__name__)
 
 EMBED_BATCH_SIZE = 100
 
@@ -109,44 +112,70 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str) -> int:
 
     try:
         for i in range(0, len(nodes), EMBED_BATCH_SIZE):
-            batch = nodes[i : i + EMBED_BATCH_SIZE]
+            raw_batch = nodes[i : i + EMBED_BATCH_SIZE]
+            # Guard: deduplicate within the batch so ON CONFLICT DO UPDATE
+            # never sees the same id twice in one VALUES list.
+            batch_map: dict[str, CodeNode] = {}
+            for n in raw_batch:
+                batch_map[n.node_id] = n
+            batch = list(batch_map.values())
             texts = [n.embedding_text for n in batch]
 
-            embeddings = embedder.embed(texts)
+            try:
+                embeddings = embedder.embed(texts)
+            except Exception as exc:
+                logger.warning(
+                    "embed_and_store: embedding batch %d-%d failed (%s) — skipping batch",
+                    i, i + len(batch), exc,
+                )
+                continue
 
             # --- Upsert to pgvector ---
             pg_rows = [
                 (n.node_id, repo_path, n.name, n.file_path, n.line_start, n.line_end, emb)
                 for n, emb in zip(batch, embeddings)
             ]
-            with pg_conn.cursor() as cur:
-                execute_values(
-                    cur,
-                    """
-                    INSERT INTO code_embeddings
-                        (id, repo_path, name, file_path, line_start, line_end, embedding)
-                    VALUES %s
-                    ON CONFLICT (id) DO UPDATE SET
-                        repo_path  = EXCLUDED.repo_path,
-                        name       = EXCLUDED.name,
-                        file_path  = EXCLUDED.file_path,
-                        line_start = EXCLUDED.line_start,
-                        line_end   = EXCLUDED.line_end,
-                        embedding  = EXCLUDED.embedding
-                    """,
-                    pg_rows,
+            try:
+                with pg_conn.cursor() as cur:
+                    execute_values(
+                        cur,
+                        """
+                        INSERT INTO code_embeddings
+                            (id, repo_path, name, file_path, line_start, line_end, embedding)
+                        VALUES %s
+                        ON CONFLICT (id) DO UPDATE SET
+                            repo_path  = EXCLUDED.repo_path,
+                            name       = EXCLUDED.name,
+                            file_path  = EXCLUDED.file_path,
+                            line_start = EXCLUDED.line_start,
+                            line_end   = EXCLUDED.line_end,
+                            embedding  = EXCLUDED.embedding
+                        """,
+                        pg_rows,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "embed_and_store: pgvector upsert for batch %d-%d failed (%s) — skipping batch",
+                    i, i + len(batch), exc,
                 )
+                continue
 
             # --- Upsert to FTS5 (DELETE + INSERT, no ON CONFLICT in FTS5) ---
-            sqlite_conn.executemany(
-                "DELETE FROM code_fts WHERE node_id = ?",
-                [(n.node_id,) for n in batch],
-            )
-            sqlite_conn.executemany(
-                "INSERT INTO code_fts(node_id, name, file_path) VALUES (?, ?, ?)",
-                [(n.node_id, n.name, n.file_path) for n in batch],
-            )
-            sqlite_conn.commit()
+            try:
+                sqlite_conn.executemany(
+                    "DELETE FROM code_fts WHERE node_id = ?",
+                    [(n.node_id,) for n in batch],
+                )
+                sqlite_conn.executemany(
+                    "INSERT INTO code_fts(node_id, name, file_path) VALUES (?, ?, ?)",
+                    [(n.node_id, n.name, n.file_path) for n in batch],
+                )
+                sqlite_conn.commit()
+            except Exception as exc:
+                logger.warning(
+                    "embed_and_store: FTS5 upsert for batch %d-%d failed (%s) — pgvector stored, FTS skipped",
+                    i, i + len(batch), exc,
+                )
 
             total_stored += len(batch)
 

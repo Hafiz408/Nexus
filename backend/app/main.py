@@ -1,3 +1,5 @@
+import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,6 +9,13 @@ from app.api.index_router import router as index_router
 from app.api.query_router import router as query_router
 from app.db.database import init_db
 from app.ingestion.embedder import init_pgvector_table
+
+# Configure root logger so all module-level loggers (pipeline, walker, etc.) emit output
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout,
+)
 
 
 @asynccontextmanager

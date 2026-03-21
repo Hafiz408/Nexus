@@ -1,8 +1,11 @@
+import logging
 import os
 from pathlib import Path
 from typing import TypedDict
 
 import pathspec
+
+logger = logging.getLogger(__name__)
 
 SKIP_DIRS: set[str] = {
     ".git", "node_modules", "__pycache__", ".venv", "venv",
@@ -57,6 +60,9 @@ def walk_repo(
         List of FileEntry dicts with path (absolute), language, and size_kb.
     """
     repo_root = Path(repo_path).resolve()
+    if not repo_root.exists():
+        logger.error("walk_repo: path does not exist: %s", repo_root)
+        return []
     results: list[FileEntry] = []
 
     # Pass 1: collect all .gitignore specs keyed by their directory (absolute str)
@@ -103,4 +109,13 @@ def walk_repo(
                 "size_kb": size_kb,
             })
 
+    lang_counts: dict[str, int] = {}
+    for e in results:
+        lang_counts[e["language"]] = lang_counts.get(e["language"], 0) + 1
+    logger.info(
+        "walk_repo: found %d files in %s — %s",
+        len(results),
+        repo_root,
+        lang_counts if lang_counts else "no matching files",
+    )
     return results

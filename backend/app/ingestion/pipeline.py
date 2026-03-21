@@ -53,7 +53,11 @@ async def run_ingestion(
     _status[repo_path] = IndexStatus(status="running")
 
     try:
+        logger.info("run_ingestion started: repo=%s languages=%s incremental=%s",
+                    repo_path, languages, changed_files is not None)
+
         if changed_files is not None:
+            logger.info("incremental re-index: %d changed files", len(changed_files))
             delete_nodes_for_files(changed_files, repo_path)
             delete_embeddings_for_files(changed_files, repo_path)
             ext_map: dict[str, str] = {ext.lstrip("."): lang for ext, lang in EXTENSION_TO_LANGUAGE.items()}
@@ -66,14 +70,59 @@ async def run_ingestion(
         else:
             files_to_parse = walk_repo(repo_path, languages)
 
+        logger.info("files to parse: %d", len(files_to_parse))
+        if not files_to_parse:
+            logger.warning(
+                "no source files found in %s for languages %s — "
+                "check that the path exists and contains .py/.ts/.tsx/.js/.jsx files",
+                repo_path, languages,
+            )
+
         _status[repo_path] = IndexStatus(status="running", files_processed=len(files_to_parse))
 
         all_nodes, all_edges = await _parse_concurrent(files_to_parse, repo_path)
+        logger.info("parsed %d nodes, %d raw edges from %d files",
+                    len(all_nodes), len(all_edges), len(files_to_parse))
+
+        # Drop nodes with empty/None node_id — faulty parsers can produce these
+        # and they would fail the SQL NOT NULL / PRIMARY KEY constraint.
+        valid_nodes = [n for n in all_nodes if n.node_id]
+        if len(valid_nodes) < len(all_nodes):
+            logger.warning(
+                "dropped %d nodes with empty node_id",
+                len(all_nodes) - len(valid_nodes),
+            )
+        all_nodes = valid_nodes
+
+        # Deduplicate nodes by node_id — the AST parser can emit the same
+        # node_id from multiple files (re-exports, __init__.py re-imports,
+        # or same function name appearing in nested scopes of a single file).
+        # ON CONFLICT DO UPDATE fails when a single batch contains duplicate ids.
+        seen: dict[str, object] = {}
+        for node in all_nodes:
+            seen[node.node_id] = node
+        if len(seen) < len(all_nodes):
+            logger.warning(
+                "deduped %d duplicate node_ids (kept last seen); "
+                "original count %d → %d",
+                len(all_nodes) - len(seen), len(all_nodes), len(seen),
+            )
+        all_nodes = list(seen.values())
 
         G = build_graph(all_nodes, all_edges)
+        logger.info("graph built: %d nodes, %d edges", G.number_of_nodes(), G.number_of_edges())
 
         await asyncio.to_thread(save_graph, G, repo_path)
         nodes_stored = await asyncio.to_thread(embed_and_store, all_nodes, repo_path)
+        logger.info("embedded and stored %d nodes", nodes_stored)
+
+        if nodes_stored == 0:
+            logger.warning(
+                "indexing complete but 0 nodes stored for %s — "
+                "no functions/classes were extracted. "
+                "Verify the repo contains Python or TypeScript source files.",
+                repo_path,
+            )
 
         result = IndexStatus(
             status="complete",
@@ -81,6 +130,8 @@ async def run_ingestion(
             edges_indexed=G.number_of_edges(),
             files_processed=len(files_to_parse),
         )
+        logger.info("run_ingestion complete: %d nodes, %d edges, %d files",
+                    nodes_stored, G.number_of_edges(), len(files_to_parse))
     except Exception as exc:
         logger.exception("run_ingestion failed for %s", repo_path)
         result = IndexStatus(status="failed", error=str(exc))

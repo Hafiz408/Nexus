@@ -181,7 +181,7 @@ export function App(): React.JSX.Element {
   };
 
   const renderStatusBar = (): React.JSX.Element => {
-    const { status, nodes_indexed } = indexStatus;
+    const { status, nodes_indexed, error } = indexStatus;
     let content: React.ReactNode;
 
     if (status === 'running' || status === 'pending') {
@@ -192,11 +192,30 @@ export function App(): React.JSX.Element {
         </>
       );
     } else if (status === 'complete' && nodes_indexed !== undefined) {
-      content = <span>Ready — {nodes_indexed} nodes</span>;
+      if (nodes_indexed === 0) {
+        content = (
+          <>
+            <span style={{ color: 'var(--vscode-errorForeground)' }}>
+              ⚠ Ready — 0 nodes. No Python/TypeScript functions found.
+            </span>
+            <button onClick={handleIndexWorkspace} title="Re-index">Re-index</button>
+          </>
+        );
+      } else {
+        content = (
+          <>
+            <span>✓ Ready — {nodes_indexed} nodes</span>
+            <button onClick={handleIndexWorkspace} title="Re-index">↺</button>
+          </>
+        );
+      }
     } else if (status === 'failed') {
       content = (
         <>
-          <span>Index failed</span>
+          <span style={{ color: 'var(--vscode-errorForeground)' }}
+                title={error ?? undefined}>
+            ✗ Index failed{error ? ` — ${error}` : ''}
+          </span>
           <button onClick={handleIndexWorkspace}>Retry</button>
         </>
       );

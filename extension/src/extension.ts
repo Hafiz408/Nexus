@@ -36,12 +36,11 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // EXT-04: Auto-index on workspace open + wire FileWatcher for WATCH-01/02/03
+  // EXT-04: Wire FileWatcher for incremental re-index on save (WATCH-01/02/03).
+  // Auto-index is intentionally disabled — user triggers the first index manually
+  // via the "Index Workspace" button or the nexus.indexWorkspace command.
   if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
     const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    void provider.triggerIndex();
-
-    // WATCH-01/02/03: FileWatcher monitors file saves and debounces re-index calls
     const watcher = new FileWatcher(repoPath, client);
     context.subscriptions.push(watcher);
   }

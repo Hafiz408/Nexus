@@ -37,6 +37,9 @@ services:
       # Bind mount (not named volume) — SQLite files persist on host in ./data/
       # and survive docker compose down (only removed with explicit rm -rf ./data)
       - ./data:/app/data
+      # Read-only bind mount of the user's home dir so the backend can walk
+      # any repo path the extension sends (host path == container path)
+      - ${HOME}:${HOME}:ro
     ports:
       - "8000:8000"
     healthcheck:
