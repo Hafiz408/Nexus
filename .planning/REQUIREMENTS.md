@@ -68,7 +68,7 @@
 - [x] **TST-03**: `test_reviewer.py` — context includes callers + callees; findings schema valid; no hallucinated node references
 - [x] **TST-04**: `test_tester.py` — framework detection; mock targets; file path convention; ≥3 test functions; mock statements present
 - [x] **TST-05**: `test_critic.py` — groundedness math; retry routing; loop cap; feedback cleared on pass
-- [ ] **TST-06**: `test_mcp_tools.py` — GitHub API mocked; 10-comment limit; path traversal rejected; extension filter; retry on 5xx
+- [x] **TST-06**: `test_mcp_tools.py` — GitHub API mocked; 10-comment limit; path traversal rejected; extension filter; retry on 5xx
 - [x] **TST-07**: `test_orchestrator.py` — 6 integration tests (explain/debug/review/test/retry/max_loops) all pass
 - [ ] **TST-08**: All V1 tests (`pytest backend/tests/`) continue to pass (zero regressions)
 - [ ] **TST-09**: All V2 agent tests use mock LLM + mock graph (no live API calls in test suite)
@@ -161,7 +161,7 @@
 | MCP-04 | Phase 23: mcp-tools | Complete |
 | MCP-05 | Phase 23: mcp-tools | Complete |
 | MCP-06 | Phase 23: mcp-tools | Complete |
-| TST-06 | Phase 23: mcp-tools | Pending |
+| TST-06 | Phase 23: mcp-tools | Complete |
 | TST-08 | Phase 24: query-endpoint-v2 | Pending |
 | TST-09 | Phase 24: query-endpoint-v2 | Pending |
 | EXT-01 | Phase 25: extension-intent-selector | Pending |
