@@ -84,6 +84,17 @@ export async function streamQuery(
             case 'error':
               void webview.postMessage({ type: 'error', message: data['message'] as string });
               break;
+            case 'result': {
+              void webview.postMessage({
+                type: 'result',
+                intent: data['intent'] as string,
+                result: data['result'] as Record<string, unknown>,
+                has_github_token: data['has_github_token'] as boolean | undefined,
+                file_written: data['file_written'] as boolean | undefined,
+                written_path: data['written_path'] as string | null | undefined,
+              });
+              break;
+            }
           }
         } catch {
           // Skip malformed events — do not crash the stream
