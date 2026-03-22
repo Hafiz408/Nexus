@@ -94,6 +94,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         case 'clearIndex':
           await this.triggerClear();
           break;
+
+        case 'postReviewToPR': {
+          // TODO(Phase 27): Post review findings to the open GitHub PR via GitHub MCP.
+          // Requires: active PR URL, GitHub token (already confirmed present when button is shown).
+          // For now, inform the user this feature is coming.
+          vscode.window.showInformationMessage(
+            'Post to GitHub PR is not yet implemented. Coming in a future release.'
+          );
+          break;
+        }
       }
     });
   }
