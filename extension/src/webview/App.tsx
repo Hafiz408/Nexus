@@ -44,7 +44,15 @@ type IncomingMessage =
   | { type: 'done'; retrieval_stats: Record<string, unknown> }
   | { type: 'error'; message: string }
   | { type: 'indexStatus'; status: IndexStatus }
-  | { type: 'log'; level: LogEntry['level']; message: string };
+  | { type: 'log'; level: LogEntry['level']; message: string }
+  | {
+      type: 'result';
+      intent: string;
+      result: Record<string, unknown>;
+      has_github_token?: boolean;
+      file_written?: boolean;
+      written_path?: string | null;
+    };
 
 const vscode = acquireVsCodeApi();
 
@@ -133,11 +141,104 @@ function renderMarkdown(text: string): React.ReactElement {
 
 // ──────────────────────────────────────────────────────────────────────────
 
+function DebugPanel({ result, onOpenFile }: {
+  result: Record<string, unknown>;
+  onOpenFile: (filePath: string, lineStart: number) => void;
+}): React.JSX.Element {
+  const suspects = (result.suspects as Array<{
+    node_id: string; file_path: string; line_start: number;
+    anomaly_score: number; reasoning: string;
+  }>) ?? [];
+  const impactRadius = (result.impact_radius as string[]) ?? [];
+  const traversalPath = (result.traversal_path as string[]) ?? [];
+  const diagnosis = (result.diagnosis as string) ?? '';
+  const [impactExpanded, setImpactExpanded] = useState(false);
+
+  const displayName = (nodeId: string): string =>
+    nodeId.includes('::') ? nodeId.split('::').pop()! : nodeId;
+
+  const scoreClass = (score: number): string =>
+    score >= 0.7 ? 'score-high' : score >= 0.4 ? 'score-mid' : 'score-low';
+
+  return (
+    <div className="result-panel result-panel-debug">
+      {diagnosis && <p className="result-diagnosis">{diagnosis}</p>}
+
+      <div className="suspects-list">
+        {suspects.map((s, i) => (
+          <button
+            key={s.node_id}
+            className="suspect-row"
+            onClick={() => onOpenFile(s.file_path, s.line_start)}
+            title={s.reasoning}
+          >
+            <span className="suspect-rank">#{i + 1}</span>
+            <span className="suspect-location">
+              {s.file_path.split('/').pop()}:{s.line_start}
+            </span>
+            <div className="score-bar-track">
+              <div
+                className={`score-bar-fill ${scoreClass(s.anomaly_score)}`}
+                style={{ width: `${Math.round(s.anomaly_score * 100)}%` }}
+              />
+            </div>
+            <span className="suspect-score">{s.anomaly_score.toFixed(2)}</span>
+          </button>
+        ))}
+      </div>
+
+      {traversalPath.length > 0 && (
+        <div className="traversal-breadcrumb">
+          {traversalPath.slice(0, 8).map((nid, i) => (
+            <React.Fragment key={nid}>
+              <span className="traversal-node">{displayName(nid)}</span>
+              {i < Math.min(traversalPath.length, 8) - 1 && (
+                <span className="traversal-sep"> → </span>
+              )}
+            </React.Fragment>
+          ))}
+          {traversalPath.length > 8 && (
+            <span className="traversal-more">+{traversalPath.length - 8} more</span>
+          )}
+        </div>
+      )}
+
+      {impactRadius.length > 0 && (
+        <>
+          <button
+            className="collapsible-header"
+            onClick={() => setImpactExpanded(v => !v)}
+          >
+            <span className="section-chevron">{impactExpanded ? '▾' : '▸'}</span>
+            Impact radius ({impactRadius.length})
+          </button>
+          {impactExpanded && (
+            <ul className="impact-list">
+              {impactRadius.map(nid => (
+                <li key={nid}>{displayName(nid)}</li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+
 export function App(): React.JSX.Element {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [indexStatus, setIndexStatus] = useState<IndexStatus>({ status: 'not_indexed' });
+  const [structuredResult, setStructuredResult] = useState<{
+    intent: string;
+    result: Record<string, unknown>;
+    has_github_token?: boolean;
+    file_written?: boolean;
+    written_path?: string | null;
+  } | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [indexExpanded, setIndexExpanded] = useState(true);
   const [activityExpanded, setActivityExpanded] = useState(false);
@@ -226,6 +327,16 @@ export function App(): React.JSX.Element {
         case 'log':
           addLog(msg.level, msg.message);
           break;
+
+        case 'result':
+          setStructuredResult({
+            intent: msg.intent,
+            result: msg.result,
+            has_github_token: msg.has_github_token,
+            file_written: msg.file_written,
+            written_path: msg.written_path,
+          });
+          break;
       }
     };
     window.addEventListener('message', handle);
@@ -256,6 +367,7 @@ export function App(): React.JSX.Element {
       textareaRef.current.style.height = 'auto';
     }
     setIsStreaming(true);
+    setStructuredResult(null);
     addLog('info', `Query: "${question.length > 55 ? question.slice(0, 55) + '…' : question}"`);
     vscode.postMessage({
       type: 'query',
@@ -473,6 +585,15 @@ export function App(): React.JSX.Element {
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {structuredResult?.intent === 'debug' && (
+            <DebugPanel
+              result={structuredResult.result}
+              onOpenFile={(filePath, lineStart) =>
+                vscode.postMessage({ type: 'openFile', filePath, lineStart })
+              }
+            />
+          )}
 
           <div className="intent-selector">
             {INTENT_OPTIONS.map((intent) => (
