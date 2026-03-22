@@ -7,14 +7,14 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 26 — extension-result-rendering
-Plan: 02 — complete
-Status: Phase 26 Plan 02 complete; SSE result plumbing complete; EXT-04 through EXT-09 marked complete
-Last activity: 2026-03-22 — Completed 26-02-PLAN.md (HostToWebviewMessage result variant + SseStream case 'result' handler)
+Plan: 03 — complete
+Status: Phase 26 Plan 03 complete; DebugPanel + ReviewPanel + postReviewToPR stub; EXT-04 through EXT-07 panel rendering complete
+Last activity: 2026-03-22 — Completed 26-03-PLAN.md (DebugPanel, ReviewPanel, FindingCard components + Phase 26 CSS + postReviewToPR stub)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
 **Current focus:** v2.0 multi-agent team — Phase 25 complete; V2 agent routing reachable from extension UI
 
-**Progress:** [█████████░] 91%
+**Progress:** [██████████] 95%
 
 ## Performance Metrics
 
@@ -76,6 +76,8 @@ Last activity: 2026-03-22 — Completed 26-02-PLAN.md (HostToWebviewMessage resu
 - [Phase 25-extension-intent-selector]: Pill selection is sticky — selectedIntent not reset after send; user changes intent explicitly
 - [Phase 26-02]: App.tsx defines its own local IncomingMessage type (not imported from types.ts) — must be updated in Plan 03, not in 26-02
 - [Phase 26-01]: write_test_file called only for test intent; MCP error isolation via try/except keeps SSE stream intact; has_github_token uses bool() consistent with Phase 16 empty-string default
+- [Phase 26-03]: DebugPanel and ReviewPanel defined as module-level function components to prevent re-mounting on every App render
+- [Phase 26-03]: postReviewToPR added to WebviewToHostMessage union in types.ts to satisfy SidebarProvider.ts discriminated union switch
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -111,3 +113,4 @@ Last activity: 2026-03-22 — Completed 26-02-PLAN.md (HostToWebviewMessage resu
 - 2026-03-22: Phase 25 Plan 01 complete — Intent selector UI added to extension sidebar; five pills (Auto/Explain/Debug/Review/Test); intent_hint threaded from webview postMessage through SidebarProvider to SseStream POST body; Auto sends undefined (not 'auto'); EXT-01, EXT-02, EXT-03 marked complete
 - 2026-03-22: Phase 26 Plan 01 complete — v2_event_generator result payload extended with has_github_token (github_token presence), file_written and written_path (MCP write outcome for test intent); lazy imports + try/except MCP error isolation; EXT-07, EXT-09 marked complete; 190 tests passing
 - 2026-03-22: Phase 26 Plan 02 complete — SSE result plumbing added; HostToWebviewMessage union extended with result variant (types.ts); case 'result' handler wired in SseStream.ts forwarding intent/result/has_github_token/file_written/written_path to webview; EXT-04 through EXT-09 marked complete
+- 2026-03-22: Phase 26 Plan 03 complete — DebugPanel (suspects + score bars + traversal breadcrumb + collapsible impact radius) and ReviewPanel (findings + severity badges + expandable suggestions + conditional GitHub PR button) implemented in App.tsx; postReviewToPR stub added to SidebarProvider.ts; Phase 26 CSS appended to index.css; EXT-04 through EXT-07 panel rendering complete
