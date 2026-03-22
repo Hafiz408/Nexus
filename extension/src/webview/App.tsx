@@ -300,6 +300,58 @@ function ReviewPanel({ result, hasGithubToken }: {
   );
 }
 
+function TestPanel({ result, fileWritten, writtenPath }: {
+  result: Record<string, unknown>;
+  fileWritten?: boolean;
+  writtenPath?: string | null;
+}): React.JSX.Element {
+  const testCode = (result.test_code as string) ?? '';
+  const framework = (result.framework as string) ?? '';
+  const testFilePath = (result.test_file_path as string) ?? '';
+
+  const handleCopy = (): void => {
+    // VS Code WebKit does not permit navigator.clipboard (blocked by CSP).
+    // document.execCommand('copy') is the accepted workaround in WebKit/Electron
+    // webviews. The textarea is appended off-screen, selected, copied, then removed
+    // immediately — no content is persisted or exposed to the DOM.
+    const textarea = document.createElement('textarea');
+    textarea.value = testCode;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  };
+
+  return (
+    <div className="result-panel result-panel-test">
+      {framework && (
+        <div className="test-framework-label">
+          Framework: <span className="test-framework-name">{framework}</span>
+        </div>
+      )}
+
+      <pre className="test-code-block">
+        <code>{testCode}</code>
+      </pre>
+
+      <div className="test-action-row">
+        {fileWritten ? (
+          <span className="file-written-badge">
+            File written to: {writtenPath ?? testFilePath}
+          </span>
+        ) : (
+          <button className="copy-code-btn" onClick={handleCopy}>
+            Copy to clipboard
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 
 export function App(): React.JSX.Element {
@@ -675,6 +727,22 @@ export function App(): React.JSX.Element {
               result={structuredResult.result}
               hasGithubToken={structuredResult.has_github_token === true}
             />
+          )}
+
+          {structuredResult?.intent === 'test' && (
+            <TestPanel
+              result={structuredResult.result}
+              fileWritten={structuredResult.file_written}
+              writtenPath={structuredResult.written_path}
+            />
+          )}
+
+          {structuredResult?.intent === 'explain' && (
+            <div className="message message-assistant">
+              <div className="message-bubble">
+                {renderMarkdown((structuredResult.result.answer as string) ?? '')}
+              </div>
+            </div>
           )}
 
           <div className="intent-selector">

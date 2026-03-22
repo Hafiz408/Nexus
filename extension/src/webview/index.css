@@ -858,3 +858,66 @@ body.vscode-light .status-dot.complete { background: #2e7d32; }
 .post-github-btn:hover {
   background: rgba(33,150,243,0.25) !important;
 }
+
+/* ===== Test Panel (Phase 26) ===== */
+.test-framework-label {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 8px;
+}
+
+.test-framework-name {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.test-code-block {
+  display: block;
+  padding: 10px 12px;
+  background: var(--vscode-textBlockQuote-background, rgba(128,128,128,0.1));
+  border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.2));
+  border-radius: 4px;
+  font-family: var(--vscode-editor-font-family, 'Courier New', monospace);
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--vscode-editor-foreground, #d4d4d4);
+  margin: 0 0 10px 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.test-action-row {
+  display: flex;
+  align-items: center;
+}
+
+.file-written-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(76,175,80,0.18);
+  border: 1px solid rgba(76,175,80,0.4);
+  border-radius: 4px;
+  color: #4caf50;
+  font-size: 11px;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.copy-code-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 4px 10px !important;
+  background: rgba(128,128,128,0.12) !important;
+  border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.3)) !important;
+  border-radius: 4px !important;
+  color: var(--vscode-foreground) !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+}
+
+.copy-code-btn:hover {
+  background: rgba(128,128,128,0.22) !important;
+}
