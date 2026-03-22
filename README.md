@@ -1,130 +1,168 @@
 # Nexus
 
-A VS Code extension backed by a FastAPI multi-agent backend that parses a codebase into a structural **code graph** and uses **graph-traversal RAG** to answer questions grounded in the actual code structure — not just text similarity.
+**AI-powered code intelligence for VS Code.** Index your repository, then ask questions, debug issues, get code reviews, and generate tests — all grounded in your actual call graph and code structure.
 
-V1 ships one complete, demoable feature: the **Explorer agent** — ask any question about how the codebase works, get a cited, grounded answer with file:line references and highlighted code in the editor.
+---
 
-## What it does
+## Features
 
-Open any Python or TypeScript repo in VS Code → Nexus indexes it → Ask "How does user authentication work?" → Get a streamed, cited answer with the relevant files highlighted in the editor.
+### V1 — Code Intelligence Chat
+- **Semantic + graph-aware retrieval** — combines vector similarity search with BFS traversal of your call graph for grounded, citation-backed answers
+- **File-level citations** — every answer links to exact `file:line` sources; click to jump there in the editor
+- **Incremental indexing** — file-save watcher re-indexes only changed files (2 s debounce)
+- **Zero hallucination policy** — answers cite only retrieved nodes; fabricated file paths are filtered out
 
-**Indexing pipeline:**
-1. **File walker** — traverses repo respecting `.gitignore`, skips noise dirs, detects language
-2. **AST parser** — extracts functions, classes, and methods via tree-sitter with signatures, docstrings, and complexity
-3. **Graph builder** — builds a NetworkX DiGraph with CALLS/IMPORTS edge resolution and PageRank scoring
-4. **Embedder** — stores nodes in pgvector (semantic search) and SQLite FTS5 (exact name search)
-5. **Pipeline** — orchestrates steps 1–4 concurrently, exposed over HTTP via FastAPI
+### V2 — Multi-Agent Team
+| Intent | What it does |
+|--------|-------------|
+| **Debug** | Traverses the call graph forward from the failing function, scores each node on 5 anomaly factors, returns a ranked suspect list with line numbers and a diagnosis |
+| **Review** | Assembles 1-hop caller/callee context, generates structured findings with severity badges (critical / warning / info), and can post inline comments to a GitHub PR |
+| **Test** | Detects your test framework (pytest / jest / vitest / junit), generates ≥ 3 test functions with correct mock targets, derives the test file path by convention |
+| **Explain** | Full graph-RAG answer with citations (V1 path, unchanged) |
+| **Auto** | Router agent classifies the query and picks the best intent automatically |
 
-**Query pipeline:**
-1. **Graph RAG** — 3-step retrieval: semantic search → BFS graph expansion → PageRank reranking
-2. **Explorer agent** — LangChain streaming agent generates grounded, cited answers with LangSmith tracing
-3. **SSE endpoint** — `POST /query` streams `token → citations → done` events over HTTP
+---
 
-**VS Code extension:**
-- Sidebar chat UI with real-time token streaming and citation chips
-- Auto-indexes workspace on open; incremental re-index on file save (2s debounce)
-- Clickable citations open the referenced file at the cited line with editor highlight decorations
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  VS Code Extension                                              │
+│  ┌─────────────────┐   messages   ┌────────────────────────┐   │
+│  │  Webview (React)│ ◄──────────► │  SidebarProvider       │   │
+│  │  Intent pills   │              │  SseStream              │   │
+│  │  Result panels  │              │  Highlighter            │   │
+│  └─────────────────┘              └────────────┬───────────┘   │
+└──────────────────────────────────────────────────┼─────────────┘
+                                                   │ HTTP / SSE
+                                                   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  FastAPI Backend                                                │
+│                                                                 │
+│  POST /index ──► Ingestion Pipeline                             │
+│                  Walker → AST Parser → Graph Builder → Embedder │
+│                                  │               │              │
+│                           SQLite (graph)   pgvector + FTS5      │
+│                                                                 │
+│  POST /query ──► V1 path: Graph RAG → Explorer Agent → SSE      │
+│              └─► V2 path: LangGraph Orchestrator → SSE          │
+│                           Router → Specialist → Critic          │
+│                                                │                │
+│                                          MCP Tools              │
+│                                   (GitHub PR / Filesystem)      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Quickstart
 
-**Prerequisites:** Docker Desktop, Python 3.11+, Node.js 18+, an OpenAI API key
+### Prerequisites
+
+| Tool | Version |
+|------|---------|
+| Docker & Docker Compose | 24+ |
+| Node.js | 18+ |
+| VS Code | 1.74+ |
+| OpenAI or Mistral API key | — |
+
+### 1. Start the backend
 
 ```bash
-# 1. Clone and configure
+git clone <repo-url>
+cd nexus
 cp .env.example .env
-# Edit .env — add OPENAI_API_KEY at minimum
-
-# 2. Start the backend stack
-docker compose up -d
-
-# 3. Verify backend is healthy
-curl http://localhost:8000/health
-# → {"status":"ok","version":"1.0.0"}
-
-# 4. Index a repo
-curl -s -X POST http://localhost:8000/index \
-  -H "Content-Type: application/json" \
-  -d '{"repo_path": "/path/to/your/repo", "languages": ["python"]}'
-# → {"status":"pending","repo_path":"/path/to/your/repo"}
-
-# 5. Poll indexing status
-curl "http://localhost:8000/index/status?repo_path=/path/to/your/repo"
-# → {"status":"complete","nodes_indexed":142,"edges_indexed":87,"files_processed":23}
-
-# 6. Query via SSE (curl)
-curl -s -N -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "How does authentication work?", "repo_path": "/path/to/your/repo"}'
-# streams: event: token, event: citations, event: done
+# Edit .env — set OPENAI_API_KEY or MISTRAL_API_KEY
+docker-compose up
 ```
 
-**VS Code extension:**
+Verify:
+
+```bash
+curl http://localhost:8000/health
+# {"status":"ok","version":"1.0.0"}
+```
+
+### 2. Build and install the extension
+
 ```bash
 cd extension
 npm install
 npm run build
-# Press F5 in VS Code to open the Extension Development Host
-# Click the Nexus icon in the Activity Bar
 ```
 
-## Repository structure
+In VS Code press **F5** to open an Extension Development Host, or install the `.vsix` directly via **Extensions → Install from VSIX…**
+
+### 3. Index your repository
+
+Open the **Nexus sidebar** (activity bar icon), click **Index Workspace**. Progress is shown inline. A typical 10k-file repo takes ~30 s.
+
+### 4. Ask a question
+
+Select an intent pill and type your query:
+
+```
+Auto    →  "What does the auth middleware do?"
+Debug   →  "Why does graph_rag_retrieve return empty results for large repos?"
+Review  →  "Review query_router.py for security issues"
+Test    →  "Generate tests for the embedder"
+```
+
+---
+
+## Environment Variables
+
+See [`.env.example`](.env.example) for the full list. Key variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `postgresql://...` | PostgreSQL connection string |
+| `OPENAI_API_KEY` | — | OpenAI API key |
+| `MISTRAL_API_KEY` | — | Mistral API key |
+| `LLM_PROVIDER` | `openai` | `openai` or `mistral` |
+| `EMBEDDING_PROVIDER` | `openai` | `openai` or `mistral` |
+| `GITHUB_TOKEN` | — | Enables "Post to GitHub PR" in Review panel |
+| `MAX_CRITIC_LOOPS` | `2` | Max retry loops before Critic forces pass |
+| `CRITIC_THRESHOLD` | `0.7` | Minimum quality score (0.0–1.0) |
+| `DEBUGGER_MAX_HOPS` | `4` | BFS depth for call-graph traversal |
+| `REVIEWER_CONTEXT_HOPS` | `1` | Context hops around review target |
+
+---
+
+## Project Structure
 
 ```
 nexus/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI app + lifespan + CORS + graph_cache
-│   │   ├── config.py            # Settings (pydantic-settings, .env-driven)
-│   │   ├── api/
-│   │   │   ├── index_router.py  # POST /index, GET /index/status, DELETE /index
-│   │   │   └── query_router.py  # POST /query — SSE streaming endpoint
-│   │   ├── db/
-│   │   │   └── database.py      # PostgreSQL connection + pgvector init
-│   │   ├── ingestion/
-│   │   │   ├── walker.py        # walk_repo() — repo traversal
-│   │   │   ├── ast_parser.py    # parse_file() — tree-sitter AST extraction
-│   │   │   ├── graph_builder.py # build_graph() — NetworkX DiGraph + PageRank
-│   │   │   ├── graph_store.py   # save/load/delete graph in SQLite
-│   │   │   ├── embedder.py      # embed_and_store() — pgvector + FTS5
-│   │   │   └── pipeline.py      # run_ingestion() — full orchestration
-│   │   ├── retrieval/
-│   │   │   └── graph_rag.py     # graph_rag_retrieve() — 3-step graph RAG
-│   │   ├── agent/
-│   │   │   ├── prompts.py       # SYSTEM_PROMPT — anti-fabrication citation rules
-│   │   │   └── explorer.py      # explore_stream() — LangChain streaming agent
-│   │   └── models/
-│   │       └── schemas.py       # CodeNode, CodeEdge, IndexStatus, IndexRequest, QueryRequest
-│   ├── tests/                   # pytest test suite (89 tests)
-│   ├── Dockerfile
-│   └── requirements.txt
-├── extension/
-│   ├── src/
-│   │   ├── extension.ts         # activate() — registers provider + FileWatcher
-│   │   ├── SidebarProvider.ts   # WebviewView — bridges extension host ↔ React UI
-│   │   ├── BackendClient.ts     # HTTP client for /index and /query
-│   │   ├── SseStream.ts         # fetch + ReadableStream SSE consumer
-│   │   ├── HighlightService.ts  # Editor decoration — findMatchHighlightBackground
-│   │   ├── FileWatcher.ts       # Debounced incremental re-index on file save
-│   │   ├── types.ts             # Shared discriminated union message types
-│   │   └── webview/
-│   │       ├── App.tsx          # React 18 chat UI — streaming, citations, status
-│   │       ├── index.tsx        # createRoot entry point
-│   │       └── index.css        # VS Code CSS variables only
-│   ├── media/
-│   │   └── nexus.svg            # Activity bar icon
-│   ├── esbuild.js               # Dual-bundle build (node/cjs + browser/iife)
-│   ├── package.json             # VS Code extension manifest
-│   └── tsconfig*.json           # Separate tsconfigs for host and webview
-├── eval/
-│   ├── golden_qa.json           # 30 Q&A pairs for RAGAS evaluation
-│   ├── run_ragas.py             # Dual-mode eval: graph RAG vs naive vector search
-│   └── results/                 # Timestamped JSON results (git-tracked directory)
-├── data/                        # SQLite persistence (bind-mounted into container)
+├── backend/          # FastAPI backend, ingestion pipeline, V2 agents
+│   └── README.md     # Backend architecture, API reference, flow diagrams
+├── extension/        # VS Code extension (React webview + host)
+│   └── README.md     # Extension architecture, message flow, build guide
+├── eval/             # RAGAS evaluation suite
+│   └── README.md     # Evaluation methodology and baseline results
+├── data/             # SQLite graph store + LangGraph checkpoints (bind-mounted)
 ├── docker-compose.yml
 └── .env.example
 ```
 
-## API reference
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend framework | FastAPI + Uvicorn |
+| Vector store | PostgreSQL + pgvector |
+| Graph store | SQLite + NetworkX |
+| Full-text search | SQLite FTS5 |
+| Code parsing | tree-sitter (Python, TypeScript) |
+| LLM orchestration | LangGraph + LangChain |
+| LLM providers | OpenAI / Mistral (switchable) |
+| Extension UI | React 18 + VS Code API |
+| Build tooling | esbuild (dual-bundle: host + webview) |
+
+---
+
+## API Reference
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -134,114 +172,31 @@ nexus/
 | `POST` | `/query` | Stream a cited answer via SSE |
 | `GET` | `/health` | Health check |
 
-**POST /index request body:**
-```json
-{
-  "repo_path": "/absolute/path/to/repo",
-  "languages": ["python", "typescript"],
-  "changed_files": null
-}
-```
+Full request/response schemas and SSE event sequences are documented in [`backend/README.md`](backend/README.md).
 
-Set `changed_files` to a list of absolute file paths for incremental re-index (only re-parses listed files).
+---
 
-**POST /query request body:**
-```json
-{
-  "question": "How does authentication work?",
-  "repo_path": "/absolute/path/to/repo",
-  "max_nodes": 10,
-  "hop_depth": 1
-}
-```
-
-**POST /query SSE event sequence:**
-```
-event: token
-data: {"content": "The authentication..."}
-
-event: token
-data: {"content": " middleware is..."}
-
-event: citations
-data: [{"file_path": "app/auth.py", "name": "verify_token", "line_start": 42, "line_end": 58}]
-
-event: done
-data: {"nodes_retrieved": 8, "nodes_expanded": 23, "elapsed_ms": 1240}
-```
-
-On error: `event: error` with `data: {"detail": "..."}`.
-
-## Running the RAGAS evaluation
-
-Requires a running backend with an indexed repo and a valid `OPENAI_API_KEY`.
+## Test Suite
 
 ```bash
-# Index the FastAPI source repo first
-curl -X POST http://localhost:8000/index \
-  -d '{"repo_path": "/path/to/fastapi", "languages": ["python"]}'
-
-# Run the comparative evaluation
-cd eval
-python run_ragas.py --repo-path /path/to/fastapi
-
-# Results written to eval/results/ragas_comparison_{timestamp}.json
+source venv/bin/activate
+python -m pytest backend/tests/ -v
+# 190 passed in ~7 s — no live API calls required
 ```
 
-Evaluates three metrics (Faithfulness, ResponseRelevancy, ContextPrecision) across 30 golden Q&A pairs for both graph-traversal RAG and naive vector-only retrieval.
+All 190 tests use mock LLMs and mock graphs. The full suite runs offline.
 
-## Development
+---
 
-See [backend/README.md](backend/README.md) for backend setup, running tests, and environment configuration.
+## Milestone History
 
-**Run backend tests:**
-```bash
-cd backend
-pytest tests/ -v
-# 89 unit tests pass without external services
-# 4 embedder tests require a running Postgres container
-```
+| Milestone | Phases | Status |
+|-----------|--------|--------|
+| V1.0 MVP | 1–15 | ✅ Shipped 2026-03-21 |
+| V2.0 Multi-Agent Team | 16–26 | ✅ Complete 2026-03-22 |
 
-**Build the extension:**
-```bash
-cd extension
-npm install
-npm run build        # dual esbuild: out/extension.js + out/webview/index.js
-npm run typecheck    # tsc --noEmit for both host and webview tsconfigs
-```
+---
 
-## Environment variables
+## License
 
-Copy `.env.example` to `.env` and fill in:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `POSTGRES_USER` | Yes | PostgreSQL username |
-| `POSTGRES_PASSWORD` | Yes | PostgreSQL password |
-| `POSTGRES_DB` | Yes | PostgreSQL database name |
-| `POSTGRES_HOST` | Yes | PostgreSQL host (`postgres` inside Docker) |
-| `POSTGRES_PORT` | Yes | PostgreSQL port (`5432` inside Docker) |
-| `OPENAI_API_KEY` | Yes | OpenAI API key for embeddings and LLM |
-| `LANGCHAIN_API_KEY` | No | LangSmith API key for tracing |
-| `LANGCHAIN_TRACING_V2` | No | Set `true` to enable LangSmith traces |
-| `LANGCHAIN_PROJECT` | No | LangSmith project name |
-
-## Build status
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1 | Infrastructure (Docker + pgvector) | ✓ Complete |
-| 2 | File Walker | ✓ Complete |
-| 3 | AST Parser | ✓ Complete |
-| 4 | Graph Builder | ✓ Complete |
-| 5 | Embedder (pgvector + FTS5) | ✓ Complete |
-| 6 | Pipeline (orchestration) | ✓ Complete |
-| 7 | Index Endpoint (HTTP API) | ✓ Complete |
-| 7.1 | Tech Debt Cleanup | ✓ Complete |
-| 8 | Graph RAG retrieval | ✓ Complete |
-| 9 | Explorer Agent (LangChain streaming) | ✓ Complete |
-| 10 | Query Endpoint (SSE) | ✓ Complete |
-| 11 | VS Code Extension | ✓ Complete |
-| 12 | Highlighter (editor decorations) | ✓ Complete |
-| 13 | File Watcher (incremental re-index) | ✓ Complete |
-| 14 | RAGAS Evaluation | ✓ Complete |
+MIT
