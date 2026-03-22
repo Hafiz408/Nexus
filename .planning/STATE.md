@@ -6,15 +6,15 @@ See: .planning/PROJECT.md
 
 ## Current Position
 
-Phase: 25 — extension-intent-selector
-Plan: 01 — complete
-Status: Phase 25 Plan 01 complete; intent selector UI + host threading complete; EXT-01, EXT-02, EXT-03 marked complete
-Last activity: 2026-03-22 — Completed 25-01-PLAN.md (five intent pills + intent_hint threading from webview through SidebarProvider to SseStream POST body)
+Phase: 26 — extension-result-rendering
+Plan: 02 — complete
+Status: Phase 26 Plan 02 complete; SSE result plumbing complete; EXT-04 through EXT-09 marked complete
+Last activity: 2026-03-22 — Completed 26-02-PLAN.md (HostToWebviewMessage result variant + SseStream case 'result' handler)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
 **Current focus:** v2.0 multi-agent team — Phase 25 complete; V2 agent routing reachable from extension UI
 
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 91%
 
 ## Performance Metrics
 
@@ -74,6 +74,8 @@ Last activity: 2026-03-22 — Completed 25-01-PLAN.md (five intent pills + inten
 - [Phase 25-extension-intent-selector]: Auto intent sends undefined (not 'auto') — backend V2 gate checks intent_hint not None and not 'auto'; sending 'auto' silently degrades to V1 path
 - [Phase 25-extension-intent-selector]: CSS \!important required on pill background/border — global button reset applies background:transparent \!important and border:none \!important to all buttons
 - [Phase 25-extension-intent-selector]: Pill selection is sticky — selectedIntent not reset after send; user changes intent explicitly
+- [Phase 26-02]: App.tsx defines its own local IncomingMessage type (not imported from types.ts) — must be updated in Plan 03, not in 26-02
+- [Phase 26-01]: write_test_file called only for test intent; MCP error isolation via try/except keeps SSE stream intact; has_github_token uses bool() consistent with Phase 16 empty-string default
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -107,3 +109,4 @@ Last activity: 2026-03-22 — Completed 25-01-PLAN.md (five intent pills + inten
 - 2026-03-22: Phase 24 Plan 01 complete — V2 branch wired into /query endpoint; QueryRequest extended with intent_hint, target_node_id, selected_file, selected_range, repo_root (all Optional=None); v2_event_generator uses lazy imports + asyncio.to_thread(graph.invoke) + SqliteSaver(checkpoints.db) + uuid4 thread_id; 9 V1 tests passing; TST-08 marked complete; 182 tests passing
 - 2026-03-22: Phase 24 Plan 02 complete — V2 endpoint test suite: test_query_router_v2.py with 8 offline tests (debug/review/test/explain routing + auto/None sentinel fall-through + error propagation); build_graph patched at source module (app.agent.orchestrator.build_graph); TST-09 marked complete; 190 tests passing
 - 2026-03-22: Phase 25 Plan 01 complete — Intent selector UI added to extension sidebar; five pills (Auto/Explain/Debug/Review/Test); intent_hint threaded from webview postMessage through SidebarProvider to SseStream POST body; Auto sends undefined (not 'auto'); EXT-01, EXT-02, EXT-03 marked complete
+- 2026-03-22: Phase 26 Plan 02 complete — SSE result plumbing added; HostToWebviewMessage union extended with result variant (types.ts); case 'result' handler wired in SseStream.ts forwarding intent/result/has_github_token/file_written/written_path to webview; EXT-04 through EXT-09 marked complete
