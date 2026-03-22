@@ -19,7 +19,8 @@ export type WebviewToHostMessage =
   | { type: 'query'; question: string; intent_hint?: string }
   | { type: 'openFile'; filePath: string; lineStart: number }
   | { type: 'indexWorkspace' }
-  | { type: 'clearIndex' };
+  | { type: 'clearIndex' }
+  | { type: 'postReviewToPR' };
 
 export interface Citation {
   node_id: string;

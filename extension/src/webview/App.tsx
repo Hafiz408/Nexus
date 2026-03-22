@@ -225,6 +225,81 @@ function DebugPanel({ result, onOpenFile }: {
   );
 }
 
+function FindingCard({ finding, severityClass }: {
+  finding: {
+    severity: string; category: string; description: string;
+    file_path: string; line_start: number; line_end: number; suggestion: string;
+  };
+  severityClass: string;
+}): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="finding-card">
+      <div className="finding-header">
+        <span className={`severity-badge ${severityClass}`}>{finding.severity}</span>
+        <span className="finding-category">{finding.category}</span>
+        <span className="finding-location">
+          {finding.file_path.split('/').pop()}:{finding.line_start}
+        </span>
+      </div>
+      <p className="finding-description">{finding.description}</p>
+      <button
+        className="suggestion-toggle"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <span className="section-chevron">{expanded ? '▾' : '▸'}</span>
+        Suggestion
+      </button>
+      {expanded && <p className="finding-suggestion">{finding.suggestion}</p>}
+    </div>
+  );
+}
+
+function ReviewPanel({ result, hasGithubToken }: {
+  result: Record<string, unknown>;
+  hasGithubToken: boolean;
+}): React.JSX.Element {
+  const findings = (result.findings as Array<{
+    severity: 'critical' | 'warning' | 'info';
+    category: string;
+    description: string;
+    file_path: string;
+    line_start: number;
+    line_end: number;
+    suggestion: string;
+  }>) ?? [];
+  const summary = (result.summary as string) ?? '';
+
+  const SEVERITY_CLASS: Record<string, string> = {
+    critical: 'badge-critical',
+    warning: 'badge-warning',
+    info: 'badge-info',
+  };
+
+  return (
+    <div className="result-panel result-panel-review">
+      {summary && <p className="result-summary">{summary}</p>}
+
+      <div className="findings-list">
+        {findings.map((f, i) => (
+          <FindingCard key={i} finding={f} severityClass={SEVERITY_CLASS[f.severity] ?? 'badge-info'} />
+        ))}
+      </div>
+
+      {hasGithubToken && (
+        <button
+          className="post-github-btn"
+          onClick={() =>
+            vscode.postMessage({ type: 'postReviewToPR' })
+          }
+        >
+          Post to GitHub PR
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 
 export function App(): React.JSX.Element {
@@ -592,6 +667,13 @@ export function App(): React.JSX.Element {
               onOpenFile={(filePath, lineStart) =>
                 vscode.postMessage({ type: 'openFile', filePath, lineStart })
               }
+            />
+          )}
+
+          {structuredResult?.intent === 'review' && (
+            <ReviewPanel
+              result={structuredResult.result}
+              hasGithubToken={structuredResult.has_github_token === true}
             />
           )}
 
