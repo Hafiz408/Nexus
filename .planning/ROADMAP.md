@@ -205,7 +205,13 @@ Plans:
   3. A review response renders findings with severity badges (critical=red, warning=amber, info=blue), category label, description, and an expandable suggestion
   4. When `github_token` is configured, a "Post to GitHub PR" button appears on the review panel and is absent otherwise
   5. A test response renders the generated code block with syntax highlighting and either a green "File written to: {path}" badge (when Filesystem MCP succeeded) or a "Copy to clipboard" button
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 26-01-PLAN.md — Extend backend SSE payload with has_github_token + file_written fields
+- [ ] 26-02-PLAN.md — Wire result event through SseStream.ts and types.ts
+- [ ] 26-03-PLAN.md — Implement DebugPanel and ReviewPanel in App.tsx + index.css
+- [ ] 26-04-PLAN.md — Implement TestPanel + human verification checkpoint
 
 ---
 
@@ -222,7 +228,7 @@ Plans:
 | 22. orchestrator | 2/2 | Complete    | 2026-03-21 |
 | 23. mcp-tools | 2/2 | Complete    | 2026-03-21 |
 | 24. query-endpoint-v2 | 2/2 | Complete    | 2026-03-21 |
-| 25. extension-intent-selector | 1/1 | Complete   | 2026-03-21 |
+| 25. extension-intent-selector | 1/1 | Complete    | 2026-03-21 |
 | 26. extension-result-rendering | 0/? | Not started | - |
 
 ---
