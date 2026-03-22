@@ -7,14 +7,14 @@ See: .planning/PROJECT.md
 ## Current Position
 
 Phase: 26 — extension-result-rendering
-Plan: 03 — complete
-Status: Phase 26 Plan 03 complete; DebugPanel + ReviewPanel + postReviewToPR stub; EXT-04 through EXT-07 panel rendering complete
-Last activity: 2026-03-22 — Completed 26-03-PLAN.md (DebugPanel, ReviewPanel, FindingCard components + Phase 26 CSS + postReviewToPR stub)
+Plan: 04 — complete
+Status: Phase 26 Plan 04 complete; TestPanel + explain V2 fallback + file-written badge + copy button; EXT-08 and EXT-09 complete; Phase 26 fully done
+Last activity: 2026-03-22 — Completed 26-04-PLAN.md (TestPanel component + test panel CSS + human-verify checkpoint approved)
 
 **Core value:** Grounded, graph-aware codebase intelligence — no hallucination
 **Current focus:** v2.0 multi-agent team — Phase 25 complete; V2 agent routing reachable from extension UI
 
-**Progress:** [██████████] 95%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -78,6 +78,9 @@ Last activity: 2026-03-22 — Completed 26-03-PLAN.md (DebugPanel, ReviewPanel, 
 - [Phase 26-01]: write_test_file called only for test intent; MCP error isolation via try/except keeps SSE stream intact; has_github_token uses bool() consistent with Phase 16 empty-string default
 - [Phase 26-03]: DebugPanel and ReviewPanel defined as module-level function components to prevent re-mounting on every App render
 - [Phase 26-03]: postReviewToPR added to WebviewToHostMessage union in types.ts to satisfy SidebarProvider.ts discriminated union switch
+- [Phase 26-04]: document.execCommand('copy') via off-screen textarea used for clipboard -- navigator.clipboard blocked by VS Code WebKit CSP
+- [Phase 26-04]: React text interpolation inside pre/code ensures LLM-generated content cannot inject HTML (XSS prevention)
+- [Phase 26-04]: file_written boolean drives conditional UI -- green badge when MCP write succeeded, copy button otherwise
 
 ### Implementation Notes
 - Actual module paths: `app/agent/` (singular), `app/api/query_router.py`
@@ -114,3 +117,4 @@ Last activity: 2026-03-22 — Completed 26-03-PLAN.md (DebugPanel, ReviewPanel, 
 - 2026-03-22: Phase 26 Plan 01 complete — v2_event_generator result payload extended with has_github_token (github_token presence), file_written and written_path (MCP write outcome for test intent); lazy imports + try/except MCP error isolation; EXT-07, EXT-09 marked complete; 190 tests passing
 - 2026-03-22: Phase 26 Plan 02 complete — SSE result plumbing added; HostToWebviewMessage union extended with result variant (types.ts); case 'result' handler wired in SseStream.ts forwarding intent/result/has_github_token/file_written/written_path to webview; EXT-04 through EXT-09 marked complete
 - 2026-03-22: Phase 26 Plan 03 complete — DebugPanel (suspects + score bars + traversal breadcrumb + collapsible impact radius) and ReviewPanel (findings + severity badges + expandable suggestions + conditional GitHub PR button) implemented in App.tsx; postReviewToPR stub added to SidebarProvider.ts; Phase 26 CSS appended to index.css; EXT-04 through EXT-07 panel rendering complete
+- 2026-03-22: Phase 26 Plan 04 complete — TestPanel (pre/code block + file-written badge + CSP-compliant copy button) and explain V2 fallback implemented in App.tsx; test panel CSS appended to index.css; human-verify checkpoint approved; EXT-08, EXT-09 marked complete; Phase 26 fully complete
