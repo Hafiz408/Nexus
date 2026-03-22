@@ -98,7 +98,40 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 else:
                     result_dict = {"answer": str(specialist)}
 
-                payload = json.dumps({"type": "result", "intent": intent, "result": result_dict})
+                # EXT-07: surface github_token presence so extension can show/hide
+                # "Post to GitHub PR" button — extension has no env var access.
+                from app.config import get_settings as _get_settings  # noqa: PLC0415
+                _settings = _get_settings()
+                has_github_token = bool(_settings.github_token)
+
+                # EXT-09: attempt MCP file write for test intent; carry result in payload
+                # so extension can show file-written badge vs copy-to-clipboard fallback.
+                file_written = False
+                written_path: str | None = None
+                if intent == "test":
+                    try:
+                        from app.mcp.tools import write_test_file as _write_test_file  # noqa: PLC0415
+                        _mcp_result = _write_test_file(
+                            result_dict.get("test_code", ""),
+                            result_dict.get("test_file_path", "tests/test_output.py"),
+                            base_dir=str(request_body.repo_root or "."),
+                        )
+                        file_written = bool(_mcp_result.get("success", False))
+                        written_path = _mcp_result.get("path")
+                    except Exception as _mcp_exc:  # noqa: BLE001
+                        import logging as _logging  # noqa: PLC0415
+                        _logging.getLogger(__name__).warning(
+                            "write_test_file raised; file_written=False: %s", _mcp_exc
+                        )
+
+                payload = json.dumps({
+                    "type": "result",
+                    "intent": intent,
+                    "result": result_dict,
+                    "has_github_token": has_github_token,
+                    "file_written": file_written,
+                    "written_path": written_path,
+                })
                 yield f"event: result\ndata: {payload}\n\n"
                 yield f"event: done\ndata: {json.dumps({'type': 'done'})}\n\n"
 
