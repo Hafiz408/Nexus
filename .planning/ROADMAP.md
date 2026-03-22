@@ -229,7 +229,7 @@ Plans:
 | 23. mcp-tools | 2/2 | Complete    | 2026-03-21 |
 | 24. query-endpoint-v2 | 2/2 | Complete    | 2026-03-21 |
 | 25. extension-intent-selector | 1/1 | Complete    | 2026-03-21 |
-| 26. extension-result-rendering | 4/4 | Complete   | 2026-03-22 |
+| 26. extension-result-rendering | 4/4 | Complete    | 2026-03-22 |
 
 ---
 *V2 roadmap added: 2026-03-21*
