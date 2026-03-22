@@ -79,10 +79,10 @@
 - [x] **EXT-02**: Selected intent is sent as `intent_hint` in query request body (`auto` → omit field)
 - [x] **EXT-03**: Send button label changes per selected intent: Ask / Explain / Debug / Review / Test
 - [ ] **EXT-04**: Debug response renders suspects panel: ranked list with file:line, anomaly score bar, and traversal breadcrumb chain
-- [ ] **EXT-05**: Debug response renders impact radius as collapsible list; suspect references are clickable (opens file at line via Highlighter.ts)
+- [ ] **EXT-05**: Debug response renders impact radius as collapsible list; ranked suspect rows are clickable (opens file at line via Highlighter.ts — impact radius items are node ID strings without file/line data, so they are display-only)
 - [ ] **EXT-06**: Review response renders findings list with severity badges (critical=red, warning=amber, info=blue), category label, description, expandable suggestion
 - [ ] **EXT-07**: Review response shows "Post to GitHub PR" button when `github_token` is configured
-- [ ] **EXT-08**: Test response renders generated code block with syntax highlighting
+- [ ] **EXT-08**: Test response renders generated code block with monospace styling (dark background, scrollable pre/code block — no token-level syntax highlighting library required)
 - [ ] **EXT-09**: Test response shows "File written to: {path}" badge in green when Filesystem MCP succeeded, or "Copy to clipboard" button otherwise
 
 ## v3 Requirements (deferred)
