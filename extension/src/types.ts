@@ -16,7 +16,15 @@ export type HostToWebviewMessage =
 
 // Messages sent FROM webview TO extension host
 export type WebviewToHostMessage =
-  | { type: 'query'; question: string; intent_hint?: string }
+  | {
+      type: 'query';
+      question: string;
+      intent_hint?: string;
+      target_node_id?: string;
+      selected_file?: string;
+      selected_range?: [number, number];
+      repo_root?: string;
+    }
   | { type: 'openFile'; filePath: string; lineStart: number }
   | { type: 'indexWorkspace' }
   | { type: 'clearIndex' }

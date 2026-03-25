@@ -8,6 +8,10 @@ export async function streamQuery(
   backendUrl: string,
   onCitations?: (citations: Citation[]) => void,
   intentHint?: string,
+  targetNodeId?: string,
+  selectedFile?: string,
+  selectedRange?: [number, number],
+  repoRoot?: string,
 ): Promise<void> {
   const config = vscode.workspace.getConfiguration('nexus');
   const maxNodes = config.get<number>('maxNodes', 10);
@@ -23,7 +27,11 @@ export async function streamQuery(
         repo_path: repoPath,
         max_nodes: maxNodes,
         hop_depth: hopDepth,
-        ...(intentHint ? { intent_hint: intentHint } : {}),
+        ...(intentHint    ? { intent_hint: intentHint }       : {}),
+        ...(targetNodeId  ? { target_node_id: targetNodeId }  : {}),
+        ...(selectedFile  ? { selected_file: selectedFile }   : {}),
+        ...(selectedRange ? { selected_range: selectedRange } : {}),
+        ...(repoRoot      ? { repo_root: repoRoot }           : {}),
       }),
     });
   } catch (err) {
