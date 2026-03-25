@@ -79,6 +79,47 @@ class _ExplainResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Private helpers
+# ---------------------------------------------------------------------------
+
+def _derive_target_from_file(
+    G: "nx.DiGraph",
+    selected_file: str | None,
+    selected_range: list[int] | None,
+) -> str | None:
+    """Attempt to find the graph node at the given file + line range.
+
+    Scans G.nodes for a node whose 'file_path' ends with selected_file
+    (handles both absolute and relative path forms) and whose line_start/
+    line_end bracket the midpoint of selected_range (or the start line
+    when range is not provided).
+
+    Returns the node_id string if found, None otherwise.
+    """
+    if not selected_file:
+        return None
+    import networkx as nx  # noqa: PLC0415 — already a lazy-import module
+    target_line = None
+    if selected_range and len(selected_range) >= 2:
+        target_line = (selected_range[0] + selected_range[1]) // 2
+    elif selected_range and len(selected_range) == 1:
+        target_line = selected_range[0]
+
+    for node_id, attrs in G.nodes(data=True):
+        node_file = attrs.get("file_path", "")
+        # Match on suffix — handles absolute vs relative path forms
+        if not (node_file.endswith(selected_file) or selected_file.endswith(node_file)):
+            continue
+        if target_line is None:
+            return node_id   # first node in the file wins if no line given
+        line_start = attrs.get("line_start", 0)
+        line_end = attrs.get("line_end", 0)
+        if line_start <= target_line <= line_end:
+            return node_id
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Node functions — ALL agent imports are lazy (inside function bodies)
 # ---------------------------------------------------------------------------
 
@@ -159,13 +200,33 @@ def _debug_node(state: NexusState) -> dict:
 def _review_node(state: NexusState) -> dict:
     """Invoke the Reviewer agent. Lazy-imports review() to avoid ValidationError."""
     import networkx as nx  # noqa: PLC0415
-    from app.agent.reviewer import review  # noqa: PLC0415
+    from app.agent.reviewer import review, ReviewResult  # noqa: PLC0415
 
     G: nx.DiGraph = state["G"]  # type: ignore[assignment]
+    target_id = state["target_node_id"]
+
+    # Fallback: derive target from active editor context when not provided
+    if not target_id:
+        target_id = _derive_target_from_file(
+            G,
+            state.get("selected_file"),
+            state.get("selected_range"),
+        )
+
+    if not target_id:
+        # No usable target — return empty ReviewResult with explanation
+        return {
+            "specialist_result": ReviewResult(
+                findings=[],
+                retrieved_nodes=[],
+                summary="No target node identified. Open a file and select a function, then try again.",
+            )
+        }
+
     result = review(
         state["question"],
         G,
-        state["target_node_id"],
+        target_id,
         selected_file=state.get("selected_file"),
         selected_range=state.get("selected_range"),
     )
@@ -175,13 +236,33 @@ def _review_node(state: NexusState) -> dict:
 def _test_node(state: NexusState) -> dict:
     """Invoke the Tester agent. Lazy-imports test() to avoid ValidationError."""
     import networkx as nx  # noqa: PLC0415
-    from app.agent.tester import test as run_test  # noqa: PLC0415
+    from app.agent.tester import test as run_test, TestResult  # noqa: PLC0415
 
     G: nx.DiGraph = state["G"]  # type: ignore[assignment]
+    target_id = state["target_node_id"]
+
+    # Fallback: derive target from active editor context when not provided
+    if not target_id:
+        target_id = _derive_target_from_file(
+            G,
+            state.get("selected_file"),
+            state.get("selected_range"),
+        )
+
+    if not target_id:
+        # No usable target — return empty TestResult with explanation
+        return {
+            "specialist_result": TestResult(
+                test_code="# No target node identified. Open a file and select a function, then try again.",
+                test_file_path="tests/test_unknown.py",
+                framework="pytest",
+            )
+        }
+
     result = run_test(
         state["question"],
         G,
-        state["target_node_id"],
+        target_id,
         repo_root=state.get("repo_root"),
     )
     return {"specialist_result": result}
