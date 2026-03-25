@@ -212,10 +212,11 @@ def test_embed_and_store_returns_count(tmp_db, sample_nodes, mock_mistral_client
     _create_stub_vec_tables(tmp_db)
     with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
         with patch("app.ingestion.embedder.init_vec_table"):
-            with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
-                mock_sv.load = MagicMock()
-                mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
-                count = embed_and_store(sample_nodes, "/tmp/test_repo", tmp_db)
+            with patch("app.ingestion.embedder._vec_conn", side_effect=sqlite3.connect):
+                with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
+                    mock_sv.load = MagicMock()
+                    mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
+                    count = embed_and_store(sample_nodes, "/tmp/test_repo", tmp_db)
     assert count == len(sample_nodes)
 
 
@@ -224,10 +225,11 @@ def test_fts5_table_supports_name_match(tmp_db, sample_nodes, mock_mistral_clien
     _create_stub_vec_tables(tmp_db)
     with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
         with patch("app.ingestion.embedder.init_vec_table"):
-            with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
-                mock_sv.load = MagicMock()
-                mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
-                embed_and_store(sample_nodes, "/tmp/fts_test_repo", tmp_db)
+            with patch("app.ingestion.embedder._vec_conn", side_effect=sqlite3.connect):
+                with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
+                    mock_sv.load = MagicMock()
+                    mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
+                    embed_and_store(sample_nodes, "/tmp/fts_test_repo", tmp_db)
     conn = sqlite3.connect(tmp_db)
     rows = conn.execute(
         'SELECT node_id FROM code_fts WHERE name MATCH ?', ('"func_0"',)
@@ -242,11 +244,12 @@ def test_embed_and_store_upsert_no_duplicates(tmp_db, sample_nodes, mock_mistral
     _create_stub_vec_tables(tmp_db)
     with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
         with patch("app.ingestion.embedder.init_vec_table"):
-            with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
-                mock_sv.load = MagicMock()
-                mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
-                embed_and_store(sample_nodes, "/tmp/upsert_repo", tmp_db)
-                embed_and_store(sample_nodes, "/tmp/upsert_repo", tmp_db)
+            with patch("app.ingestion.embedder._vec_conn", side_effect=sqlite3.connect):
+                with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
+                    mock_sv.load = MagicMock()
+                    mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
+                    embed_and_store(sample_nodes, "/tmp/upsert_repo", tmp_db)
+                    embed_and_store(sample_nodes, "/tmp/upsert_repo", tmp_db)
     conn = sqlite3.connect(tmp_db)
     count = conn.execute("SELECT COUNT(*) FROM code_fts").fetchone()[0]
     conn.close()
@@ -270,10 +273,11 @@ def test_delete_embeddings_for_files_removes_fts5_rows(tmp_db, sample_nodes, moc
     _create_stub_vec_tables(tmp_db)
     with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
         with patch("app.ingestion.embedder.init_vec_table"):
-            with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
-                mock_sv.load = MagicMock()
-                mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
-                embed_and_store(sample_nodes, "/tmp/test_repo", tmp_db)
+            with patch("app.ingestion.embedder._vec_conn", side_effect=sqlite3.connect):
+                with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
+                    mock_sv.load = MagicMock()
+                    mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
+                    embed_and_store(sample_nodes, "/tmp/test_repo", tmp_db)
 
     # Confirm FTS5 rows were written
     conn = sqlite3.connect(tmp_db)
@@ -283,9 +287,10 @@ def test_delete_embeddings_for_files_removes_fts5_rows(tmp_db, sample_nodes, moc
 
     # Now delete for the file that all sample_nodes share (src/a.py)
     target_file = sample_nodes[0].file_path
-    with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
-        mock_sv.load = MagicMock()
-        delete_embeddings_for_files([target_file], "/tmp/test_repo", tmp_db)
+    with patch("app.ingestion.embedder._vec_conn", side_effect=sqlite3.connect):
+        with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
+            mock_sv.load = MagicMock()
+            delete_embeddings_for_files([target_file], "/tmp/test_repo", tmp_db)
 
     # FTS5 rows for that file_path must be gone
     conn = sqlite3.connect(tmp_db)
