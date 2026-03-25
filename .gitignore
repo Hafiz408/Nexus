@@ -27,6 +27,7 @@ venv/
 # Tool artifacts
 .playwright-mcp/
 .superpowers/
+docs/superpowers/
 
 # Temp/preview files
 nexus-preview*.png
