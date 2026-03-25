@@ -59,6 +59,8 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
 
                 G = await asyncio.to_thread(_get_graph, request_body.repo_path, request)
                 # SqliteSaver DB is SEPARATE from data/nexus.db (locked decision, STATE.md)
+                import os as _os  # noqa: PLC0415
+                _os.makedirs("data", exist_ok=True)
                 conn = _sqlite3.connect("data/checkpoints.db", check_same_thread=False)
                 graph = build_graph(checkpointer=SqliteSaver(conn))
 

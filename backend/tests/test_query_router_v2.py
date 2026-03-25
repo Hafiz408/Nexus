@@ -118,8 +118,10 @@ def test_v2_debug_intent_returns_result_event(client, monkeypatch):
 
     debug_result = _make_debug_result()
     mock_graph = _make_mock_graph("debug", debug_result)
+    mock_settings = MagicMock(github_token="")
 
-    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph):
+    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph), \
+         patch("app.config.get_settings", return_value=mock_settings):
         body = _read_stream(
             client,
             {"question": "Why does fn crash?", "repo_path": "/repo", "intent_hint": "debug"},
@@ -142,8 +144,10 @@ def test_v2_result_event_contains_result_key(client, monkeypatch):
 
     debug_result = _make_debug_result()
     mock_graph = _make_mock_graph("debug", debug_result)
+    mock_settings = MagicMock(github_token="")
 
-    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph):
+    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph), \
+         patch("app.config.get_settings", return_value=mock_settings):
         body = _read_stream(
             client,
             {"question": "Why does fn crash?", "repo_path": "/repo", "intent_hint": "debug"},
@@ -177,8 +181,10 @@ def test_v2_review_intent_routes_to_orchestrator(client, monkeypatch):
     mock_review = MagicMock()
     mock_review.model_dump.return_value = {"findings": []}
     mock_graph = _make_mock_graph("review", mock_review)
+    mock_settings = MagicMock(github_token="")
 
-    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph):
+    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph), \
+         patch("app.config.get_settings", return_value=mock_settings):
         body = _read_stream(
             client,
             {"question": "Review this code", "repo_path": "/repo", "intent_hint": "review"},
@@ -200,8 +206,10 @@ def test_v2_test_intent_routes_to_orchestrator(client, monkeypatch):
     mock_test_result = MagicMock()
     mock_test_result.model_dump.return_value = {"test_code": "def test_fn(): pass", "framework": "pytest"}
     mock_graph = _make_mock_graph("test", mock_test_result)
+    mock_settings = MagicMock(github_token="")
 
-    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph):
+    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph), \
+         patch("app.config.get_settings", return_value=mock_settings):
         body = _read_stream(
             client,
             {"question": "Generate tests for fn", "repo_path": "/repo", "intent_hint": "test"},
@@ -223,8 +231,10 @@ def test_v2_explain_intent_routes_to_orchestrator(client, monkeypatch):
     mock_explain = MagicMock()
     mock_explain.model_dump.return_value = {"answer": "fn does X", "nodes": [], "stats": {}}
     mock_graph = _make_mock_graph("explain", mock_explain)
+    mock_settings = MagicMock(github_token="")
 
-    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph):
+    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph), \
+         patch("app.config.get_settings", return_value=mock_settings):
         body = _read_stream(
             client,
             {"question": "Explain fn", "repo_path": "/repo", "intent_hint": "explain"},
