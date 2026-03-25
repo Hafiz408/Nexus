@@ -58,6 +58,11 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 from langgraph.checkpoint.sqlite import SqliteSaver  # noqa: PLC0415
 
                 G = await asyncio.to_thread(_get_graph, request_body.repo_path, request)
+                # Store G in process-level cache — keeps DiGraph out of LangGraph state
+                # so SqliteSaver never tries to msgpack-serialize it.
+                from app.agent.orchestrator import set_graph as _set_graph  # noqa: PLC0415
+                _set_graph(request_body.repo_path, G)
+
                 # SqliteSaver DB is SEPARATE from data/nexus.db (locked decision, STATE.md)
                 import os as _os  # noqa: PLC0415
                 _os.makedirs("data", exist_ok=True)
@@ -68,7 +73,6 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                     "question": request_body.question,
                     "repo_path": request_body.repo_path,
                     "intent_hint": request_body.intent_hint,
-                    "G": G,
                     "target_node_id": request_body.target_node_id,
                     "selected_file": request_body.selected_file,
                     "selected_range": request_body.selected_range,

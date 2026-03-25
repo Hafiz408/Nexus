@@ -19,11 +19,32 @@ Critical patterns (from RESEARCH.md):
 from __future__ import annotations
 
 import sqlite3
-from typing import Any, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, TypedDict, Union
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from pydantic import BaseModel
+
+
+# ---------------------------------------------------------------------------
+# Process-level graph cache — keeps nx.DiGraph out of LangGraph state so
+# SqliteSaver never tries to msgpack-serialize it (DiGraph is not serializable).
+# Populated by set_graph() in query_router.py before each graph.invoke() call.
+# ---------------------------------------------------------------------------
+
+_G_CACHE: Dict[str, Any] = {}
+
+
+def set_graph(repo_path: str, G: Any) -> None:
+    """Store G in the process-level cache keyed by repo_path."""
+    _G_CACHE[repo_path] = G
+
+
+def _get_cached_graph(repo_path: str) -> Any:
+    """Retrieve G from cache. Raises RuntimeError if not populated."""
+    if repo_path not in _G_CACHE:
+        raise RuntimeError(f"Graph not cached for repo_path={repo_path!r}. Call set_graph() first.")
+    return _G_CACHE[repo_path]
 
 
 # ---------------------------------------------------------------------------
@@ -33,20 +54,19 @@ from pydantic import BaseModel
 class NexusState(TypedDict):
     """Typed state for the LangGraph NexusState graph.
 
-    G is Optional[object] (not nx.DiGraph) so SqliteSaver does not attempt
-    JSON serialization of a NetworkX graph. Callers must supply G on every
-    graph.invoke() call — it cannot be recovered from a checkpoint.
+    G is NOT stored in state — nx.DiGraph is not msgpack-serializable so
+    SqliteSaver would crash at checkpoint time. Instead, G lives in the
+    module-level _G_CACHE dict; nodes retrieve it via _get_cached_graph().
     """
     # Query inputs
     question: str
     repo_path: str
     intent_hint: Optional[str]        # forwarded to route(); None or "auto" → LLM path
 
-    # Graph input — NOT checkpointed (nx.DiGraph is not JSON-serializable)
-    G: Optional[object]               # nx.DiGraph passed through; typed as object for LangGraph compat
+    # Context fields (no G here — see _G_CACHE above)
     target_node_id: Optional[str]     # required by review_node and test_node
     selected_file: Optional[str]      # REVW-03: range-targeted review
-    selected_range: Optional[tuple]   # REVW-03: (line_start, line_end)
+    selected_range: Optional[list]    # REVW-03: [line_start, line_end]
     repo_root: Optional[str]          # for tester framework detection
 
     # Routing output (set by router_node)
@@ -98,7 +118,6 @@ def _derive_target_from_file(
     """
     if not selected_file:
         return None
-    import networkx as nx  # noqa: PLC0415 — already a lazy-import module
     target_line = None
     if selected_range and len(selected_range) >= 2:
         target_line = (selected_range[0] + selected_range[1]) // 2
@@ -149,15 +168,14 @@ def _explain_node(state: NexusState) -> dict:
     get_settings() at call time without the lazy-import guard that this node requires
     (the guard is the lazy import pattern itself, which is already applied here).
     """
-    import networkx as nx  # noqa: PLC0415
     from langchain_core.prompts import ChatPromptTemplate  # noqa: PLC0415
     from app.core.model_factory import get_llm  # noqa: PLC0415
     from app.agent.prompts import SYSTEM_PROMPT  # noqa: PLC0415
     from app.agent.explorer import format_context_block  # noqa: PLC0415
 
-    G: nx.DiGraph = state["G"]  # type: ignore[assignment]
     question = state["question"]
     repo_path = state["repo_path"]
+    G = _get_cached_graph(repo_path)
 
     # Attempt graph-RAG retrieval. Falls back to empty node list if postgres is
     # unavailable (e.g. in tests where G is provided directly).
@@ -189,20 +207,18 @@ def _explain_node(state: NexusState) -> dict:
 
 def _debug_node(state: NexusState) -> dict:
     """Invoke the Debugger agent. Lazy-imports debug() to avoid ValidationError."""
-    import networkx as nx  # noqa: PLC0415
     from app.agent.debugger import debug  # noqa: PLC0415
 
-    G: nx.DiGraph = state["G"]  # type: ignore[assignment]
+    G = _get_cached_graph(state["repo_path"])
     result = debug(state["question"], G)
     return {"specialist_result": result}
 
 
 def _review_node(state: NexusState) -> dict:
     """Invoke the Reviewer agent. Lazy-imports review() to avoid ValidationError."""
-    import networkx as nx  # noqa: PLC0415
     from app.agent.reviewer import review, ReviewResult  # noqa: PLC0415
 
-    G: nx.DiGraph = state["G"]  # type: ignore[assignment]
+    G = _get_cached_graph(state["repo_path"])
     target_id = state["target_node_id"]
 
     # Fallback: derive target from active editor context when not provided
@@ -235,10 +251,9 @@ def _review_node(state: NexusState) -> dict:
 
 def _test_node(state: NexusState) -> dict:
     """Invoke the Tester agent. Lazy-imports test() to avoid ValidationError."""
-    import networkx as nx  # noqa: PLC0415
     from app.agent.tester import test as run_test, TestResult  # noqa: PLC0415
 
-    G: nx.DiGraph = state["G"]  # type: ignore[assignment]
+    G = _get_cached_graph(state["repo_path"])
     target_id = state["target_node_id"]
 
     # Fallback: derive target from active editor context when not provided

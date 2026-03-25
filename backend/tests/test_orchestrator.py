@@ -18,7 +18,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from langgraph.checkpoint.memory import MemorySaver
 
-from app.agent.orchestrator import build_graph, NexusState
+from app.agent.orchestrator import build_graph, NexusState, set_graph
 from app.agent.debugger import DebugResult, SuspectNode
 from app.agent.reviewer import ReviewResult, Finding
 from app.agent.tester import TestResult
@@ -53,18 +53,18 @@ def mock_llm():
 def base_state(sample_graph) -> NexusState:
     """Minimal valid NexusState for a query with intent_hint='explain'.
 
-    G is set to None (not sample_graph) because MemorySaver serializes all
-    state fields via msgpack and nx.DiGraph is not msgpack-serializable.
-    The explain_node wraps graph_rag_retrieve in a try/except so G=None
-    causes retrieval to be skipped gracefully (empty context, LLM still runs).
-    For debug/review/test routing tests, the agent functions are mocked so
-    G is never accessed.
+    G is no longer stored in state (removed to fix msgpack serialization —
+    nx.DiGraph is not msgpack-serializable). Instead, G is registered in the
+    process-level cache via set_graph() before graph.invoke(). Tests use
+    G=None: graph_rag_retrieve is wrapped in try/except so None causes
+    retrieval to be skipped gracefully. For debug/review/test routing tests,
+    the agent functions are mocked so G is never dereferenced.
     """
+    set_graph("/repo", None)  # populate cache so _get_cached_graph("/repo") doesn't raise
     return {
         "question": "explain func_a",
         "repo_path": "/repo",
         "intent_hint": "explain",
-        "G": None,
         "target_node_id": "a.py::func_a",
         "selected_file": None,
         "selected_range": None,
