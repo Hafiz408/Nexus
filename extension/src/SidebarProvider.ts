@@ -108,12 +108,31 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           break;
 
         case 'postReviewToPR': {
-          // TODO(Phase 27): Post review findings to the open GitHub PR via GitHub MCP.
-          // Requires: active PR URL, GitHub token (already confirmed present when button is shown).
-          // For now, inform the user this feature is coming.
-          vscode.window.showInformationMessage(
-            'Post to GitHub PR is not yet implemented. Coming in a future release.'
-          );
+          const config = vscode.workspace.getConfiguration('nexus');
+          const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
+          try {
+            const response = await fetch(`${backendUrl}/review/post-pr`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                findings: msg.findings,
+                repo: msg.repo,
+                pr_number: msg.pr_number,
+                commit_sha: msg.commit_sha,
+              }),
+            });
+            if (response.ok) {
+              const data = await response.json() as { posted: number; overflow: boolean };
+              vscode.window.showInformationMessage(
+                `Posted ${data.posted} review comment(s) to GitHub PR #${msg.pr_number}.`
+              );
+            } else {
+              const err = await response.text();
+              vscode.window.showErrorMessage(`Post to GitHub PR failed: ${err}`);
+            }
+          } catch (err) {
+            vscode.window.showErrorMessage(`Post to GitHub PR error: ${String(err)}`);
+          }
           break;
         }
       }

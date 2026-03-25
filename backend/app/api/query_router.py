@@ -186,3 +186,41 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
             yield f"event: error\ndata: {payload}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+from pydantic import BaseModel as _BaseModel
+
+
+class _PostPRRequest(_BaseModel):
+    findings: list                 # list of finding dicts
+    repo: str                      # "owner/repo"
+    pr_number: int
+    commit_sha: str
+
+
+@router.post("/review/post-pr")
+async def post_review_to_pr(request_body: _PostPRRequest):
+    """Post reviewer findings as GitHub PR inline comments (MCP-01).
+
+    Uses server-side GITHUB_TOKEN from settings — token is never exposed
+    to the extension. Extension sends findings + PR context; this endpoint
+    calls post_review_comments() from the MCP tool layer.
+    """
+    from app.config import get_settings as _get_settings  # noqa: PLC0415
+    from app.mcp.tools import post_review_comments  # noqa: PLC0415
+
+    settings = _get_settings()
+    if not settings.github_token:
+        raise HTTPException(
+            status_code=400,
+            detail="GITHUB_TOKEN not configured on server",
+        )
+
+    result = post_review_comments(
+        findings=request_body.findings,
+        repo=request_body.repo,
+        pr_number=request_body.pr_number,
+        commit_sha=request_body.commit_sha,
+        github_token=settings.github_token,
+    )
+    return result
