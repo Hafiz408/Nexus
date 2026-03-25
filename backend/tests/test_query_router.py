@@ -264,6 +264,15 @@ def test_citations_contain_required_fields(client, monkeypatch, sample_node, sam
 # Content-Type test
 # ---------------------------------------------------------------------------
 
+def test_empty_db_path_returns_422(client):
+    """Empty db_path must be rejected at schema validation with 422."""
+    response = client.post(
+        "/query",
+        json={"question": "What is bar?", "repo_path": "/repo", "db_path": ""},
+    )
+    assert response.status_code == 422
+
+
 def test_content_type_is_text_event_stream(client, monkeypatch, sample_node, sample_stats):
     """Response Content-Type must start with text/event-stream."""
     monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())

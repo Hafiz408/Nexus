@@ -58,6 +58,7 @@ async def get_answer(nodes: list[CodeNode], question: str) -> str:
 def naive_retrieve(
     question: str,
     repo_path: str,
+    db_path: str,
     G: nx.DiGraph,
     max_nodes: int = 10,
 ) -> list[CodeNode]:
@@ -67,7 +68,7 @@ def naive_retrieve(
     CodeNode objects from the graph's node attributes.  Skips any node_id
     that is not present in G or whose attributes are malformed.
     """
-    results = semantic_search(question, repo_path, top_k=max_nodes)
+    results = semantic_search(question, repo_path, db_path, top_k=max_nodes)
     nodes: list[CodeNode] = []
     for node_id, _score in results:
         if node_id not in G:
@@ -94,14 +95,15 @@ def build_contexts(nodes: list[CodeNode]) -> list[str]:
 # Main evaluation loop
 # ---------------------------------------------------------------------------
 
-async def main(repo_path: str) -> None:
+async def main(repo_path: str, db_path: str) -> None:
     """Run dual-mode RAGAS evaluation and write timestamped JSON results."""
 
     # Step 1 — Load graph and golden dataset
     settings = get_settings()
 
     print(f"Loading graph for repo: {repo_path}")
-    G = load_graph(repo_path)
+    print(f"  db_path: {db_path}")
+    G = load_graph(repo_path, db_path)
     print(f"  Graph loaded: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
     golden_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "golden_qa.json")
@@ -124,7 +126,7 @@ async def main(repo_path: str) -> None:
 
         # Graph-RAG path
         graph_nodes, _stats = graph_rag_retrieve(
-            question, repo_path, G, max_nodes=10, hop_depth=1
+            question, repo_path, db_path, G, max_nodes=10, hop_depth=1
         )
         graph_response = await get_answer(graph_nodes, question)
         graph_samples.append(
@@ -137,7 +139,7 @@ async def main(repo_path: str) -> None:
         )
 
         # Naive vector-only path
-        naive_nodes = naive_retrieve(question, repo_path, G, max_nodes=10)
+        naive_nodes = naive_retrieve(question, repo_path, db_path, G, max_nodes=10)
         naive_response = await get_answer(naive_nodes, question)
         naive_samples.append(
             SingleTurnSample(
@@ -279,5 +281,11 @@ if __name__ == "__main__":
         default=os.environ.get("EVAL_REPO_PATH", "/fastapi"),
         help="Absolute path to the indexed repository (default: EVAL_REPO_PATH env var or /fastapi)",
     )
+    parser.add_argument(
+        "--db-path",
+        default=None,
+        help="Path to .nexus/graph.db (default: <repo-path>/.nexus/graph.db)",
+    )
     args = parser.parse_args()
-    asyncio.run(main(args.repo_path))
+    db_path = args.db_path or os.path.join(args.repo_path, ".nexus", "graph.db")
+    asyncio.run(main(args.repo_path, db_path))
