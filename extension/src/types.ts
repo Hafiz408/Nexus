@@ -4,14 +4,23 @@ export type HostToWebviewMessage =
   | { type: 'citations'; citations: Citation[] }
   | { type: 'done'; retrieval_stats: Record<string, unknown> }
   | { type: 'error'; message: string }
-  | { type: 'indexStatus'; status: IndexStatus };
+  | { type: 'indexStatus'; status: IndexStatus }
+  | {
+      type: 'result';
+      intent: string;
+      result: Record<string, unknown>;
+      has_github_token?: boolean;
+      file_written?: boolean;
+      written_path?: string | null;
+    };
 
 // Messages sent FROM webview TO extension host
 export type WebviewToHostMessage =
-  | { type: 'query'; question: string }
+  | { type: 'query'; question: string; intent_hint?: string }
   | { type: 'openFile'; filePath: string; lineStart: number }
   | { type: 'indexWorkspace' }
-  | { type: 'clearIndex' };
+  | { type: 'clearIndex' }
+  | { type: 'postReviewToPR' };
 
 export interface Citation {
   node_id: string;

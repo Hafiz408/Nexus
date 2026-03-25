@@ -44,9 +44,30 @@ type IncomingMessage =
   | { type: 'done'; retrieval_stats: Record<string, unknown> }
   | { type: 'error'; message: string }
   | { type: 'indexStatus'; status: IndexStatus }
-  | { type: 'log'; level: LogEntry['level']; message: string };
+  | { type: 'log'; level: LogEntry['level']; message: string }
+  | {
+      type: 'result';
+      intent: string;
+      result: Record<string, unknown>;
+      has_github_token?: boolean;
+      file_written?: boolean;
+      written_path?: string | null;
+    };
 
 const vscode = acquireVsCodeApi();
+
+// ── Intent selector ────────────────────────────────────────────────────────
+type IntentOption = 'auto' | 'explain' | 'debug' | 'review' | 'test';
+
+const INTENT_LABELS: Record<IntentOption, string> = {
+  auto:    'Ask',
+  explain: 'Explain',
+  debug:   'Debug',
+  review:  'Review',
+  test:    'Test',
+};
+
+const INTENT_OPTIONS: IntentOption[] = ['auto', 'explain', 'debug', 'review', 'test'];
 
 let counter = 0;
 const newId = () => String(++counter);
@@ -120,15 +141,236 @@ function renderMarkdown(text: string): React.ReactElement {
 
 // ──────────────────────────────────────────────────────────────────────────
 
+function DebugPanel({ result, onOpenFile }: {
+  result: Record<string, unknown>;
+  onOpenFile: (filePath: string, lineStart: number) => void;
+}): React.JSX.Element {
+  const suspects = (result.suspects as Array<{
+    node_id: string; file_path: string; line_start: number;
+    anomaly_score: number; reasoning: string;
+  }>) ?? [];
+  const impactRadius = (result.impact_radius as string[]) ?? [];
+  const traversalPath = (result.traversal_path as string[]) ?? [];
+  const diagnosis = (result.diagnosis as string) ?? '';
+  const [impactExpanded, setImpactExpanded] = useState(false);
+
+  const displayName = (nodeId: string): string =>
+    nodeId.includes('::') ? nodeId.split('::').pop()! : nodeId;
+
+  const scoreClass = (score: number): string =>
+    score >= 0.7 ? 'score-high' : score >= 0.4 ? 'score-mid' : 'score-low';
+
+  return (
+    <div className="result-panel result-panel-debug">
+      {diagnosis && <p className="result-diagnosis">{diagnosis}</p>}
+
+      <div className="suspects-list">
+        {suspects.map((s, i) => (
+          <button
+            key={s.node_id}
+            className="suspect-row"
+            onClick={() => onOpenFile(s.file_path, s.line_start)}
+            title={s.reasoning}
+          >
+            <span className="suspect-rank">#{i + 1}</span>
+            <span className="suspect-location">
+              {s.file_path.split('/').pop()}:{s.line_start}
+            </span>
+            <div className="score-bar-track">
+              <div
+                className={`score-bar-fill ${scoreClass(s.anomaly_score)}`}
+                style={{ width: `${Math.round(s.anomaly_score * 100)}%` }}
+              />
+            </div>
+            <span className="suspect-score">{s.anomaly_score.toFixed(2)}</span>
+          </button>
+        ))}
+      </div>
+
+      {traversalPath.length > 0 && (
+        <div className="traversal-breadcrumb">
+          {traversalPath.slice(0, 8).map((nid, i) => (
+            <React.Fragment key={nid}>
+              <span className="traversal-node">{displayName(nid)}</span>
+              {i < Math.min(traversalPath.length, 8) - 1 && (
+                <span className="traversal-sep"> → </span>
+              )}
+            </React.Fragment>
+          ))}
+          {traversalPath.length > 8 && (
+            <span className="traversal-more">+{traversalPath.length - 8} more</span>
+          )}
+        </div>
+      )}
+
+      {impactRadius.length > 0 && (
+        <>
+          <button
+            className="collapsible-header"
+            onClick={() => setImpactExpanded(v => !v)}
+          >
+            <span className="section-chevron">{impactExpanded ? '▾' : '▸'}</span>
+            Impact radius ({impactRadius.length})
+          </button>
+          {impactExpanded && (
+            <ul className="impact-list">
+              {impactRadius.map(nid => (
+                <li key={nid}>{displayName(nid)}</li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function FindingCard({ finding, severityClass }: {
+  finding: {
+    severity: string; category: string; description: string;
+    file_path: string; line_start: number; line_end: number; suggestion: string;
+  };
+  severityClass: string;
+}): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="finding-card">
+      <div className="finding-header">
+        <span className={`severity-badge ${severityClass}`}>{finding.severity}</span>
+        <span className="finding-category">{finding.category}</span>
+        <span className="finding-location">
+          {finding.file_path.split('/').pop()}:{finding.line_start}
+        </span>
+      </div>
+      <p className="finding-description">{finding.description}</p>
+      <button
+        className="suggestion-toggle"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <span className="section-chevron">{expanded ? '▾' : '▸'}</span>
+        Suggestion
+      </button>
+      {expanded && <p className="finding-suggestion">{finding.suggestion}</p>}
+    </div>
+  );
+}
+
+function ReviewPanel({ result, hasGithubToken }: {
+  result: Record<string, unknown>;
+  hasGithubToken: boolean;
+}): React.JSX.Element {
+  const findings = (result.findings as Array<{
+    severity: 'critical' | 'warning' | 'info';
+    category: string;
+    description: string;
+    file_path: string;
+    line_start: number;
+    line_end: number;
+    suggestion: string;
+  }>) ?? [];
+  const summary = (result.summary as string) ?? '';
+
+  const SEVERITY_CLASS: Record<string, string> = {
+    critical: 'badge-critical',
+    warning: 'badge-warning',
+    info: 'badge-info',
+  };
+
+  return (
+    <div className="result-panel result-panel-review">
+      {summary && <p className="result-summary">{summary}</p>}
+
+      <div className="findings-list">
+        {findings.map((f, i) => (
+          <FindingCard key={i} finding={f} severityClass={SEVERITY_CLASS[f.severity] ?? 'badge-info'} />
+        ))}
+      </div>
+
+      {hasGithubToken && (
+        <button
+          className="post-github-btn"
+          onClick={() =>
+            vscode.postMessage({ type: 'postReviewToPR' })
+          }
+        >
+          Post to GitHub PR
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TestPanel({ result, fileWritten, writtenPath }: {
+  result: Record<string, unknown>;
+  fileWritten?: boolean;
+  writtenPath?: string | null;
+}): React.JSX.Element {
+  const testCode = (result.test_code as string) ?? '';
+  const framework = (result.framework as string) ?? '';
+  const testFilePath = (result.test_file_path as string) ?? '';
+
+  const handleCopy = (): void => {
+    // VS Code WebKit does not permit navigator.clipboard (blocked by CSP).
+    // document.execCommand('copy') is the accepted workaround in WebKit/Electron
+    // webviews. The textarea is appended off-screen, selected, copied, then removed
+    // immediately — no content is persisted or exposed to the DOM.
+    const textarea = document.createElement('textarea');
+    textarea.value = testCode;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  };
+
+  return (
+    <div className="result-panel result-panel-test">
+      {framework && (
+        <div className="test-framework-label">
+          Framework: <span className="test-framework-name">{framework}</span>
+        </div>
+      )}
+
+      <pre className="test-code-block">
+        <code>{testCode}</code>
+      </pre>
+
+      <div className="test-action-row">
+        {fileWritten ? (
+          <span className="file-written-badge">
+            File written to: {writtenPath ?? testFilePath}
+          </span>
+        ) : (
+          <button className="copy-code-btn" onClick={handleCopy}>
+            Copy to clipboard
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+
 export function App(): React.JSX.Element {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [indexStatus, setIndexStatus] = useState<IndexStatus>({ status: 'not_indexed' });
+  const [structuredResult, setStructuredResult] = useState<{
+    intent: string;
+    result: Record<string, unknown>;
+    has_github_token?: boolean;
+    file_written?: boolean;
+    written_path?: string | null;
+  } | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [indexExpanded, setIndexExpanded] = useState(true);
   const [activityExpanded, setActivityExpanded] = useState(false);
   const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
+  const [selectedIntent, setSelectedIntent] = useState<IntentOption>('auto');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -212,6 +454,16 @@ export function App(): React.JSX.Element {
         case 'log':
           addLog(msg.level, msg.message);
           break;
+
+        case 'result':
+          setStructuredResult({
+            intent: msg.intent,
+            result: msg.result,
+            has_github_token: msg.has_github_token,
+            file_written: msg.file_written,
+            written_path: msg.written_path,
+          });
+          break;
       }
     };
     window.addEventListener('message', handle);
@@ -242,9 +494,14 @@ export function App(): React.JSX.Element {
       textareaRef.current.style.height = 'auto';
     }
     setIsStreaming(true);
+    setStructuredResult(null);
     addLog('info', `Query: "${question.length > 55 ? question.slice(0, 55) + '…' : question}"`);
-    vscode.postMessage({ type: 'query', question });
-  }, [inputValue, isStreaming, addLog]);
+    vscode.postMessage({
+      type: 'query',
+      question,
+      intent_hint: selectedIntent !== 'auto' ? selectedIntent : undefined,
+    });
+  }, [inputValue, isStreaming, addLog, selectedIntent]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -456,6 +713,52 @@ export function App(): React.JSX.Element {
             <div ref={messagesEndRef} />
           </div>
 
+          {structuredResult?.intent === 'debug' && (
+            <DebugPanel
+              result={structuredResult.result}
+              onOpenFile={(filePath, lineStart) =>
+                vscode.postMessage({ type: 'openFile', filePath, lineStart })
+              }
+            />
+          )}
+
+          {structuredResult?.intent === 'review' && (
+            <ReviewPanel
+              result={structuredResult.result}
+              hasGithubToken={structuredResult.has_github_token === true}
+            />
+          )}
+
+          {structuredResult?.intent === 'test' && (
+            <TestPanel
+              result={structuredResult.result}
+              fileWritten={structuredResult.file_written}
+              writtenPath={structuredResult.written_path}
+            />
+          )}
+
+          {structuredResult?.intent === 'explain' && (
+            <div className="message message-assistant">
+              <div className="message-bubble">
+                {renderMarkdown((structuredResult.result.answer as string) ?? '')}
+              </div>
+            </div>
+          )}
+
+          <div className="intent-selector">
+            {INTENT_OPTIONS.map((intent) => (
+              <button
+                key={intent}
+                className={`intent-pill${selectedIntent === intent ? ' active' : ''}`}
+                onClick={() => setSelectedIntent(intent)}
+                disabled={isStreaming}
+                title={INTENT_LABELS[intent]}
+              >
+                {INTENT_LABELS[intent]}
+              </button>
+            ))}
+          </div>
+
           <div className="input-area">
             <textarea
               ref={textareaRef}
@@ -466,7 +769,7 @@ export function App(): React.JSX.Element {
               disabled={isStreaming}
             />
             <button className="send-btn" onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
-              {isStreaming ? '…' : 'Ask'}
+              {isStreaming ? '…' : INTENT_LABELS[selectedIntent]}
             </button>
           </div>
         </div>

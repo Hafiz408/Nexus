@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     langchain_tracing_v2: bool = False
     langchain_project: str = "nexus-v1"
 
+    # V2 agent tuning knobs (all optional, safe defaults)
+    github_token: str = ""
+    max_critic_loops: int = 2
+    critic_threshold: float = 0.7
+    debugger_max_hops: int = 4
+    reviewer_context_hops: int = 1
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -40,3 +42,8 @@ class QueryRequest(BaseModel):
     repo_path: str
     max_nodes: int = 10
     hop_depth: int = 1
+    intent_hint: Optional[str] = None
+    target_node_id: Optional[str] = None
+    selected_file: Optional[str] = None
+    selected_range: Optional[tuple] = None
+    repo_root: Optional[str] = None
