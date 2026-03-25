@@ -28,7 +28,13 @@ export type WebviewToHostMessage =
   | { type: 'openFile'; filePath: string; lineStart: number }
   | { type: 'indexWorkspace' }
   | { type: 'clearIndex' }
-  | { type: 'postReviewToPR' };
+  | {
+      type: 'postReviewToPR';
+      findings: Array<Record<string, unknown>>;
+      repo: string;
+      pr_number: number;
+      commit_sha: string;
+    };
 
 export interface Citation {
   node_id: string;

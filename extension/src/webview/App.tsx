@@ -270,10 +270,30 @@ function ReviewPanel({ result, hasGithubToken }: {
   }>) ?? [];
   const summary = (result.summary as string) ?? '';
 
+  const [showPrForm, setShowPrForm] = useState(false);
+  const [prRepo, setPrRepo] = useState('');
+  const [prNumber, setPrNumber] = useState('');
+  const [prSha, setPrSha] = useState('');
+
   const SEVERITY_CLASS: Record<string, string> = {
     critical: 'badge-critical',
     warning: 'badge-warning',
     info: 'badge-info',
+  };
+
+  const handleSubmitPr = (): void => {
+    const parsed = parseInt(prNumber, 10);
+    if (!prRepo.trim() || !prNumber.trim() || !prSha.trim() || isNaN(parsed)) {
+      return;
+    }
+    vscode.postMessage({
+      type: 'postReviewToPR',
+      findings: findings as Array<Record<string, unknown>>,
+      repo: prRepo,
+      pr_number: parsed,
+      commit_sha: prSha,
+    });
+    setShowPrForm(false);
   };
 
   return (
@@ -286,15 +306,47 @@ function ReviewPanel({ result, hasGithubToken }: {
         ))}
       </div>
 
-      {hasGithubToken && (
+      {hasGithubToken && !showPrForm && (
         <button
           className="post-github-btn"
-          onClick={() =>
-            vscode.postMessage({ type: 'postReviewToPR' })
-          }
+          onClick={() => setShowPrForm(true)}
         >
           Post to GitHub PR
         </button>
+      )}
+
+      {hasGithubToken && showPrForm && (
+        <div className="pr-form">
+          <input
+            className="pr-form-input"
+            type="text"
+            placeholder="owner/repo"
+            value={prRepo}
+            onChange={(e) => setPrRepo(e.target.value)}
+          />
+          <input
+            className="pr-form-input"
+            type="text"
+            placeholder="PR number"
+            value={prNumber}
+            onChange={(e) => setPrNumber(e.target.value)}
+          />
+          <input
+            className="pr-form-input"
+            type="text"
+            placeholder="Commit SHA"
+            value={prSha}
+            onChange={(e) => setPrSha(e.target.value)}
+          />
+          <div className="pr-form-actions">
+            <button className="pr-form-submit" onClick={handleSubmitPr}>
+              Submit
+            </button>
+            <button className="pr-form-cancel" onClick={() => setShowPrForm(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
