@@ -53,6 +53,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             const config = vscode.workspace.getConfiguration('nexus');
             const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
             this._highlight.clearHighlights();   // HIGH-02: clear on new query
+            // Capture active editor context for review/test intents
+            const editor = vscode.window.activeTextEditor;
+            const selectedFile = editor?.document.uri.fsPath;
+            const sel = editor?.selection;
+            const selectedRange: [number, number] | undefined =
+              sel && !sel.isEmpty
+                ? [sel.start.line + 1, sel.end.line + 1]  // 0-indexed → 1-indexed
+                : undefined;
             await streamQuery(
               msg.question,
               this._repoPath,
@@ -60,6 +68,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               backendUrl,
               (citations) => { void this._highlight.highlightCitations(citations); },
               msg.intent_hint,
+              msg.target_node_id,   // forwarded from webview (undefined if not provided)
+              selectedFile,          // from active editor (undefined if no editor open)
+              selectedRange,         // from active selection (undefined if no selection or empty)
+              this._repoPath,        // repo_root = workspace root (same as repoPath)
             );
           } else {
             void webviewView.webview.postMessage({
