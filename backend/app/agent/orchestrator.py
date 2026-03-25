@@ -18,12 +18,15 @@ Critical patterns (from RESEARCH.md):
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from typing import Any, Dict, List, Optional, TypedDict, Union
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -107,12 +110,16 @@ def _derive_target_from_file(
     selected_file: str | None,
     selected_range: list[int] | None,
 ) -> str | None:
-    """Attempt to find the graph node at the given file + line range.
+    """Attempt to find the most specific graph node at the given file + line range.
 
-    Scans G.nodes for a node whose 'file_path' ends with selected_file
+    Scans G.nodes for nodes whose 'file_path' ends with selected_file
     (handles both absolute and relative path forms) and whose line_start/
     line_end bracket the midpoint of selected_range (or the start line
     when range is not provided).
+
+    When multiple nodes overlap the target line (e.g. a method inside a class),
+    the node with the smallest span (line_end - line_start) is returned so that
+    the most specific symbol wins over its containing class/module.
 
     Returns the node_id string if found, None otherwise.
     """
@@ -124,6 +131,9 @@ def _derive_target_from_file(
     elif selected_range and len(selected_range) == 1:
         target_line = selected_range[0]
 
+    best_node_id: str | None = None
+    best_span: int = 10_000_000
+
     for node_id, attrs in G.nodes(data=True):
         node_file = attrs.get("file_path", "")
         # Match on suffix — handles absolute vs relative path forms
@@ -134,8 +144,12 @@ def _derive_target_from_file(
         line_start = attrs.get("line_start", 0)
         line_end = attrs.get("line_end", 0)
         if line_start <= target_line <= line_end:
-            return node_id
-    return None
+            span = line_end - line_start
+            if span < best_span:
+                best_span = span
+                best_node_id = node_id
+
+    return best_node_id
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +160,9 @@ def _router_node(state: NexusState) -> dict:
     """Classify intent and store in state. Lazy-imports route() to avoid ValidationError."""
     from app.agent.router import route  # noqa: PLC0415
 
+    logger.info("[router] classifying intent: hint=%r question=%r", state.get("intent_hint"), state["question"][:80])
     intent_result = route(state["question"], intent_hint=state.get("intent_hint"))
+    logger.info("[router] resolved intent=%r", intent_result.intent)
     return {"intent": intent_result.intent}
 
 
@@ -167,27 +183,60 @@ def _explain_node(state: NexusState) -> dict:
     Does NOT import _get_chain() from explorer.py — that function calls get_llm() and
     get_settings() at call time without the lazy-import guard that this node requires
     (the guard is the lazy import pattern itself, which is already applied here).
+
+    When selected_file + selected_range are provided, the node at that location is
+    injected as the first context node so the LLM explains the code the user selected
+    rather than the semantically closest match for the question text.
     """
     from langchain_core.prompts import ChatPromptTemplate  # noqa: PLC0415
     from app.core.model_factory import get_llm  # noqa: PLC0415
     from app.agent.prompts import SYSTEM_PROMPT  # noqa: PLC0415
     from app.agent.explorer import format_context_block  # noqa: PLC0415
+    from app.models.schemas import CodeNode  # noqa: PLC0415
 
     question = state["question"]
     repo_path = state["repo_path"]
+    selected_file = state.get("selected_file")
+    selected_range = state.get("selected_range")
     G = _get_cached_graph(repo_path)
 
     # Attempt graph-RAG retrieval. Falls back to empty node list if postgres is
     # unavailable (e.g. in tests where G is provided directly).
     nodes: list = []
     stats: dict = {}
+    logger.info("[explain] starting retrieval: file=%r range=%r", selected_file, selected_range)
     try:
         from app.retrieval.graph_rag import graph_rag_retrieve  # noqa: PLC0415
         nodes, stats = graph_rag_retrieve(question, repo_path, G)
+        logger.info("[explain] graph-rag retrieved %d nodes", len(nodes))
     except Exception:  # noqa: BLE001
         # In offline tests / environments without postgres, retrieval is skipped.
         # The LLM will receive an empty context block and still produce an answer.
-        pass
+        logger.warning("[explain] graph-rag retrieval failed, falling back to empty context")
+
+    # When the user has a file open with a selection, inject the selected node at the
+    # front of the context list so the LLM explains that specific code, not a
+    # semantically similar but unrelated function.
+    target_id = _derive_target_from_file(G, selected_file, selected_range)
+    anchored_question = question  # may be rewritten below when selection is known
+    if target_id and target_id in G:
+        attrs = G.nodes[target_id]
+        try:
+            selected_node = CodeNode(**{k: v for k, v in attrs.items() if k in CodeNode.model_fields})
+            # Prepend so the selected node is the primary context; deduplicate the rest
+            nodes = [selected_node] + [n for n in nodes if n.node_id != target_id]
+            logger.info("[explain] injected selected node %r at front of context", target_id)
+            # Anchor the question to the specific symbol so the LLM cannot drift to
+            # other nodes in context when the user asks something vague like "explain this".
+            anchored_question = (
+                f"The user has selected `{selected_node.name}` "
+                f"({selected_node.file_path}:{selected_node.line_start}-{selected_node.line_end}). "
+                f"{question}"
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("[explain] could not build CodeNode for target %r, skipping injection", target_id)
+    elif selected_file:
+        logger.info("[explain] no graph node found for file=%r range=%r, using RAG context only", selected_file, selected_range)
 
     # Build chain inline — same prompt structure as explorer._get_chain()
     llm = get_llm()
@@ -196,12 +245,14 @@ def _explain_node(state: NexusState) -> dict:
         ("human", "Context:\n{context}\n\nQuestion: {question}"),
     ])
     chain = prompt | llm
+    logger.info("[explain] invoking LLM with %d context nodes", len(nodes))
     response = chain.invoke({
         "system_prompt": SYSTEM_PROMPT,
         "context": format_context_block(nodes),
-        "question": question,
+        "question": anchored_question,
     })
     answer = response.content if hasattr(response, "content") else str(response)
+    logger.info("[explain] done, answer length=%d chars", len(answer))
     return {"specialist_result": _ExplainResult(answer=answer, nodes=nodes, stats=stats)}
 
 
@@ -209,8 +260,10 @@ def _debug_node(state: NexusState) -> dict:
     """Invoke the Debugger agent. Lazy-imports debug() to avoid ValidationError."""
     from app.agent.debugger import debug  # noqa: PLC0415
 
+    logger.info("[debug] starting debugger agent")
     G = _get_cached_graph(state["repo_path"])
     result = debug(state["question"], G)
+    logger.info("[debug] done")
     return {"specialist_result": result}
 
 
@@ -218,6 +271,8 @@ def _review_node(state: NexusState) -> dict:
     """Invoke the Reviewer agent. Lazy-imports review() to avoid ValidationError."""
     from app.agent.reviewer import review, ReviewResult  # noqa: PLC0415
 
+    logger.info("[review] starting reviewer agent: target=%r file=%r range=%r",
+                state.get("target_node_id"), state.get("selected_file"), state.get("selected_range"))
     G = _get_cached_graph(state["repo_path"])
     target_id = state["target_node_id"]
 
@@ -228,6 +283,7 @@ def _review_node(state: NexusState) -> dict:
             state.get("selected_file"),
             state.get("selected_range"),
         )
+        logger.info("[review] derived target from selection: %r", target_id)
 
     if not target_id:
         # No usable target — return empty ReviewResult with explanation
@@ -246,6 +302,7 @@ def _review_node(state: NexusState) -> dict:
         selected_file=state.get("selected_file"),
         selected_range=state.get("selected_range"),
     )
+    logger.info("[review] done: findings=%d", len(getattr(result, "findings", [])))
     return {"specialist_result": result}
 
 
@@ -253,6 +310,8 @@ def _test_node(state: NexusState) -> dict:
     """Invoke the Tester agent. Lazy-imports test() to avoid ValidationError."""
     from app.agent.tester import test as run_test, TestResult  # noqa: PLC0415
 
+    logger.info("[test] starting tester agent: target=%r file=%r range=%r",
+                state.get("target_node_id"), state.get("selected_file"), state.get("selected_range"))
     G = _get_cached_graph(state["repo_path"])
     target_id = state["target_node_id"]
 
@@ -263,9 +322,10 @@ def _test_node(state: NexusState) -> dict:
             state.get("selected_file"),
             state.get("selected_range"),
         )
+        logger.info("[test] derived target from selection: %r", target_id)
 
     if not target_id:
-        # No usable target — return empty TestResult with explanation
+        logger.warning("[test] no target node found, returning empty result")
         return {
             "specialist_result": TestResult(
                 test_code="# No target node identified. Open a file and select a function, then try again.",
@@ -280,6 +340,7 @@ def _test_node(state: NexusState) -> dict:
         target_id,
         repo_root=state.get("repo_root"),
     )
+    logger.info("[test] done")
     return {"specialist_result": result}
 
 
@@ -297,10 +358,15 @@ def _critic_node(state: NexusState) -> dict:
     from app.agent.critic import critique  # noqa: PLC0415
 
     current_loop = state["loop_count"]
+    logger.info("[critic] evaluating result: loop_count=%d intent=%r", current_loop, state.get("intent"))
     result = critique(state["specialist_result"], loop_count=current_loop)
 
     # Only increment when routing back — on the pass path, loop_count is irrelevant
     new_loop_count = current_loop + 1 if not result.passed else current_loop
+    if result.passed:
+        logger.info("[critic] passed — routing to done")
+    else:
+        logger.info("[critic] retry — routing back to %r (loop_count now %d)", state.get("intent"), new_loop_count)
     return {"critic_result": result, "loop_count": new_loop_count}
 
 

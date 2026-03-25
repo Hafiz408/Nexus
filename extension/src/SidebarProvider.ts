@@ -45,6 +45,18 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
+    // On load, restore any already-complete index from the backend so the user
+    // doesn't see "not indexed" for a repo they already indexed previously.
+    // The backend restores _status from SQLite on startup, so this round-trip
+    // is all that's needed to recover the UI state after a restart.
+    if (this._repoPath) {
+      this._client.getStatus(this._repoPath).then((status) => {
+        if (status.status !== 'not_indexed') {
+          void this._postStatus(status);
+        }
+      }).catch(() => { /* backend not yet up — UI stays at not_indexed */ });
+    }
+
     // SSE-03: handle messages from webview
     webviewView.webview.onDidReceiveMessage(async (msg: WebviewToHostMessage) => {
       switch (msg.type) {
