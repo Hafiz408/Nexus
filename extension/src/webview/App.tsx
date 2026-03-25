@@ -15,12 +15,21 @@ interface Citation {
   type: string;
 }
 
+interface StructuredResult {
+  intent: string;
+  result: Record<string, unknown>;
+  has_github_token?: boolean;
+  file_written?: boolean;
+  written_path?: string | null;
+}
+
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   citations?: Citation[];
   isStreaming?: boolean;
+  structured?: StructuredResult;
 }
 
 interface IndexStatus {
@@ -162,7 +171,7 @@ function DebugPanel({ result, onOpenFile }: {
 
   return (
     <div className="result-panel result-panel-debug">
-      {diagnosis && <p className="result-diagnosis">{diagnosis}</p>}
+      {diagnosis && <div className="result-diagnosis">{renderMarkdown(diagnosis)}</div>}
 
       <div className="suspects-list">
         {suspects.map((s, i) => (
@@ -242,7 +251,7 @@ function FindingCard({ finding, severityClass }: {
           {finding.file_path.split('/').pop()}:{finding.line_start}
         </span>
       </div>
-      <p className="finding-description">{finding.description}</p>
+      <div className="finding-description">{renderMarkdown(finding.description)}</div>
       <button
         className="suggestion-toggle"
         onClick={() => setExpanded(v => !v)}
@@ -250,7 +259,7 @@ function FindingCard({ finding, severityClass }: {
         <span className="section-chevron">{expanded ? '▾' : '▸'}</span>
         Suggestion
       </button>
-      {expanded && <p className="finding-suggestion">{finding.suggestion}</p>}
+      {expanded && <div className="finding-suggestion">{renderMarkdown(finding.suggestion)}</div>}
     </div>
   );
 }
@@ -298,7 +307,7 @@ function ReviewPanel({ result, hasGithubToken }: {
 
   return (
     <div className="result-panel result-panel-review">
-      {summary && <p className="result-summary">{summary}</p>}
+      {summary && <div className="result-summary">{renderMarkdown(summary)}</div>}
 
       <div className="findings-list">
         {findings.map((f, i) => (
@@ -411,13 +420,6 @@ export function App(): React.JSX.Element {
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [indexStatus, setIndexStatus] = useState<IndexStatus>({ status: 'not_indexed' });
-  const [structuredResult, setStructuredResult] = useState<{
-    intent: string;
-    result: Record<string, unknown>;
-    has_github_token?: boolean;
-    file_written?: boolean;
-    written_path?: string | null;
-  } | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [indexExpanded, setIndexExpanded] = useState(true);
   const [activityExpanded, setActivityExpanded] = useState(false);
@@ -508,13 +510,30 @@ export function App(): React.JSX.Element {
           break;
 
         case 'result':
-          setStructuredResult({
-            intent: msg.intent,
-            result: msg.result,
-            has_github_token: msg.has_github_token,
-            file_written: msg.file_written,
-            written_path: msg.written_path,
-          });
+          if (msg.intent === 'explain') {
+            const answer = (msg.result?.answer as string) ?? '';
+            setMessages((prev) => [
+              ...prev,
+              { id: newId(), role: 'assistant', content: answer, isStreaming: false },
+            ]);
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: newId(),
+                role: 'assistant',
+                content: '',
+                isStreaming: false,
+                structured: {
+                  intent: msg.intent,
+                  result: msg.result,
+                  has_github_token: msg.has_github_token,
+                  file_written: msg.file_written,
+                  written_path: msg.written_path,
+                },
+              },
+            ]);
+          }
           break;
       }
     };
@@ -546,7 +565,6 @@ export function App(): React.JSX.Element {
       textareaRef.current.style.height = 'auto';
     }
     setIsStreaming(true);
-    setStructuredResult(null);
     addLog('info', `Query: "${question.length > 55 ? question.slice(0, 55) + '…' : question}"`);
     vscode.postMessage({
       type: 'query',
@@ -691,6 +709,7 @@ export function App(): React.JSX.Element {
           }
         />
         <div className="chat-body">
+          <div className="chat-scroll-area">
           <div className="message-list">
             {messages.length === 0 ? (
               <div className="empty-state">
@@ -713,10 +732,39 @@ export function App(): React.JSX.Element {
 
                 return (
                   <div key={msg.id} className="message message-assistant">
-                    <div className={`message-bubble${isLastStreaming ? ' streaming-cursor' : ''}`}>
-                      {renderMarkdown(msg.content)}
-                    </div>
-                    {msg.citations && msg.citations.length > 0 && (
+                    {msg.structured ? (
+                      <>
+                        <span className={`intent-badge intent-badge-${msg.structured.intent}`}>
+                          {msg.structured.intent}
+                        </span>
+                        {msg.structured.intent === 'debug' && (
+                          <DebugPanel
+                            result={msg.structured.result}
+                            onOpenFile={(filePath, lineStart) =>
+                              vscode.postMessage({ type: 'openFile', filePath, lineStart })
+                            }
+                          />
+                        )}
+                        {msg.structured.intent === 'review' && (
+                          <ReviewPanel
+                            result={msg.structured.result}
+                            hasGithubToken={msg.structured.has_github_token === true}
+                          />
+                        )}
+                        {msg.structured.intent === 'test' && (
+                          <TestPanel
+                            result={msg.structured.result}
+                            fileWritten={msg.structured.file_written}
+                            writtenPath={msg.structured.written_path}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div className={`message-bubble${isLastStreaming ? ' streaming-cursor' : ''}`}>
+                        {renderMarkdown(msg.content)}
+                      </div>
+                    )}
+                    {!msg.structured && msg.citations && msg.citations.length > 0 && (
                       <div className="citations">
                         <div className="citations-label">Sources</div>
                         <div className="citations-chips">
@@ -764,38 +812,7 @@ export function App(): React.JSX.Element {
             )}
             <div ref={messagesEndRef} />
           </div>
-
-          {structuredResult?.intent === 'debug' && (
-            <DebugPanel
-              result={structuredResult.result}
-              onOpenFile={(filePath, lineStart) =>
-                vscode.postMessage({ type: 'openFile', filePath, lineStart })
-              }
-            />
-          )}
-
-          {structuredResult?.intent === 'review' && (
-            <ReviewPanel
-              result={structuredResult.result}
-              hasGithubToken={structuredResult.has_github_token === true}
-            />
-          )}
-
-          {structuredResult?.intent === 'test' && (
-            <TestPanel
-              result={structuredResult.result}
-              fileWritten={structuredResult.file_written}
-              writtenPath={structuredResult.written_path}
-            />
-          )}
-
-          {structuredResult?.intent === 'explain' && (
-            <div className="message message-assistant">
-              <div className="message-bubble">
-                {renderMarkdown((structuredResult.result.answer as string) ?? '')}
-              </div>
-            </div>
-          )}
+          </div>{/* end chat-scroll-area */}
 
           <div className="intent-selector">
             {INTENT_OPTIONS.map((intent) => (

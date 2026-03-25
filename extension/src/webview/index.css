@@ -256,11 +256,17 @@ body.vscode-light .status-dot.complete { background: #2e7d32; }
   flex-direction: column;
 }
 
-/* Message list */
-.message-list {
+/* Shared scroll container — wraps message list + structured result panels */
+.chat-scroll-area {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Message list */
+.message-list {
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -612,9 +618,27 @@ body.vscode-light .status-dot.complete { background: #2e7d32; }
   cursor: not-allowed;
 }
 
+/* Intent badge on structured result messages */
+.intent-badge {
+  display: inline-block;
+  margin-bottom: 5px;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+  background: rgba(128,128,128,0.15);
+  color: var(--vscode-descriptionForeground);
+}
+
+.intent-badge-review  { background: rgba(33,150,243,0.15);  color: #2196f3; }
+.intent-badge-debug   { background: rgba(255,152,0,0.15);   color: #ff9800; }
+.intent-badge-test    { background: rgba(76,175,80,0.15);   color: #4caf50; }
+
 /* ===== Result panels (Phase 26) ===== */
 .result-panel {
-  margin-top: 12px;
   padding: 10px 12px;
   border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.2));
   border-radius: 6px;
