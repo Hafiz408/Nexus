@@ -47,7 +47,9 @@ def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> lis
     query_bytes = sqlite_vec.serialize_float32(query_vec)
 
     conn = sqlite3.connect(db_path)
+    conn.enable_load_extension(True)
     sqlite_vec.load(conn)
+    conn.enable_load_extension(False)
     try:
         rows = conn.execute(
             """

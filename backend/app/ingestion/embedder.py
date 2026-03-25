@@ -20,6 +20,15 @@ logger = logging.getLogger(__name__)
 EMBED_BATCH_SIZE = 100
 
 
+def _vec_conn(db_path: str) -> sqlite3.Connection:
+    """Open a SQLite connection with sqlite-vec extension loaded."""
+    conn = sqlite3.connect(db_path)
+    conn.enable_load_extension(True)
+    sqlite_vec.load(conn)
+    conn.enable_load_extension(False)
+    return conn
+
+
 def init_vec_table(db_path: str) -> None:
     """Create code_embeddings_meta and code_embeddings_vec tables idempotently.
 
@@ -35,8 +44,7 @@ def init_vec_table(db_path: str) -> None:
     if parent:
         os.makedirs(parent, exist_ok=True)
 
-    conn = sqlite3.connect(db_path)
-    sqlite_vec.load(conn)
+    conn = _vec_conn(db_path)
     try:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS code_embeddings_meta (
@@ -132,8 +140,7 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
             continue
 
         # --- Upsert to sqlite-vec ---
-        vec_conn = sqlite3.connect(db_path)
-        sqlite_vec.load(vec_conn)
+        vec_conn = _vec_conn(db_path)
         try:
             for n, emb in zip(batch, embeddings):
                 # Check if an existing meta row exists; if so, delete old vec row too
@@ -219,8 +226,7 @@ def delete_embeddings_for_repo(repo_path: str, db_path: str) -> None:
         repo_path: Repository root path used to scope the delete.
         db_path:   Path to the SQLite database file.
     """
-    conn = sqlite3.connect(db_path)
-    sqlite_vec.load(conn)
+    conn = _vec_conn(db_path)
     try:
         rows = conn.execute(
             "SELECT node_id, vec_rowid FROM code_embeddings_meta WHERE repo_path = ?",
@@ -272,8 +278,7 @@ def delete_embeddings_for_files(file_paths: list[str], repo_path: str, db_path: 
     if not file_paths:
         return
 
-    conn = sqlite3.connect(db_path)
-    sqlite_vec.load(conn)
+    conn = _vec_conn(db_path)
     try:
         placeholders = ", ".join(["?"] * len(file_paths))
         params = [repo_path, *file_paths]

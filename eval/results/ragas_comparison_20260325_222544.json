@@ -1,0 +1,16 @@
+{
+  "timestamp": "20260325_222544",
+  "repo_path": "/Users/mohammedhafiz/Desktop/Personal/fastapi",
+  "results": {
+    "v3_graph_rag": {
+      "faithfulness": 0.6361111111111111,
+      "answer_relevancy": null,
+      "context_precision": 0.4374999999890625
+    },
+    "v3_naive_vector": {
+      "faithfulness": 0.7663385002094679,
+      "answer_relevancy": null,
+      "context_precision": 0.14999999998500002
+    }
+  }
+}
