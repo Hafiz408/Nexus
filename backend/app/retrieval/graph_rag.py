@@ -1,7 +1,7 @@
 """Graph RAG retrieval module for Phase 8.
 
 Implements a three-step pipeline:
-  1. semantic_search  — embed query, cosine similarity in pgvector (RAG-01)
+  1. semantic_search  — embed query, cosine similarity via sqlite-vec (RAG-01)
   2. expand_via_graph — BFS expansion in both directions via ego_graph (RAG-02)
   3. rerank_and_assemble — score-weighted reranking using exact RAG-03 formula
 
@@ -11,57 +11,61 @@ graph_rag_retrieve orchestrates all three steps and returns (list[CodeNode], sta
 from __future__ import annotations
 
 import logging
+import sqlite3
 
 import networkx as nx
-from pgvector.psycopg2 import register_vector
+import sqlite_vec
 
 from app.core.model_factory import get_embedding_client
-from app.db.database import get_db_connection
 from app.models.schemas import CodeNode
 
 logger = logging.getLogger(__name__)
 
 
-def semantic_search(query: str, repo_path: str, top_k: int) -> list[tuple[str, float]]:
-    """Embed query and return top_k (node_id, score) pairs via pgvector cosine search.
+def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> list[tuple[str, float]]:
+    """Embed query and return top_k (node_id, score) pairs via sqlite-vec cosine search.
 
-    The OpenAI client is instantiated lazily inside this function body so that
-    importing this module does not raise a ValidationError when OPENAI_API_KEY
-    is absent (e.g. during test collection). This matches the lazy-init pattern
+    The embedding client is instantiated lazily inside this function body so that
+    importing this module does not raise a ValidationError when API keys
+    are absent (e.g. during test collection). This matches the lazy-init pattern
     from embedder.py.
 
-    Returns list[tuple[str, float]] — node_id + cosine similarity score pairs.
+    Returns list[tuple[str, float]] — node_id + similarity score pairs.
     Full CodeNode hydration is deferred to graph_rag_retrieve which reads from G.nodes.
 
     Args:
         query:     Natural language query string to embed.
-        repo_path: Repository root path to scope the pgvector search.
+        repo_path: Repository root path to scope the sqlite-vec search.
         top_k:     Number of nearest-neighbour results to return.
+        db_path:   Path to the SQLite database file.
 
     Returns:
         List of (node_id, score) tuples sorted by descending similarity score.
+        Score is 1.0 - cosine_distance (0=identical, 2=opposite maps to 1.0→-1.0).
     """
     query_vec = get_embedding_client().embed([query])[0]
+    query_bytes = sqlite_vec.serialize_float32(query_vec)
 
-    conn = get_db_connection()
-    register_vector(conn)
+    conn = sqlite3.connect(db_path)
+    sqlite_vec.load(conn)
     try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, 1 - (embedding <=> %s::vector) AS score
-                FROM code_embeddings
-                WHERE repo_path = %s
-                ORDER BY embedding <=> %s::vector
-                LIMIT %s
-                """,
-                (query_vec, repo_path, query_vec, top_k),
-            )
-            rows = cur.fetchall()
+        rows = conn.execute(
+            """
+            SELECT meta.node_id, vec.distance
+            FROM code_embeddings_vec vec
+            JOIN code_embeddings_meta meta ON meta.vec_rowid = vec.rowid
+            WHERE meta.repo_path = ?
+            AND vec.embedding MATCH ?
+            AND k = ?
+            ORDER BY vec.distance
+            """,
+            (repo_path, query_bytes, top_k),
+        ).fetchall()
     finally:
         conn.close()
 
-    return [(row[0], float(row[1])) for row in rows]
+    # distance is cosine distance (0=identical, 2=opposite); convert to similarity score
+    return [(row[0], float(1.0 - row[1])) for row in rows]
 
 
 def expand_via_graph(
@@ -128,7 +132,7 @@ def rerank_and_assemble(
 
     Full CodeNode objects are reconstructed from G.nodes[node_id] attributes —
     the graph stores complete model_dump from the ingestion pipeline, whereas
-    code_embeddings only stores (id, name, file_path, line_start, line_end).
+    code_embeddings_meta only stores (node_id, name, file_path, line_start, line_end).
 
     Args:
         expanded_node_ids: Set of node IDs from expand_via_graph.
@@ -168,19 +172,21 @@ def graph_rag_retrieve(
     query: str,
     repo_path: str,
     G: nx.DiGraph,
+    db_path: str,
     max_nodes: int = 10,
     hop_depth: int = 1,
 ) -> tuple[list[CodeNode], dict]:
     """Orchestrate the full 3-step Graph RAG retrieval pipeline.
 
-    Step 1 — semantic_search: embed query, find top-k nearest nodes in pgvector.
+    Step 1 — semantic_search: embed query, find top-k nearest nodes in sqlite-vec.
     Step 2 — expand_via_graph: BFS expand seed node set by hop_depth hops.
     Step 3 — rerank_and_assemble: score-weighted reranking, return top max_nodes.
 
     Args:
         query:     Natural language query string.
-        repo_path: Repository root path to scope the pgvector search.
+        repo_path: Repository root path to scope the sqlite-vec search.
         G:         The code call/import DiGraph with full node attributes.
+        db_path:   Path to the SQLite database file.
         max_nodes: Maximum number of CodeNode objects to return (default 10).
         hop_depth: BFS depth for graph expansion (default 1).
 
@@ -190,7 +196,7 @@ def graph_rag_retrieve(
           - dict: Stats with seed_count, expanded_count, returned_count, hop_depth.
     """
     # Step 1: semantic vector search
-    seed_results = semantic_search(query, repo_path, top_k=max_nodes)
+    seed_results = semantic_search(query, repo_path, top_k=max_nodes, db_path=db_path)
     seed_scores = {node_id: score for node_id, score in seed_results}
 
     # Step 2: BFS graph expansion from seed node IDs

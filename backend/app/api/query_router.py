@@ -28,11 +28,11 @@ from app.retrieval.graph_rag import graph_rag_retrieve
 router = APIRouter()
 
 
-def _get_graph(repo_path: str, request: Request) -> nx.DiGraph:
+def _get_graph(repo_path: str, db_path: str, request: Request) -> nx.DiGraph:
     """Return cached nx.DiGraph for repo_path; load from SQLite on first access."""
     cache: dict = request.app.state.graph_cache
     if repo_path not in cache:
-        cache[repo_path] = load_graph(repo_path)
+        cache[repo_path] = load_graph(repo_path, db_path)
     return cache[repo_path]
 
 
@@ -69,16 +69,18 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 import sqlite3 as _sqlite3  # noqa: PLC0415
                 from langgraph.checkpoint.sqlite import SqliteSaver  # noqa: PLC0415
 
-                G = await asyncio.to_thread(_get_graph, request_body.repo_path, request)
+                G = await asyncio.to_thread(_get_graph, request_body.repo_path, request_body.db_path, request)
                 # Store G in process-level cache — keeps DiGraph out of LangGraph state
                 # so SqliteSaver never tries to msgpack-serialize it.
                 from app.agent.orchestrator import set_graph as _set_graph  # noqa: PLC0415
                 _set_graph(request_body.repo_path, G)
 
-                # SqliteSaver DB is SEPARATE from data/nexus.db (locked decision, STATE.md)
+                # SqliteSaver DB is SEPARATE from graph.db (locked decision, STATE.md)
                 import os as _os  # noqa: PLC0415
-                _os.makedirs("data", exist_ok=True)
-                conn = _sqlite3.connect("data/checkpoints.db", check_same_thread=False)
+                _nexus_dir = _os.path.dirname(request_body.db_path)
+                _os.makedirs(_nexus_dir, exist_ok=True)
+                checkpoints_path = _os.path.join(_nexus_dir, "checkpoints.db")
+                conn = _sqlite3.connect(checkpoints_path, check_same_thread=False)
                 graph = build_graph(checkpointer=SqliteSaver(conn))
 
                 initial_state = {
@@ -166,7 +168,7 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
     async def event_generator():
         try:
             # Load graph from cache (lazy, async-safe via to_thread)
-            G = await asyncio.to_thread(_get_graph, request_body.repo_path, request)
+            G = await asyncio.to_thread(_get_graph, request_body.repo_path, request_body.db_path, request)
 
             # Step 1: retrieval — synchronous blocking I/O; run in thread pool
             nodes, stats = await asyncio.to_thread(
@@ -174,6 +176,7 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 request_body.question,
                 request_body.repo_path,
                 G,
+                request_body.db_path,
                 request_body.max_nodes,
                 request_body.hop_depth,
             )

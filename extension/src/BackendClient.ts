@@ -3,20 +3,20 @@ import { IndexStatus } from './types';
 export class BackendClient {
   constructor(private readonly backendUrl: string) {}
 
-  async startIndex(repoPath: string): Promise<void> {
+  async startIndex(repoPath: string, dbPath: string): Promise<void> {
     const res = await fetch(`${this.backendUrl}/index`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repo_path: repoPath }),
+      body: JSON.stringify({ repo_path: repoPath, db_path: dbPath }),
     });
     if (!res.ok) {
       throw new Error(`POST /index failed: ${res.status}`);
     }
   }
 
-  async clearIndex(repoPath: string): Promise<void> {
+  async clearIndex(repoPath: string, dbPath: string): Promise<void> {
     const res = await fetch(
-      `${this.backendUrl}/index?repo_path=${encodeURIComponent(repoPath)}`,
+      `${this.backendUrl}/index?repo_path=${encodeURIComponent(repoPath)}&db_path=${encodeURIComponent(dbPath)}`,
       { method: 'DELETE' }
     );
     if (!res.ok) {
@@ -24,7 +24,8 @@ export class BackendClient {
     }
   }
 
-  async getStatus(repoPath: string): Promise<IndexStatus> {
+  async getStatus(repoPath: string, dbPath?: string): Promise<IndexStatus> {
+    // status endpoint currently reads from in-memory dict, db_path not required
     const res = await fetch(
       `${this.backendUrl}/index/status?repo_path=${encodeURIComponent(repoPath)}`
     );
@@ -35,11 +36,11 @@ export class BackendClient {
   }
 
   // WATCH-03: incremental re-index — sends only the changed file paths
-  async indexFiles(repoPath: string, changedFiles: string[]): Promise<void> {
+  async indexFiles(repoPath: string, changedFiles: string[], dbPath: string): Promise<void> {
     const res = await fetch(`${this.backendUrl}/index`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repo_path: repoPath, changed_files: changedFiles }),
+      body: JSON.stringify({ repo_path: repoPath, changed_files: changedFiles, db_path: dbPath }),
     });
     if (!res.ok) {
       throw new Error(`POST /index (incremental) failed: ${res.status}`);

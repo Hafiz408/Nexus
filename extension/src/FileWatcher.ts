@@ -8,7 +8,8 @@ export class FileWatcher {
 
   constructor(
     private readonly _repoPath: string,
-    private readonly _client: BackendClient
+    private readonly _client: BackendClient,
+    private readonly _dbPath: string
   ) {
     // WATCH-01: RelativePattern scopes watcher to workspace root only (not global FS)
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -42,7 +43,7 @@ export class FileWatcher {
     this._pendingFiles.clear();
     if (files.length === 0) { return; }
     // WATCH-03: send only the changed file paths for incremental re-index
-    await this._client.indexFiles(this._repoPath, files);
+    await this._client.indexFiles(this._repoPath, files, this._dbPath);
   }
 
   dispose(): void {

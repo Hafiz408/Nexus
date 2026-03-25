@@ -35,6 +35,7 @@ class IndexRequest(BaseModel):
     repo_path: str
     languages: list[str] = ["python", "typescript"]
     changed_files: list[str] | None = None
+    db_path: str  # path to .nexus/graph.db in user's workspace
 
 
 class QueryRequest(BaseModel):
@@ -47,3 +48,4 @@ class QueryRequest(BaseModel):
     selected_file: Optional[str] = None
     selected_range: Optional[list[int]] = None
     repo_root: Optional[str] = None
+    db_path: str  # path to .nexus/graph.db in user's workspace

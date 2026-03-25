@@ -41,7 +41,9 @@ export function activate(context: vscode.ExtensionContext): void {
   // via the "Index Workspace" button or the nexus.indexWorkspace command.
   if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
     const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    const watcher = new FileWatcher(repoPath, client);
+    const path = require('path') as typeof import('path');
+    const dbPath = path.join(repoPath, '.nexus', 'graph.db');
+    const watcher = new FileWatcher(repoPath, client, dbPath);
     context.subscriptions.push(watcher);
   }
 }

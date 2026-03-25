@@ -80,7 +80,7 @@ def mock_pipeline_stages(tmp_path):
 
 def test_run_ingestion_complete(mock_pipeline_stages, tmp_path):
     """PIPE-01: Happy path — status='complete', counts match mocked returns."""
-    result = asyncio.run(run_ingestion(str(tmp_path), ["python"]))
+    result = asyncio.run(run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db"))
 
     assert result.status == "complete"
     assert result.nodes_indexed == 1       # embed_and_store returns 1
@@ -94,7 +94,7 @@ def test_run_ingestion_complete(mock_pipeline_stages, tmp_path):
 
 def test_status_stored_after_run(mock_pipeline_stages, tmp_path):
     """PIPE-02: get_status returns the latest IndexStatus for the repo_path."""
-    asyncio.run(run_ingestion(str(tmp_path), ["python"]))
+    asyncio.run(run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db"))
 
     status = get_status(str(tmp_path))
 
@@ -127,10 +127,10 @@ def test_incremental_calls_delete(tmp_path):
                         return_value=1,
                     ):
                         asyncio.run(
-                            run_ingestion(str(tmp_path), ["python"], changed_files=changed)
+                            run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db", changed_files=changed)
                         )
 
-    mock_delete.assert_called_once_with(changed, str(tmp_path))
+    mock_delete.assert_called_once_with(changed, str(tmp_path), "/tmp/.nexus/graph.db")
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +143,7 @@ def test_run_ingestion_error_returns_failed(tmp_path):
         "app.ingestion.pipeline.walk_repo",
         side_effect=RuntimeError("disk error"),
     ):
-        result = asyncio.run(run_ingestion(str(tmp_path), ["python"]))
+        result = asyncio.run(run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db"))
 
     assert result.status == "failed"
     assert "disk error" in result.error
@@ -179,7 +179,7 @@ def test_parse_failure_is_partial_not_fatal(tmp_path):
                         "app.ingestion.pipeline.embed_and_store",
                         return_value=0,
                     ):
-                        result = asyncio.run(run_ingestion(str(tmp_path), ["python"]))
+                        result = asyncio.run(run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db"))
 
     # One file failed but the pipeline completes — not fatal
     assert result.status == "complete"
@@ -210,8 +210,8 @@ def test_incremental_calls_delete_embeddings(tmp_path):
                                 return_value=0,
                             ):
                                 asyncio.run(
-                                    run_ingestion(str(tmp_path), ["python"], changed_files=changed)
+                                    run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db", changed_files=changed)
                                 )
 
-    mock_graph_del.assert_called_once_with(changed, str(tmp_path))
-    mock_emb_del.assert_called_once_with(changed, str(tmp_path))
+    mock_graph_del.assert_called_once_with(changed, str(tmp_path), "/tmp/.nexus/graph.db")
+    mock_emb_del.assert_called_once_with(changed, str(tmp_path), "/tmp/.nexus/graph.db")
