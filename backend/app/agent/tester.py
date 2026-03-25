@@ -19,7 +19,6 @@ when API keys are absent.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 import networkx as nx
 from langchain_core.prompts import ChatPromptTemplate

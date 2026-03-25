@@ -24,7 +24,7 @@ from typing import Literal
 
 import networkx as nx
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 # ---------------------------------------------------------------------------

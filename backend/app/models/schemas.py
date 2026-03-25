@@ -45,5 +45,5 @@ class QueryRequest(BaseModel):
     intent_hint: Optional[str] = None
     target_node_id: Optional[str] = None
     selected_file: Optional[str] = None
-    selected_range: Optional[tuple] = None
+    selected_range: Optional[list[int]] = None
     repo_root: Optional[str] = None
