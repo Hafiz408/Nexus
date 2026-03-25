@@ -12,6 +12,7 @@ export async function streamQuery(
   selectedFile?: string,
   selectedRange?: [number, number],
   repoRoot?: string,
+  dbPath?: string,         // NEW — added at end, optional for backwards compat
 ): Promise<void> {
   const config = vscode.workspace.getConfiguration('nexus');
   const maxNodes = config.get<number>('maxNodes', 10);
@@ -32,6 +33,7 @@ export async function streamQuery(
         ...(selectedFile  ? { selected_file: selectedFile }   : {}),
         ...(selectedRange ? { selected_range: selectedRange } : {}),
         ...(repoRoot      ? { repo_root: repoRoot }           : {}),
+        ...(dbPath        ? { db_path: dbPath }               : {}),  // NEW
       }),
     });
   } catch (err) {

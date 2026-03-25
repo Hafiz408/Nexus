@@ -2,6 +2,8 @@
 
 AI-powered code assistant that understands your codebase through a **call graph + vector index**. Ask questions in plain English; get grounded, citation-backed answers with file/line references — streamed live in VS Code.
 
+> **Local-first & privacy-preserving.** No database server required. The graph and vector index live in `.nexus/graph.db` inside your workspace — your code never leaves your machine.
+
 ## Features
 
 | Mode | What it does |
@@ -19,10 +21,10 @@ AI-powered code assistant that understands your codebase through a **call graph 
 │         VS Code Extension            │
 │  Sidebar UI · FileWatcher · SSE      │
 └──────────────────┬───────────────────┘
-                   │ HTTP + SSE
+                   │ HTTP + SSE  (+ db_path per request)
                    ▼
 ┌──────────────────────────────────────┐
-│           FastAPI Backend            │
+│     FastAPI Backend  (stateless)     │
 │                                      │
 │  Ingestion ──► Graph + Vectors       │
 │                     │                │
@@ -31,18 +33,21 @@ AI-powered code assistant that understands your codebase through a **call graph 
 │            MCP Tools (PR · files)    │
 └──────────┬───────────────────────────┘
            │
-  ┌────────┴────────┐
-  │ PostgreSQL      │  SQLite
-  │ pgvector        │  graph · FTS · checkpoints
-  └─────────────────┘
+  ┌────────┴──────────────────────┐
+  │ SQLite  (sqlite-vec)          │
+  │ .nexus/graph.db per workspace │
+  │ graph · FTS · vector index    │
+  └───────────────────────────────┘
 ```
+
+The backend is **stateless compute** — it receives a `db_path` with every request pointing to the workspace SQLite file. No shared database, no server to manage.
 
 ## Query Flow
 
 ```
 Question
   │
-  ├─ Embed → pgvector cosine search (top-k seeds)
+  ├─ Embed → sqlite-vec cosine search (top-k seeds)
   ├─ BFS expand via call graph (callers + callees)
   ├─ Rerank: semantic + 0.2×PageRank + 0.1×in-degree
   │
@@ -59,9 +64,9 @@ Question
 
 ```bash
 # 1. Backend
-cp .env.example .env      # set your API key
+cp backend/.env.example backend/.env   # set your API key
 docker compose up -d
-curl http://localhost:8000/health   # → {"status":"ok"}
+curl http://localhost:8000/health       # → {"status":"ok"}
 
 # 2. Extension
 cd extension && npm install && npm run build
@@ -69,15 +74,18 @@ cd extension && npm install && npm run build
 
 # 3. Index a repo
 # Ctrl+Shift+P → "Nexus: Index Workspace"
+# Creates .nexus/graph.db in your workspace (git-ignored by default)
 ```
 
 ### Key `.env` Variables
 
 ```bash
-embedding_provider=mistral    # mistral | openai
-llm_provider=mistral
-mistral_api_key=sk-...        # or openai_api_key
+EMBEDDING_PROVIDER=mistral    # mistral | openai
+LLM_PROVIDER=mistral
+MISTRAL_API_KEY=sk-...        # or OPENAI_API_KEY
 ```
+
+No `DATABASE_URL` needed — per-workspace SQLite files are written by the backend into each project's `.nexus/` directory.
 
 ## Structure
 
@@ -86,7 +94,7 @@ nexus/
 ├── backend/           → FastAPI service
 │   └── app/
 │       ├── api/       → HTTP endpoints + SSE routing
-│       ├── ingestion/ → AST parsing, graph, vector index
+│       ├── ingestion/ → AST parsing, graph, sqlite-vec index
 │       ├── retrieval/ → 3-step Graph RAG pipeline
 │       ├── agent/     → Multi-agent orchestration
 │       ├── core/      → Provider-agnostic model factory

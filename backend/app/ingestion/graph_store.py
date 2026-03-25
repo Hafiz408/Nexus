@@ -1,30 +1,31 @@
 """SQLite persistence layer for NetworkX DiGraphs.
 
-Provides three public functions:
-  - save_graph(G, repo_path): persist all nodes and edges to SQLite
-  - load_graph(repo_path): reconstruct a DiGraph with all attributes
-  - delete_nodes_for_files(file_paths, repo_path): remove nodes by file_path + incident edges
+Provides four public functions:
+  - save_graph(G, repo_path, db_path): persist all nodes and edges to SQLite
+  - load_graph(repo_path, db_path): reconstruct a DiGraph with all attributes
+  - delete_nodes_for_files(file_paths, repo_path, db_path): remove nodes by file_path + incident edges
+  - delete_graph_for_repo(repo_path, db_path): remove all graph data for a repo
 """
 
 import json
+import os
 import sqlite3
 
 import networkx as nx
-
-# Single SQLite file for all repos (V1 design). repo_path column separates repos.
-_DB_FILE = "data/nexus.db"
-
-
-def _db_path() -> str:
-    """Return the path to the SQLite database file."""
-    return _DB_FILE
 
 
 def _get_conn(db_path: str) -> sqlite3.Connection:
     """Connect to SQLite, create schema if needed, return connection.
 
+    Creates the parent directory automatically so callers do not need to
+    pre-create the .nexus/ directory.
+
     Uses sqlite3.Row as row_factory so columns can be accessed by name.
     """
+    parent = os.path.dirname(db_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
 
@@ -49,7 +50,7 @@ def _get_conn(db_path: str) -> sqlite3.Connection:
     return conn
 
 
-def save_graph(G: nx.DiGraph, repo_path: str) -> None:
+def save_graph(G: nx.DiGraph, repo_path: str, db_path: str) -> None:
     """Persist a NetworkX DiGraph to SQLite for the given repo_path.
 
     Clears any existing data for this repo_path before writing so the
@@ -66,8 +67,9 @@ def save_graph(G: nx.DiGraph, repo_path: str) -> None:
            values (e.g. pagerank floats are fine; numpy types are not).
         repo_path: Logical identifier for the repository (typically the
                    absolute path on disk).
+        db_path: Path to the SQLite database file.
     """
-    conn = _get_conn(_db_path())
+    conn = _get_conn(db_path)
 
     # Clear existing data for this repo so the write is idempotent.
     conn.execute("DELETE FROM graph_nodes WHERE repo_path = ?", (repo_path,))
@@ -109,30 +111,32 @@ def save_graph(G: nx.DiGraph, repo_path: str) -> None:
     conn.close()
 
 
-def delete_graph_for_repo(repo_path: str) -> None:
+def delete_graph_for_repo(repo_path: str, db_path: str) -> None:
     """Remove all graph_nodes and graph_edges rows for the given repo_path.
 
     Args:
         repo_path: Repository identifier used to scope the delete.
+        db_path: Path to the SQLite database file.
     """
-    conn = _get_conn(_db_path())
+    conn = _get_conn(db_path)
     conn.execute("DELETE FROM graph_nodes WHERE repo_path = ?", (repo_path,))
     conn.execute("DELETE FROM graph_edges WHERE repo_path = ?", (repo_path,))
     conn.commit()
     conn.close()
 
 
-def load_graph(repo_path: str) -> nx.DiGraph:
+def load_graph(repo_path: str, db_path: str) -> nx.DiGraph:
     """Reconstruct a DiGraph from SQLite for the given repo_path.
 
     Args:
         repo_path: Logical identifier for the repository used when saving.
+        db_path: Path to the SQLite database file.
 
     Returns:
         nx.DiGraph with all stored node attributes and edges restored.
         Returns an empty DiGraph if no data exists for repo_path.
     """
-    conn = _get_conn(_db_path())
+    conn = _get_conn(db_path)
     G = nx.DiGraph()
 
     for row in conn.execute(
@@ -151,7 +155,7 @@ def load_graph(repo_path: str) -> nx.DiGraph:
     return G
 
 
-def delete_nodes_for_files(file_paths: list[str], repo_path: str) -> None:
+def delete_nodes_for_files(file_paths: list[str], repo_path: str, db_path: str) -> None:
     """Remove nodes whose file_path matches any entry in file_paths, plus their edges.
 
     This supports incremental re-indexing: caller deletes stale nodes for
@@ -161,11 +165,12 @@ def delete_nodes_for_files(file_paths: list[str], repo_path: str) -> None:
         file_paths: List of file_path values to remove (e.g. ["src/auth.py"]).
                     No-op if the list is empty.
         repo_path: Repository identifier used to scope the delete.
+        db_path: Path to the SQLite database file.
     """
     if not file_paths:
         return
 
-    conn = _get_conn(_db_path())
+    conn = _get_conn(db_path)
 
     # Build parameterized placeholders for the IN clause
     placeholders = ", ".join("?" * len(file_paths))

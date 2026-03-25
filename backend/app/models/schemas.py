@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class CodeNode(BaseModel):
@@ -35,6 +35,14 @@ class IndexRequest(BaseModel):
     repo_path: str
     languages: list[str] = ["python", "typescript"]
     changed_files: list[str] | None = None
+    db_path: str  # path to .nexus/graph.db in user's workspace
+
+    @field_validator("db_path")
+    @classmethod
+    def db_path_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("db_path must be a non-empty path to .nexus/graph.db")
+        return v
 
 
 class QueryRequest(BaseModel):
@@ -47,3 +55,11 @@ class QueryRequest(BaseModel):
     selected_file: Optional[str] = None
     selected_range: Optional[list[int]] = None
     repo_root: Optional[str] = None
+    db_path: str  # path to .nexus/graph.db in user's workspace
+
+    @field_validator("db_path")
+    @classmethod
+    def db_path_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("db_path must be a non-empty path to .nexus/graph.db")
+        return v

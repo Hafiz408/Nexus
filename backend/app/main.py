@@ -7,8 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.index_router import router as index_router
 from app.api.query_router import router as query_router
-from app.db.database import init_db
-from app.ingestion.embedder import init_pgvector_table
 
 # Configure root logger so all module-level loggers (pipeline, walker, etc.) emit output
 logging.basicConfig(
@@ -20,11 +18,7 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
-    init_pgvector_table()
     app.state.graph_cache = {}   # dict[str, nx.DiGraph] — lazy per-repo graph cache
-    from app.ingestion.pipeline import restore_status_from_db  # noqa: PLC0415
-    restore_status_from_db()
     yield
 
 

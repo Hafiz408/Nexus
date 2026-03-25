@@ -131,29 +131,25 @@ def test_rerank_zero_in_degree_no_error(sample_graph):
 # ---------------------------------------------------------------------------
 
 
-def _make_mock_conn(rows):
-    """Helper that builds a patched get_db_connection returning given rows."""
+def _make_mock_sqlite_conn(rows):
+    """Helper that builds a mock sqlite3 connection returning given rows on execute."""
     mock_conn = MagicMock()
-    mock_cursor = MagicMock()
-    mock_cursor.__enter__ = lambda s: mock_cursor
-    mock_cursor.__exit__ = MagicMock(return_value=False)
-    mock_cursor.fetchall.return_value = rows
-    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.execute.return_value.fetchall.return_value = rows
+    mock_conn.__enter__ = lambda s: mock_conn
+    mock_conn.__exit__ = MagicMock(return_value=False)
     return mock_conn
 
 
 def test_semantic_search_returns_pairs(sample_graph, mock_embedder, monkeypatch):
     """semantic_search must return list of (str, float) tuples of the correct length."""
-    mock_conn = _make_mock_conn(
-        [("b.py::func_b", 0.95), ("a.py::func_a", 0.80)]
-    )
-    monkeypatch.setattr(
-        "app.retrieval.graph_rag.get_db_connection",
-        MagicMock(return_value=mock_conn),
-    )
-    monkeypatch.setattr("app.retrieval.graph_rag.register_vector", MagicMock())
+    # Rows: (node_id, distance) — distance is cosine distance, converted to 1-distance score
+    raw_rows = [("b.py::func_b", 0.05), ("a.py::func_a", 0.20)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
 
-    result = semantic_search("find func_b", "/repo", top_k=2)
+    result = semantic_search("find func_b", "/repo", top_k=2, db_path=":memory:")
 
     assert isinstance(result, list)
     assert len(result) == 2
@@ -171,15 +167,14 @@ def test_semantic_search_returns_pairs(sample_graph, mock_embedder, monkeypatch)
 
 def test_graph_rag_retrieve_stats(sample_graph, mock_embedder, monkeypatch):
     """graph_rag_retrieve must return (nodes, stats) where stats has the required keys."""
-    mock_conn = _make_mock_conn([("b.py::func_b", 0.9)])
-    monkeypatch.setattr(
-        "app.retrieval.graph_rag.get_db_connection",
-        MagicMock(return_value=mock_conn),
-    )
-    monkeypatch.setattr("app.retrieval.graph_rag.register_vector", MagicMock())
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
 
     result = graph_rag_retrieve(
-        "find func_b", "/repo", sample_graph, max_nodes=3, hop_depth=1
+        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=3, hop_depth=1
     )
     nodes, stats = result
 

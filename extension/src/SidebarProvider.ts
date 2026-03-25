@@ -21,6 +21,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private readonly _highlight: HighlightService;
   private _repoPath: string | undefined;
 
+  private get _dbPath(): string {
+    const path = require('path') as typeof import('path');
+    return path.join(this._repoPath ?? '', '.nexus', 'graph.db');
+  }
+
   constructor(
     private readonly _extensionUri: vscode.Uri,
     client: BackendClient
@@ -50,7 +55,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     // The backend restores _status from SQLite on startup, so this round-trip
     // is all that's needed to recover the UI state after a restart.
     if (this._repoPath) {
-      this._client.getStatus(this._repoPath).then((status) => {
+      this._client.getStatus(this._repoPath, this._dbPath).then((status) => {
         if (status.status !== 'not_indexed') {
           void this._postStatus(status);
         }
@@ -84,6 +89,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               selectedFile,          // from active editor (undefined if no editor open)
               selectedRange,         // from active selection (undefined if no selection or empty)
               this._repoPath,        // repo_root = workspace root (same as repoPath)
+              this._dbPath,          // NEW: local db path for v3 local-first
             );
           } else {
             void webviewView.webview.postMessage({
@@ -158,7 +164,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
 
     try {
-      await this._client.startIndex(this._repoPath);
+      await this._client.startIndex(this._repoPath, this._dbPath);
       void this._postStatus({ status: 'running' });
 
       await this._client.pollUntilComplete(this._repoPath, (status) => {
@@ -174,7 +180,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       return;
     }
     try {
-      await this._client.clearIndex(this._repoPath);
+      await this._client.clearIndex(this._repoPath, this._dbPath);
       void this._postStatus({ status: 'not_indexed' });
     } catch (err) {
       void vscode.window.showErrorMessage(`Nexus: Clear failed — ${String(err)}`);

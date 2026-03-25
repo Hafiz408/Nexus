@@ -15,6 +15,7 @@ async def start_index(request: IndexRequest, background_tasks: BackgroundTasks):
         run_ingestion,
         request.repo_path,
         request.languages,
+        request.db_path,
         request.changed_files,
     )
     return {"status": "pending", "repo_path": request.repo_path}
@@ -30,9 +31,11 @@ async def index_status(repo_path: str):
 
 
 @router.delete("/index", response_model=dict)
-async def delete_index(repo_path: str):
-    """Remove all pgvector, FTS5, and SQLite graph data for the given repo_path."""
-    delete_embeddings_for_repo(repo_path)
-    delete_graph_for_repo(repo_path)
+async def delete_index(repo_path: str, db_path: str):
+    """Remove all FTS5 and SQLite graph data for the given repo_path."""
+    if not db_path or not db_path.strip():
+        raise HTTPException(status_code=422, detail="db_path must be a non-empty path")
+    delete_embeddings_for_repo(repo_path, db_path)
+    delete_graph_for_repo(repo_path, db_path)
     clear_status(repo_path)
     return {"status": "deleted", "repo_path": repo_path}

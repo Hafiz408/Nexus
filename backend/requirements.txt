@@ -1,8 +1,7 @@
 fastapi>=0.115.0
 uvicorn[standard]
 pydantic-settings>=2.0.0
-psycopg2-binary
-pgvector
+sqlite-vec
 numpy
 aiosqlite
 pathspec>=1.0.0

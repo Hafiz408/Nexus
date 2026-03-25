@@ -19,28 +19,8 @@ def get_status(repo_path: str) -> IndexStatus | None:
 
 
 def restore_status_from_db() -> None:
-    """Repopulate _status from existing SQLite graph data on startup/reload.
-
-    Prevents 400 errors after uvicorn --reload wipes the in-memory dict.
-    Scans graph_nodes for distinct repo_paths and marks each as complete.
-    """
-    try:
-        import sqlite3 as _sqlite3
-        from app.ingestion.graph_store import _db_path  # noqa: PLC0415
-        conn = _sqlite3.connect(_db_path())
-        rows = conn.execute(
-            "SELECT repo_path, COUNT(*) FROM graph_nodes GROUP BY repo_path"
-        ).fetchall()
-        conn.close()
-        for repo_path, node_count in rows:
-            if repo_path not in _status:
-                _status[repo_path] = IndexStatus(
-                    status="complete",
-                    nodes_indexed=node_count,
-                )
-                logger.info("restore_status_from_db: %s (%d nodes)", repo_path, node_count)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("restore_status_from_db failed (non-fatal): %s", exc)
+    """No-op: status is restored when the extension sends a status request with db_path."""
+    pass
 
 
 def clear_status(repo_path: str) -> None:
@@ -73,6 +53,7 @@ async def _parse_concurrent(files: list[dict], repo_path: str) -> tuple[list, li
 async def run_ingestion(
     repo_path: str,
     languages: list[str],
+    db_path: str,
     changed_files: list[str] | None = None,
 ) -> IndexStatus:
     _status[repo_path] = IndexStatus(status="running")
@@ -83,8 +64,8 @@ async def run_ingestion(
 
         if changed_files is not None:
             logger.info("incremental re-index: %d changed files", len(changed_files))
-            delete_nodes_for_files(changed_files, repo_path)
-            delete_embeddings_for_files(changed_files, repo_path)
+            delete_nodes_for_files(changed_files, repo_path, db_path)
+            delete_embeddings_for_files(changed_files, repo_path, db_path)
             ext_map: dict[str, str] = {ext.lstrip("."): lang for ext, lang in EXTENSION_TO_LANGUAGE.items()}
             files_to_parse: list[dict] = []
             for f in changed_files:
@@ -137,8 +118,8 @@ async def run_ingestion(
         G = build_graph(all_nodes, all_edges)
         logger.info("graph built: %d nodes, %d edges", G.number_of_nodes(), G.number_of_edges())
 
-        await asyncio.to_thread(save_graph, G, repo_path)
-        nodes_stored = await asyncio.to_thread(embed_and_store, all_nodes, repo_path)
+        await asyncio.to_thread(save_graph, G, repo_path, db_path)
+        nodes_stored = await asyncio.to_thread(embed_and_store, all_nodes, repo_path, db_path)
         logger.info("embedded and stored %d nodes", nodes_stored)
 
         if nodes_stored == 0:
