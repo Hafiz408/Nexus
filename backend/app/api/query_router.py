@@ -12,8 +12,12 @@ import asyncio
 import json
 
 import networkx as nx
+import logging
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
+
+logger = logging.getLogger(__name__)
 
 from app.agent.explorer import explore_stream
 from app.ingestion.graph_store import load_graph
@@ -41,6 +45,14 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
     only safe place to return HTTP errors (headers are sent once stream starts).
     """
     status = get_status(request_body.repo_path)
+    logger.info(
+        "POST /query repo=%r intent=%r status=%r target=%r file=%r",
+        request_body.repo_path,
+        request_body.intent_hint,
+        status.status if status else None,
+        request_body.target_node_id,
+        request_body.selected_file,
+    )
     if status is None or status.status != "complete":
         raise HTTPException(
             status_code=400,
@@ -88,6 +100,7 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
 
                 # graph.invoke() is synchronous — offload to thread pool to avoid
                 # blocking the FastAPI event loop (established pattern, STATE.md Phase 22)
+                logger.info("v2 invoke start: intent=%r thread=%r", request_body.intent_hint, thread_id)
                 result_state = await asyncio.to_thread(
                     graph.invoke,
                     initial_state,
@@ -96,6 +109,7 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
 
                 specialist = result_state["specialist_result"]
                 intent = result_state["intent"]
+                logger.info("v2 invoke done: resolved_intent=%r", intent)
 
                 # Pydantic v2: model_dump(mode="json") recursively serializes nested models
                 # e.g. _ExplainResult.nodes contains CodeNode objects — mode="json" is required
@@ -142,6 +156,7 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 yield f"event: done\ndata: {json.dumps({'type': 'done'})}\n\n"
 
             except Exception as exc:  # noqa: BLE001
+                logger.exception("v2 error: %s", exc)
                 payload = json.dumps({"type": "error", "message": str(exc)})
                 yield f"event: error\ndata: {payload}\n\n"
 

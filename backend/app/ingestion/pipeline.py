@@ -18,6 +18,31 @@ def get_status(repo_path: str) -> IndexStatus | None:
     return _status.get(repo_path)
 
 
+def restore_status_from_db() -> None:
+    """Repopulate _status from existing SQLite graph data on startup/reload.
+
+    Prevents 400 errors after uvicorn --reload wipes the in-memory dict.
+    Scans graph_nodes for distinct repo_paths and marks each as complete.
+    """
+    try:
+        import sqlite3 as _sqlite3
+        from app.ingestion.graph_store import _db_path  # noqa: PLC0415
+        conn = _sqlite3.connect(_db_path())
+        rows = conn.execute(
+            "SELECT repo_path, COUNT(*) FROM graph_nodes GROUP BY repo_path"
+        ).fetchall()
+        conn.close()
+        for repo_path, node_count in rows:
+            if repo_path not in _status:
+                _status[repo_path] = IndexStatus(
+                    status="complete",
+                    nodes_indexed=node_count,
+                )
+                logger.info("restore_status_from_db: %s (%d nodes)", repo_path, node_count)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("restore_status_from_db failed (non-fatal): %s", exc)
+
+
 def clear_status(repo_path: str) -> None:
     _status.pop(repo_path, None)
 

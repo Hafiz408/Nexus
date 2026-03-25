@@ -23,6 +23,8 @@ async def lifespan(app: FastAPI):
     init_db()
     init_pgvector_table()
     app.state.graph_cache = {}   # dict[str, nx.DiGraph] — lazy per-repo graph cache
+    from app.ingestion.pipeline import restore_status_from_db  # noqa: PLC0415
+    restore_status_from_db()
     yield
 
 
