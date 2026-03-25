@@ -1,7 +1,8 @@
-"""Tests for POST /query V2 endpoint branch (TST-09).
+"""Tests for POST /query V2 endpoint branch and POST /review/post-pr endpoint (TST-09).
 
 Covers all V2 routing scenarios, sentinel handling (auto/None fall-through to V1),
-SSE payload structure (event: result, event: done, event: error), and error propagation.
+SSE payload structure (event: result, event: done, event: error), error propagation,
+and the /review/post-pr endpoint (GITHUB_TOKEN gate + post_review_comments() call).
 
 All external I/O is mocked — zero live LLM calls, zero live database connections.
 No environment variables required to run this suite.
@@ -9,13 +10,16 @@ No environment variables required to run this suite.
 Patch strategy:
   - app.api.query_router.get_status   → monkeypatch.setattr
   - app.api.query_router.load_graph   → monkeypatch.setattr
-  - app.api.query_router.build_graph  → patch() at consumer module namespace
+  - app.agent.orchestrator.build_graph → patch() at source module namespace
       NOTE: build_graph is lazy-imported inside v2_event_generator body;
-      Python resolves the name in the enclosing module's namespace when the lazy
-      `from app.agent.orchestrator import build_graph` executes — patching
-      app.api.query_router.build_graph intercepts that binding. (Pitfall 5, RESEARCH.md)
+      Python resolves the name in the source module (app.agent.orchestrator) when the
+      lazy `from app.agent.orchestrator import build_graph` executes — patching at
+      the source module intercepts the binding. (Phase 24 decision, consistent with
+      Phase 17 router-agent pattern)
   - app.api.query_router.graph_rag_retrieve → monkeypatch for V1-path tests
   - app.api.query_router.explore_stream     → monkeypatch for V1-path tests
+  - app.config.get_settings                 → patch() for /review/post-pr tests
+  - app.mcp.tools.post_review_comments      → patch() for /review/post-pr tests
 """
 from __future__ import annotations
 
@@ -318,3 +322,43 @@ def test_v2_orchestrator_error_yields_error_event(client, monkeypatch):
 
     assert "event: error" in body
     assert "graph failed" in body
+
+
+# ---------------------------------------------------------------------------
+# Test 9: /review/post-pr returns 400 when GITHUB_TOKEN is not configured
+# ---------------------------------------------------------------------------
+
+def test_post_review_to_pr_no_token(client):
+    """Returns 400 when GITHUB_TOKEN is not configured."""
+    with patch("app.config.get_settings") as mock_settings:
+        mock_settings.return_value = MagicMock(github_token="")
+        resp = client.post("/review/post-pr", json={
+            "findings": [],
+            "repo": "owner/repo",
+            "pr_number": 42,
+            "commit_sha": "abc123",
+        })
+    assert resp.status_code == 400
+    assert "GITHUB_TOKEN" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Test 10: /review/post-pr calls post_review_comments() when token is present
+# ---------------------------------------------------------------------------
+
+def test_post_review_to_pr_calls_mcp(client):
+    """Calls post_review_comments() when token is present."""
+    with patch("app.config.get_settings") as mock_settings, \
+         patch("app.mcp.tools.post_review_comments") as mock_post:
+        mock_settings.return_value = MagicMock(github_token="ghp_test")
+        mock_post.return_value = {"posted": 2, "overflow": False}
+        resp = client.post("/review/post-pr", json={
+            "findings": [{"file_path": "app/foo.py", "line_start": 10, "severity": "high", "description": "Issue", "suggestion": "Fix it", "rule": "R1", "confidence": 0.9}],
+            "repo": "owner/repo",
+            "pr_number": 42,
+            "commit_sha": "abc123",
+        })
+    assert resp.status_code == 200
+    result = resp.json()
+    assert result["posted"] == 2
+    mock_post.assert_called_once()

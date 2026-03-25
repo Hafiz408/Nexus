@@ -921,3 +921,41 @@ body.vscode-light .status-dot.complete { background: #2e7d32; }
 .copy-code-btn:hover {
   background: rgba(128,128,128,0.22) !important;
 }
+
+/* Phase 27: PR context form in ReviewPanel */
+.pr-form {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pr-form input {
+  padding: 4px 8px;
+  border: 1px solid var(--vscode-input-border);
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border-radius: 3px;
+  font-size: 12px;
+}
+.pr-form .pr-form-actions {
+  display: flex;
+  gap: 6px;
+}
+.pr-form .pr-submit-btn {
+  padding: 4px 10px;
+  background: var(--vscode-button-background) !important;
+  color: var(--vscode-button-foreground) !important;
+  border: none !important;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.pr-form .pr-cancel-btn {
+  padding: 4px 10px;
+  background: transparent !important;
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-button-border, #555) !important;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
