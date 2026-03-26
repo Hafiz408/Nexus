@@ -47,6 +47,18 @@ export class BackendClient {
     }
   }
 
+  async postConfig(body: Record<string, unknown>): Promise<{ reindex_required: boolean }> {
+    const resp = await fetch(`${this.backendUrl}/api/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      throw new Error(`Config push failed: ${resp.status}`);
+    }
+    return resp.json() as Promise<{ reindex_required: boolean }>;
+  }
+
   // SSE-01: poll every 2 seconds until complete or failed
   pollUntilComplete(
     repoPath: string,

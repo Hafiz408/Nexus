@@ -33,6 +33,14 @@
       {
         "command": "nexus.clearIndex",
         "title": "Nexus: Clear Index"
+      },
+      {
+        "command": "nexus.setApiKey",
+        "title": "Nexus: Set API Key"
+      },
+      {
+        "command": "nexus.clearApiKey",
+        "title": "Nexus: Clear API Key"
       }
     ],
     "configuration": {
@@ -52,6 +60,33 @@
           "type": "number",
           "default": 10,
           "description": "Maximum context nodes for RAG retrieval"
+        },
+        "nexus.chatProvider": {
+          "type": "string",
+          "enum": ["openai", "mistral", "anthropic", "ollama", "gemini"],
+          "default": "mistral",
+          "description": "AI provider for chat (LLM)"
+        },
+        "nexus.chatModel": {
+          "type": "string",
+          "default": "mistral-small-latest",
+          "description": "Chat model name (e.g. gpt-4o, claude-sonnet-4-5, mistral-small-latest)"
+        },
+        "nexus.embeddingProvider": {
+          "type": "string",
+          "enum": ["openai", "mistral", "ollama", "gemini"],
+          "default": "mistral",
+          "description": "AI provider for embeddings (Anthropic excluded — no embedding API)"
+        },
+        "nexus.embeddingModel": {
+          "type": "string",
+          "default": "mistral-embed",
+          "description": "Embedding model name (e.g. text-embedding-3-small, mistral-embed)"
+        },
+        "nexus.ollamaBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Base URL for Ollama (only used when provider is ollama)"
         }
       }
     }

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { BackendClient } from './BackendClient';
+import { ConfigManager } from './ConfigManager';
 import { FileWatcher } from './FileWatcher';
 import { SidebarProvider } from './SidebarProvider';
 
@@ -36,16 +37,37 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  // KEYS-01/02: SecretStorage API key commands
+  const configManager = new ConfigManager(context, client);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.setApiKey', () => configManager.setApiKey()),
+    vscode.commands.registerCommand('nexus.clearApiKey', () => configManager.clearApiKey()),
+  );
+
   // EXT-04: Wire FileWatcher for incremental re-index on save (WATCH-01/02/03).
   // Auto-index is intentionally disabled — user triggers the first index manually
   // via the "Index Workspace" button or the nexus.indexWorkspace command.
+  let dbPath: string | undefined;
   if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
     const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const path = require('path') as typeof import('path');
-    const dbPath = path.join(repoPath, '.nexus', 'graph.db');
+    dbPath = path.join(repoPath, '.nexus', 'graph.db');
     const watcher = new FileWatcher(repoPath, client, dbPath);
     context.subscriptions.push(watcher);
   }
+
+  // CONF-01: Push config on activate (backend may not be ready yet — swallow errors)
+  void configManager.pushConfig(dbPath).catch(() => { /* backend may not be ready yet */ });
+
+  // CONF-01: Re-push on settings change
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('nexus')) {
+        void configManager.pushConfig(dbPath);
+      }
+    })
+  );
 }
 
 export function deactivate(): void {}
