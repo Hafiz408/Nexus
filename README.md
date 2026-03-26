@@ -20,6 +20,7 @@ AI-powered code assistant that understands your codebase through a **call graph 
 ┌──────────────────────────────────────┐
 │         VS Code Extension            │
 │  Sidebar UI · FileWatcher · SSE      │
+│  SidecarManager (auto-starts backend)│
 └──────────────────┬───────────────────┘
                    │ HTTP + SSE  (+ db_path per request)
                    ▼
@@ -42,6 +43,8 @@ AI-powered code assistant that understands your codebase through a **call graph 
 
 The backend is **stateless compute** — it receives a `db_path` with every request pointing to the workspace SQLite file. No shared database, no server to manage.
 
+The extension **automatically spawns** the bundled backend binary on activate and shuts it down on deactivate. No Python installation required.
+
 ## Query Flow
 
 ```
@@ -58,46 +61,70 @@ Question
                └── score < 0.7 → retry (max 2×)
 ```
 
-## Setup
+## Installation
 
-**Prerequisites:** Docker Compose · VS Code 1.74+ · Python 3.10+ · Mistral or OpenAI API key
+### Option A — Download from GitHub Actions (latest build)
 
-```bash
-# 1. Backend
-docker compose up --build
-curl http://localhost:8000/api/health   # → {"status":"ok"}
+1. Go to [Actions](https://github.com/Hafiz408/Nexus/actions) → latest **Build and Package Nexus** run
+2. Download the `nexus-vsix` artifact
+3. In VS Code: `Extensions` → `...` → `Install from VSIX…` → select `nexus.vsix`
 
-# 2. Extension
-cd extension && npm install && npm run build
-# VS Code: open extension/ folder → press F5 → Extension Development Host opens
-# In the new window: open your repo, click the Nexus icon in the Activity Bar
+> Artifacts are retained for 90 days. For permanent releases, see the [Releases](https://github.com/Hafiz408/Nexus/releases) page.
 
-# 3. Configure provider & API key
-# Cmd+Shift+P → "Nexus: Set API Key" → pick provider → enter key
+### Option B — Build from source
 
-# 4. Index a repo
-# Cmd+Shift+P → "Nexus: Index Workspace"
-# Creates .nexus/graph.db in your workspace (git-ignored by default)
-```
-
-### Key `.env` Variables
+**Prerequisites:** VS Code 1.74+ · Node.js 20+ · Python 3.11+
 
 ```bash
-LLM_PROVIDER=mistral                        # mistral | openai | anthropic | ollama | gemini
-LLM_PROVIDER_API_KEY=sk-...                 # API key for the LLM provider
-EMBEDDING_PROVIDER=mistral                  # mistral | openai | ollama | gemini
-EMBEDDING_PROVIDER_API_KEY=sk-...           # API key for the embedding provider (same as above if shared)
+# 1. Build backend binary
+cd backend
+pip install -r requirements.txt pyinstaller
+python build.py           # outputs extension/bin/nexus-backend-mac (or .exe on Windows)
+
+# 2. Build and install extension
+cd extension
+npm install && npm run compile
+npm install -g @vscode/vsce
+vsce package --out nexus.vsix
+# VS Code: install nexus.vsix, or press F5 in extension/ for dev mode
 ```
 
-The extension also pushes provider/key config at runtime via `POST /api/config` — VS Code settings and `Nexus: Set API Key` take precedence over `.env` values.
+## Configuration
 
-No `DATABASE_URL` needed — per-workspace SQLite files are written by the backend into each project's `.nexus/` directory.
+No `.env` file or Docker setup needed. Everything is configured inside VS Code:
+
+1. **Set your API key** — `Cmd+Shift+P` → `Nexus: Set API Key` → pick provider → enter key
+   - Keys are stored in VS Code `SecretStorage` and never written to disk
+2. **Choose provider/model** — `Code > Settings > Extensions > Nexus`
+   - Chat provider: `openai` | `mistral` | `anthropic` | `ollama` | `gemini`
+   - Embedding provider: `openai` | `mistral` | `ollama` | `gemini`
+   - Custom Ollama base URL (default: `http://localhost:11434`)
+3. **Index your workspace** — `Cmd+Shift+P` → `Nexus: Index Workspace`
+   - Creates `.nexus/graph.db` in your workspace (git-ignored by default)
+   - Chat is disabled until the first index completes
+
+The extension pushes provider/model/key config to the backend at startup and on every settings change.
+
+> **Changing embedding provider or model** requires a reindex — the sidebar will warn you and disable chat until reindexing is complete.
+
+## CI / Build Pipeline
+
+Every push to a `v*` tag triggers **GitHub Actions** (`.github/workflows/build.yml`):
+
+| Job | Runner | Output |
+|---|---|---|
+| `build-mac` | `macos-latest` | `nexus-backend-mac` binary via PyInstaller |
+| `build-win` | `windows-latest` | `nexus-backend-win.exe` binary via PyInstaller |
+| `package` | `ubuntu-latest` | `nexus.vsix` bundling both binaries |
+
+The final `.vsix` works on Mac and Windows with no Python installation required.
 
 ## Structure
 
 ```
 nexus/
 ├── backend/           → FastAPI service
+│   ├── build.py       → PyInstaller build script
 │   └── app/
 │       ├── api/       → HTTP endpoints + SSE routing
 │       ├── ingestion/ → AST parsing, graph, sqlite-vec index
@@ -106,8 +133,9 @@ nexus/
 │       ├── core/      → Provider-agnostic model factory
 │       └── mcp/       → GitHub PR + file-write tools
 ├── extension/         → VS Code extension (TypeScript + React)
+│   └── bin/           → Bundled backend binaries (mac + win)
 ├── eval/              → RAGAS evaluation suite
-└── docker-compose.yml
+└── .github/workflows/ → CI build pipeline
 ```
 
 ## Docs
