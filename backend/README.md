@@ -24,13 +24,13 @@ backend/
 │   ├── config.py             # Pydantic settings (.env-driven)
 │   ├── api/                  # → HTTP routers (index + query + SSE)
 │   ├── core/
-│   │   └── model_factory.py  # Provider-agnostic LLM + embedding clients
+│   │   ├── model_factory.py  # Provider-agnostic LLM + embedding clients
+│   │   └── runtime_config.py # In-memory config store (POST /api/config)
 │   ├── ingestion/            # → AST parsing, graph, vector indexing
 │   ├── retrieval/            # → Graph RAG pipeline
 │   ├── agent/                # → Multi-agent orchestration (LangGraph)
 │   ├── mcp/                  # → GitHub PR + file-write tools
-│   ├── models/               # Pydantic schemas (CodeNode, QueryRequest…)
-│   └── db/                   # PostgreSQL init + pgvector table setup
+│   └── models/               # Pydantic schemas (CodeNode, QueryRequest…)
 ├── tests/                    # 190+ tests — all offline, no live API calls
 ├── Dockerfile
 └── requirements.txt
@@ -40,24 +40,27 @@ backend/
 
 All LLM and embedding calls route through `core/model_factory.py` — no provider-specific code in agents.
 
-| Provider | Embedding dims | Config |
+| Provider | Embedding dims | LLM support |
 |---|---|---|
-| Mistral | 1024 | `embedding_provider=mistral` |
-| OpenAI | 1536 | `embedding_provider=openai` |
+| Mistral | 1024 | ✓ |
+| OpenAI | 1536 | ✓ |
+| Anthropic | — | ✓ (chat only) |
+| Ollama | 768 | ✓ |
+| Gemini | 768 | ✓ |
 
-> Switching providers requires a full re-index (vector dimensions differ).
+Config is pushed at runtime via `POST /api/config` (from the extension) and seeded from `.env` on startup. Switching embedding providers requires a full re-index (vector dimensions differ).
 
 ## Running
 
 ```bash
-# Docker (recommended)
-cp .env.example .env && docker compose up
+# Docker (recommended — includes hot reload via volume mount)
+docker compose up --build
+curl http://localhost:8000/api/health   # → {"status":"ok"}
 
 # Local
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
-# Note: PostgreSQL must be running separately on port 5432
 ```
 
 ## Tests

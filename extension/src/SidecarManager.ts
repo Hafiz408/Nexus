@@ -38,9 +38,9 @@ export class SidecarManager implements vscode.Disposable {
     });
   }
 
-  /** Poll GET /health until HTTP 200 or timeout */
+  /** Poll GET /api/health until HTTP 200 or timeout */
   async waitForHealth(timeoutMs = 30_000): Promise<void> {
-    const healthUrl = `${this._backendUrl}/health`;
+    const healthUrl = `${this._backendUrl}/api/health`;
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {

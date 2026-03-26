@@ -64,26 +64,32 @@ Question
 
 ```bash
 # 1. Backend
-cp backend/.env.example backend/.env   # set your API key
-docker compose up -d
-curl http://localhost:8000/health       # → {"status":"ok"}
+docker compose up --build
+curl http://localhost:8000/api/health   # → {"status":"ok"}
 
 # 2. Extension
 cd extension && npm install && npm run build
-# VS Code: load unpacked from ./out/
+# VS Code: open extension/ folder → press F5 → Extension Development Host opens
+# In the new window: open your repo, click the Nexus icon in the Activity Bar
 
-# 3. Index a repo
-# Ctrl+Shift+P → "Nexus: Index Workspace"
+# 3. Configure provider & API key
+# Cmd+Shift+P → "Nexus: Set API Key" → pick provider → enter key
+
+# 4. Index a repo
+# Cmd+Shift+P → "Nexus: Index Workspace"
 # Creates .nexus/graph.db in your workspace (git-ignored by default)
 ```
 
 ### Key `.env` Variables
 
 ```bash
-EMBEDDING_PROVIDER=mistral    # mistral | openai
-LLM_PROVIDER=mistral
-MISTRAL_API_KEY=sk-...        # or OPENAI_API_KEY
+LLM_PROVIDER=mistral                        # mistral | openai | anthropic | ollama | gemini
+LLM_PROVIDER_API_KEY=sk-...                 # API key for the LLM provider
+EMBEDDING_PROVIDER=mistral                  # mistral | openai | ollama | gemini
+EMBEDDING_PROVIDER_API_KEY=sk-...           # API key for the embedding provider (same as above if shared)
 ```
+
+The extension also pushes provider/key config at runtime via `POST /api/config` — VS Code settings and `Nexus: Set API Key` take precedence over `.env` values.
 
 No `DATABASE_URL` needed — per-workspace SQLite files are written by the backend into each project's `.nexus/` directory.
 

@@ -215,6 +215,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     this._broadcastReindexState();
   }
 
+  postLog(level: 'info' | 'warning' | 'error', message: string): void {
+    void this._view?.webview.postMessage({ type: 'log', level, message });
+  }
+
   broadcastConfigStatus(): void {
     const config = vscode.workspace.getConfiguration('nexus');
     void this._view?.webview.postMessage({

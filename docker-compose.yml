@@ -1,7 +1,7 @@
-# Nexus V3 Docker Compose Stack
+# Nexus V4 Docker Compose Stack
 # Uses Docker Compose v2 syntax (docker compose, not docker-compose)
 #
-# V3 local-first: no Postgres. Graph + vector index stored in .nexus/graph.db
+# V4 local-first: no Postgres. Graph + vector index stored in .nexus/graph.db
 # inside the user's workspace (passed as db_path per request from the extension).
 # The backend is stateless compute only — LLM calls + AST parsing.
 
@@ -12,6 +12,8 @@ services:
     container_name: nexus_backend
     env_file: .env
     volumes:
+      # Hot reload: mount backend source so uvicorn --reload picks up host changes
+      - ./backend:/app
       # Read-write bind mount of the user's home dir so the backend can read
       # source files AND write .nexus/graph.db into any workspace path the
       # extension sends (host path == container path required)
@@ -19,7 +21,7 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""]
       interval: 10s
       timeout: 5s
       retries: 5

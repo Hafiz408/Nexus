@@ -43,7 +43,7 @@ class MistralEmbeddingClient(EmbeddingClient):
     """Mistral AI — mistral-embed (1024 dimensions)."""
 
     def __init__(self, api_key: str) -> None:
-        from mistralai import Mistral
+        from mistralai.client import Mistral
         self._client = Mistral(api_key=api_key)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
@@ -141,14 +141,14 @@ def get_embedding_client() -> EmbeddingClient:
         api_key = cfg.api_keys.get("openai", "")
         if not api_key:
             from app.config import get_settings
-            api_key = get_settings().openai_api_key
+            api_key = get_settings().embedding_provider_api_key
         return OpenAIEmbeddingClient(api_key=api_key)
 
     if provider == "mistral":
         api_key = cfg.api_keys.get("mistral", "")
         if not api_key:
             from app.config import get_settings
-            api_key = get_settings().mistral_api_key
+            api_key = get_settings().embedding_provider_api_key
         return MistralEmbeddingClient(api_key=api_key)
 
     raise ValueError(
@@ -174,7 +174,7 @@ def get_llm():
         api_key = cfg.api_keys.get("mistral", "")
         if not api_key:
             from app.config import get_settings
-            api_key = get_settings().mistral_api_key
+            api_key = get_settings().llm_provider_api_key
         return ChatMistralAI(model=model, temperature=0, api_key=api_key)
 
     if provider == "openai":
@@ -182,7 +182,7 @@ def get_llm():
         api_key = cfg.api_keys.get("openai", "")
         if not api_key:
             from app.config import get_settings
-            api_key = get_settings().openai_api_key
+            api_key = get_settings().llm_provider_api_key
         return ChatOpenAI(model=model, temperature=0, api_key=api_key)
 
     if provider == "anthropic":

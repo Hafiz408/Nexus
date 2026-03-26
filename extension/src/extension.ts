@@ -72,7 +72,10 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
     const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const pathMod = require('path') as typeof import('path');
     dbPath = pathMod.join(repoPath, '.nexus', 'graph.db');
-    const watcher = new FileWatcher(repoPath, client, dbPath);
+    const watcher = new FileWatcher(repoPath, client, dbPath, (files) => {
+      const names = files.map(f => pathMod.basename(f)).join(', ');
+      provider.postLog('info', `Auto-reindex: ${files.length} file(s) saved — ${names}`);
+    });
     context.subscriptions.push(watcher);
   }
 

@@ -14,7 +14,23 @@ class RuntimeConfig:
     ollama_base_url: str = "http://localhost:11434"
 
 
-_config = RuntimeConfig()
+def _init_config() -> RuntimeConfig:
+    """Seed runtime defaults from .env Settings so startup config matches the env file."""
+    from app.config import get_settings
+    s = get_settings()
+    cfg = RuntimeConfig(
+        chat_provider=s.llm_provider,
+        embedding_provider=s.embedding_provider,
+    )
+    # Pre-populate api_keys so the factory fallback works without a config push
+    if s.llm_provider_api_key:
+        cfg.api_keys[s.llm_provider] = s.llm_provider_api_key
+    if s.embedding_provider_api_key and s.embedding_provider != s.llm_provider:
+        cfg.api_keys[s.embedding_provider] = s.embedding_provider_api_key
+    return cfg
+
+
+_config = _init_config()
 
 
 def get_runtime_config() -> RuntimeConfig:
