@@ -3,11 +3,30 @@ import { BackendClient } from './BackendClient';
 import { ConfigManager } from './ConfigManager';
 import { FileWatcher } from './FileWatcher';
 import { SidebarProvider } from './SidebarProvider';
+import { SidecarManager } from './SidecarManager';
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Construct ONE shared BackendClient — both SidebarProvider and FileWatcher use it
+  void _activate(context);
+}
+
+async function _activate(context: vscode.ExtensionContext): Promise<void> {
   const config = vscode.workspace.getConfiguration('nexus');
   const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
+
+  // SIDECAR-01: Spawn bundled backend binary; skip if port is already occupied (dev mode)
+  const sidecar = new SidecarManager(context.extensionPath, backendUrl);
+  context.subscriptions.push(sidecar);
+
+  const started = await sidecar.start();
+  if (started) {
+    await sidecar.waitForHealth().catch((err: unknown) => {
+      // Backend didn't come up in time — log but don't crash the extension
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[Nexus] ${msg}`);
+    });
+  }
+
+  // Construct ONE shared BackendClient — both SidebarProvider and FileWatcher use it
   const client = new BackendClient(backendUrl);
 
   const provider = new SidebarProvider(context.extensionUri, client);
@@ -51,13 +70,13 @@ export function activate(context: vscode.ExtensionContext): void {
   let dbPath: string | undefined;
   if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
     const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    const path = require('path') as typeof import('path');
-    dbPath = path.join(repoPath, '.nexus', 'graph.db');
+    const pathMod = require('path') as typeof import('path');
+    dbPath = pathMod.join(repoPath, '.nexus', 'graph.db');
     const watcher = new FileWatcher(repoPath, client, dbPath);
     context.subscriptions.push(watcher);
   }
 
-  // CONF-01: Push config on activate (backend may not be ready yet — swallow errors)
+  // CONF-01: Push config after sidecar is healthy (backend ready to accept config)
   void configManager.pushConfig(dbPath).catch(() => { /* backend may not be ready yet */ });
 
   // CONF-01: Re-push on settings change
