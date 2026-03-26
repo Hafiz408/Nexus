@@ -79,11 +79,38 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
   // CONF-01: Push config after sidecar is healthy (backend ready to accept config)
   void configManager.pushConfig(dbPath).catch(() => { /* backend may not be ready yet */ });
 
+  // EMBD-03: Snapshot current embedding settings to detect changes
+  let prevEmbeddingProvider = config.get<string>('embeddingProvider', 'mistral');
+  let prevEmbeddingModel = config.get<string>('embeddingModel', 'mistral-embed');
+
   // CONF-01: Re-push on settings change
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(e => {
+    vscode.workspace.onDidChangeConfiguration(async e => {
       if (e.affectsConfiguration('nexus')) {
-        void configManager.pushConfig(dbPath);
+        const newConfig = vscode.workspace.getConfiguration('nexus');
+        const newEmbeddingProvider = newConfig.get<string>('embeddingProvider', 'mistral');
+        const newEmbeddingModel = newConfig.get<string>('embeddingModel', 'mistral-embed');
+
+        // EMBD-03: warn if embedding settings changed
+        if (newEmbeddingProvider !== prevEmbeddingProvider || newEmbeddingModel !== prevEmbeddingModel) {
+          void vscode.window.showWarningMessage(
+            'Nexus: Embedding model changed. You must re-index the workspace before chat will work.',
+            'Re-index Now'
+          ).then(action => {
+            if (action === 'Re-index Now') {
+              void provider.triggerIndex();
+            }
+          });
+        }
+
+        prevEmbeddingProvider = newEmbeddingProvider;
+        prevEmbeddingModel = newEmbeddingModel;
+
+        const result = await configManager.pushConfig(dbPath).catch(() => ({ reindex_required: false }));
+        // Notify webview of reindex state (never_indexed stays as-is — false param means don't force-set it)
+        provider.setReindexState(result.reindex_required, false);
+        // Broadcast updated config status to webview
+        provider.broadcastConfigStatus();
       }
     })
   );

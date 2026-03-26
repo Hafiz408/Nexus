@@ -5,6 +5,8 @@ export type HostToWebviewMessage =
   | { type: 'done'; retrieval_stats: Record<string, unknown> }
   | { type: 'error'; message: string }
   | { type: 'indexStatus'; status: IndexStatus }
+  | { type: 'reindexState'; reindex_required: boolean; never_indexed: boolean }
+  | { type: 'configStatus'; chat_provider: string; chat_model: string; embedding_provider: string; embedding_model: string }
   | {
       type: 'result';
       intent: string;
@@ -28,6 +30,7 @@ export type WebviewToHostMessage =
   | { type: 'openFile'; filePath: string; lineStart: number }
   | { type: 'indexWorkspace' }
   | { type: 'clearIndex' }
+  | { type: 'configureKeys' }
   | {
       type: 'postReviewToPR';
       findings: Array<Record<string, unknown>>;

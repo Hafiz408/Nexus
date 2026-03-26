@@ -47,12 +47,21 @@ interface LogEntry {
   time: string;
 }
 
+interface ConfigStatus {
+  chat_provider: string;
+  chat_model: string;
+  embedding_provider: string;
+  embedding_model: string;
+}
+
 type IncomingMessage =
   | { type: 'token'; content: string }
   | { type: 'citations'; citations: Citation[] }
   | { type: 'done'; retrieval_stats: Record<string, unknown> }
   | { type: 'error'; message: string }
   | { type: 'indexStatus'; status: IndexStatus }
+  | { type: 'reindexState'; reindex_required: boolean; never_indexed: boolean }
+  | { type: 'configStatus'; chat_provider: string; chat_model: string; embedding_provider: string; embedding_model: string }
   | { type: 'log'; level: LogEntry['level']; message: string }
   | {
       type: 'result';
@@ -425,6 +434,14 @@ export function App(): React.JSX.Element {
   const [activityExpanded, setActivityExpanded] = useState(false);
   const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
   const [selectedIntent, setSelectedIntent] = useState<IntentOption>('auto');
+  const [reindexRequired, setReindexRequired] = useState(false);
+  const [neverIndexed, setNeverIndexed] = useState(true);
+  const [configStatus, setConfigStatus] = useState<ConfigStatus>({
+    chat_provider: 'mistral',
+    chat_model: 'mistral-small-latest',
+    embedding_provider: 'mistral',
+    embedding_model: 'mistral-embed',
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -504,6 +521,20 @@ export function App(): React.JSX.Element {
           }
           break;
         }
+
+        case 'reindexState':
+          setReindexRequired(msg.reindex_required);
+          setNeverIndexed(msg.never_indexed);
+          break;
+
+        case 'configStatus':
+          setConfigStatus({
+            chat_provider: msg.chat_provider,
+            chat_model: msg.chat_model,
+            embedding_provider: msg.embedding_provider,
+            embedding_model: msg.embedding_model,
+          });
+          break;
 
         case 'log':
           addLog(msg.level, msg.message);
@@ -653,11 +684,31 @@ export function App(): React.JSX.Element {
   const warnCount = logs.filter((l) => l.level === 'warning').length;
   const errorCount = logs.filter((l) => l.level === 'error').length;
 
+  // ── Chat blocked state ─────────────────────────────────────────────────
+  const chatBlocked = reindexRequired || neverIndexed;
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div id="root">
 
-      {/* ① INDEX */}
+      {/* ① STATUS BAR */}
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--vscode-sideBar-border)', fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>
+        <div>Chat: <strong>{configStatus.chat_provider}</strong> / {configStatus.chat_model}</div>
+        <div>Embed: <strong>{configStatus.embedding_provider}</strong> / {configStatus.embedding_model}</div>
+        <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: neverIndexed ? 'var(--vscode-statusBarItem-warningBackground)' : reindexRequired ? 'orange' : 'var(--vscode-terminal-ansiGreen)' }}>
+            {neverIndexed ? '⚠ Never indexed' : reindexRequired ? '⚠ Reindex required' : '✓ Index valid'}
+          </span>
+          <button
+            onClick={() => vscode.postMessage({ type: 'configureKeys' })}
+            style={{ fontSize: '10px', padding: '2px 6px', cursor: 'pointer', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)', border: 'none', borderRadius: '2px' }}
+          >
+            Configure Keys
+          </button>
+        </div>
+      </div>
+
+      {/* ③ INDEX */}
       <div className="panel-section">
         <SectionHeader
           expanded={indexExpanded}
@@ -828,6 +879,12 @@ export function App(): React.JSX.Element {
             ))}
           </div>
 
+          {chatBlocked && (
+            <div style={{ padding: '8px 12px', background: 'var(--vscode-statusBarItem-warningBackground)', color: 'var(--vscode-statusBarItem-warningForeground)', fontSize: '12px' }}>
+              {neverIndexed ? '⚠ Index the workspace before chatting.' : '⚠ Embedding model changed — re-index required before chatting.'}
+            </div>
+          )}
+
           <div className="input-area">
             <textarea
               ref={textareaRef}
@@ -835,9 +892,9 @@ export function App(): React.JSX.Element {
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Ask about your codebase…"
-              disabled={isStreaming}
+              disabled={isStreaming || chatBlocked}
             />
-            <button className="send-btn" onClick={handleSend} disabled={isStreaming || !inputValue.trim()}>
+            <button className="send-btn" onClick={handleSend} disabled={isStreaming || chatBlocked || !inputValue.trim()}>
               {isStreaming ? '…' : INTENT_LABELS[selectedIntent]}
             </button>
           </div>
