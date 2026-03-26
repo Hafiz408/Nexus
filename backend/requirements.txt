@@ -12,6 +12,9 @@ networkx>=3.4
 scipy>=1.10.0
 mistralai>=2.0.0
 langchain-mistralai>=0.2.0
+langchain-anthropic>=0.3.0
+langchain-ollama>=0.2.0
+langchain-google-genai>=2.0.0
 langsmith>=0.7.0
 ragas==0.4.3
 pandas

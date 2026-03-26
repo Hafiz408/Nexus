@@ -20,6 +20,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private readonly _client: BackendClient;
   private readonly _highlight: HighlightService;
   private _repoPath: string | undefined;
+  private _reindexRequired = false;
+  private _neverIndexed = true;
 
   private get _dbPath(): string {
     const path = require('path') as typeof import('path');
@@ -59,8 +61,15 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         if (status.status !== 'not_indexed') {
           void this._postStatus(status);
         }
+        if (status.status === 'complete') {
+          this._neverIndexed = false;
+        }
       }).catch(() => { /* backend not yet up — UI stays at not_indexed */ });
     }
+
+    // Send initial reindex state and config status to webview
+    this._broadcastReindexState();
+    this.broadcastConfigStatus();
 
     // SSE-03: handle messages from webview
     webviewView.webview.onDidReceiveMessage(async (msg: WebviewToHostMessage) => {
@@ -123,6 +132,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
         case 'clearIndex':
           await this.triggerClear();
+          break;
+
+        case 'configureKeys':
+          void vscode.commands.executeCommand('nexus.setApiKey');
           break;
 
         case 'postReviewToPR': {
@@ -188,7 +201,41 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private _postStatus(status: IndexStatus): Thenable<boolean> | undefined {
+    if (status.status === 'complete') {
+      this._neverIndexed = false;
+      this._reindexRequired = false;
+      this._broadcastReindexState();
+    }
     return this._view?.webview.postMessage({ type: 'indexStatus', status });
+  }
+
+  setReindexState(reindexRequired: boolean, neverIndexed: boolean): void {
+    this._reindexRequired = reindexRequired;
+    if (!neverIndexed) { this._neverIndexed = false; } // once indexed, stays false
+    this._broadcastReindexState();
+  }
+
+  postLog(level: 'info' | 'warning' | 'error', message: string): void {
+    void this._view?.webview.postMessage({ type: 'log', level, message });
+  }
+
+  broadcastConfigStatus(): void {
+    const config = vscode.workspace.getConfiguration('nexus');
+    void this._view?.webview.postMessage({
+      type: 'configStatus',
+      chat_provider: config.get<string>('chatProvider', 'mistral'),
+      chat_model: config.get<string>('chatModel', 'mistral-small-latest'),
+      embedding_provider: config.get<string>('embeddingProvider', 'mistral'),
+      embedding_model: config.get<string>('embeddingModel', 'mistral-embed'),
+    });
+  }
+
+  private _broadcastReindexState(): void {
+    void this._view?.webview.postMessage({
+      type: 'reindexState',
+      reindex_required: this._reindexRequired,
+      never_indexed: this._neverIndexed,
+    });
   }
 
   dispose(): void {

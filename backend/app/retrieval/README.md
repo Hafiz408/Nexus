@@ -8,7 +8,7 @@ Three-step pipeline that combines **semantic similarity** with **structural grap
 Query
   │
   ▼ 1. Semantic Search
-  Embed query → pgvector cosine similarity → top-k seed nodes
+  Embed query → sqlite-vec cosine similarity → top-k seed nodes
 
   ▼ 2. BFS Expansion
   ego_graph (undirected) from each seed → callers + callees within hop_depth
@@ -32,6 +32,6 @@ Eval result: **+13% composite RAGAS score** vs. vector-only retrieval, with larg
 |---|---|---|
 | `max_nodes` | 10 | Result cap (LLM context window is the bottleneck) |
 | `hop_depth` | 1 | BFS radius — 2+ hops adds noise for most queries |
-| `top_k` | 10 | Seed count from pgvector |
+| `top_k` | 10 | Seed count from sqlite-vec |
 
 Non-seed nodes (added by BFS) receive a fallback semantic score of **0.3** so they can still rank highly via PageRank/degree.

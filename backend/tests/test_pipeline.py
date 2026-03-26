@@ -43,6 +43,9 @@ def mock_pipeline_stages(tmp_path):
     """
     G = _make_graph(n_nodes=1, n_edges=1)
 
+    mock_embedder = MagicMock()
+    mock_embedder.dimensions = 1024
+
     with patch(
         "app.ingestion.pipeline.walk_repo",
         return_value=[
@@ -61,17 +64,30 @@ def mock_pipeline_stages(tmp_path):
                     "app.ingestion.pipeline.save_graph",
                 ) as mock_save:
                     with patch(
-                        "app.ingestion.pipeline.embed_and_store",
-                        return_value=1,
-                    ) as mock_embed:
-                        yield {
-                            "walk_repo": mock_walk,
-                            "parse_file": mock_parse,
-                            "build_graph": mock_build,
-                            "save_graph": mock_save,
-                            "embed_and_store": mock_embed,
-                            "graph": G,
-                        }
+                        "app.ingestion.pipeline.delete_embeddings_for_repo",
+                    ) as mock_del_repo:
+                        with patch(
+                            "app.ingestion.pipeline.embed_and_store",
+                            return_value=1,
+                        ) as mock_embed:
+                            with patch(
+                                "app.ingestion.pipeline.get_embedding_client",
+                                return_value=mock_embedder,
+                            ) as mock_get_embedder:
+                                with patch(
+                                    "app.ingestion.pipeline.set_embedding_meta",
+                                ) as mock_set_meta:
+                                    yield {
+                                        "walk_repo": mock_walk,
+                                        "parse_file": mock_parse,
+                                        "build_graph": mock_build,
+                                        "save_graph": mock_save,
+                                        "delete_embeddings_for_repo": mock_del_repo,
+                                        "embed_and_store": mock_embed,
+                                        "get_embedding_client": mock_get_embedder,
+                                        "set_embedding_meta": mock_set_meta,
+                                        "graph": G,
+                                    }
 
 
 # ---------------------------------------------------------------------------
@@ -175,11 +191,14 @@ def test_parse_failure_is_partial_not_fatal(tmp_path):
                 return_value=G,
             ):
                 with patch("app.ingestion.pipeline.save_graph"):
-                    with patch(
-                        "app.ingestion.pipeline.embed_and_store",
-                        return_value=0,
-                    ):
-                        result = asyncio.run(run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db"))
+                    with patch("app.ingestion.pipeline.delete_embeddings_for_repo"):
+                        with patch(
+                            "app.ingestion.pipeline.embed_and_store",
+                            return_value=0,
+                        ):
+                            with patch("app.ingestion.pipeline.set_embedding_meta"):
+                                with patch("app.ingestion.pipeline.get_embedding_client"):
+                                    result = asyncio.run(run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db"))
 
     # One file failed but the pipeline completes — not fatal
     assert result.status == "complete"

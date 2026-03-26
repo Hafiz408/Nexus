@@ -9,12 +9,11 @@ Question + intent_hint
     │
     ▼
   Router
-    explicit hint (explain/debug/review/test) → skip LLM, confidence = 1.0
-    auto / null → LLM classify (confidence < 0.6 → fallback to explain)
+    debug / review / test → Agent path (LangGraph orchestrator)
+    auto / null / explain → Streaming path (graph RAG + token stream, bypasses orchestrator)
     │
-    ▼
+    ▼  [Agent path only]
   Specialist
-    ├── Explain  → graph RAG retrieval → stream tokens + citations
     ├── Debug    → BFS call graph → anomaly score → top-5 suspects + diagnosis
     ├── Review   → 1-hop context assembly → structured findings
     └── Test     → framework detection → test code generation
@@ -37,10 +36,11 @@ Question + intent_hint
 
 | Agent | Core logic | Output |
 |---|---|---|
-| **Explain** | graph RAG + LLM chain | streaming tokens, file citations |
 | **Debug** | BFS forward on CALLS edges, 5-factor anomaly score | suspects, traversal path, diagnosis |
 | **Review** | target node + 1-hop callers/callees → LLM | findings (severity, category, suggestion, file:line) |
 | **Test** | marker-file framework detection + callees as mock targets | runnable test code, deterministic file path |
+
+> **Explain** is not an agent — it uses the streaming path directly (graph RAG → token stream → citations) without going through the LangGraph orchestrator.
 
 ## Critic Scoring
 

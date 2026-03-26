@@ -34,7 +34,7 @@ source ../venv/bin/activate
 python run_ragas.py --repo-path /path/to/repo
 ```
 
-**Prerequisites:** backend running · repo indexed · `OPENAI_API_KEY` set
+**Prerequisites:** backend running (starts automatically with the extension, or run `uvicorn app.main:app` locally) · repo indexed · API key set for your chosen provider (OpenAI used by default for RAGAS scoring)
 
 | Flag | Default | |
 |---|---|---|
