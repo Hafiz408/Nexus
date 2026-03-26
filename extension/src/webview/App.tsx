@@ -75,17 +75,16 @@ type IncomingMessage =
 const vscode = acquireVsCodeApi();
 
 // ── Intent selector ────────────────────────────────────────────────────────
-type IntentOption = 'auto' | 'explain' | 'debug' | 'review' | 'test';
+type IntentOption = 'explain' | 'debug' | 'review' | 'test';
 
 const INTENT_LABELS: Record<IntentOption, string> = {
-  auto:    'Ask',
   explain: 'Explain',
   debug:   'Debug',
   review:  'Review',
   test:    'Test',
 };
 
-const INTENT_OPTIONS: IntentOption[] = ['auto', 'explain', 'debug', 'review', 'test'];
+const INTENT_OPTIONS: IntentOption[] = ['explain', 'debug', 'review', 'test'];
 
 let counter = 0;
 const newId = () => String(++counter);
@@ -433,7 +432,7 @@ export function App(): React.JSX.Element {
   const [indexExpanded, setIndexExpanded] = useState(true);
   const [activityExpanded, setActivityExpanded] = useState(false);
   const [expandedCitations, setExpandedCitations] = useState<Set<string>>(new Set());
-  const [selectedIntent, setSelectedIntent] = useState<IntentOption>('auto');
+  const [selectedIntent, setSelectedIntent] = useState<IntentOption>('explain');
   const [reindexRequired, setReindexRequired] = useState(false);
   const [neverIndexed, setNeverIndexed] = useState(true);
   const [configStatus, setConfigStatus] = useState<ConfigStatus>({
@@ -541,30 +540,22 @@ export function App(): React.JSX.Element {
           break;
 
         case 'result':
-          if (msg.intent === 'explain') {
-            const answer = (msg.result?.answer as string) ?? '';
-            setMessages((prev) => [
-              ...prev,
-              { id: newId(), role: 'assistant', content: answer, isStreaming: false },
-            ]);
-          } else {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: newId(),
-                role: 'assistant',
-                content: '',
-                isStreaming: false,
-                structured: {
-                  intent: msg.intent,
-                  result: msg.result,
-                  has_github_token: msg.has_github_token,
-                  file_written: msg.file_written,
-                  written_path: msg.written_path,
-                },
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: newId(),
+              role: 'assistant',
+              content: '',
+              isStreaming: false,
+              structured: {
+                intent: msg.intent,
+                result: msg.result,
+                has_github_token: msg.has_github_token,
+                file_written: msg.file_written,
+                written_path: msg.written_path,
               },
-            ]);
-          }
+            },
+          ]);
           break;
       }
     };
@@ -600,7 +591,7 @@ export function App(): React.JSX.Element {
     vscode.postMessage({
       type: 'query',
       question,
-      intent_hint: selectedIntent !== 'auto' ? selectedIntent : undefined,
+      intent_hint: selectedIntent,
     });
   }, [inputValue, isStreaming, addLog, selectedIntent]);
 
@@ -860,6 +851,15 @@ export function App(): React.JSX.Element {
                   </div>
                 );
               })
+            )}
+            {isStreaming && messages[messages.length - 1]?.role === 'user' && (
+              <div className="message message-assistant">
+                <div className="typing-bubble">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                </div>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>

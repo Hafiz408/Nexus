@@ -64,6 +64,7 @@ class NexusState(TypedDict):
     # Query inputs
     question: str
     repo_path: str
+    db_path: str                      # path to .nexus/graph.db — required by graph_rag_retrieve
     intent_hint: Optional[str]        # forwarded to route(); None or "auto" → LLM path
 
     # Context fields (no G here — see _G_CACHE above)
@@ -171,63 +172,49 @@ def _route_by_intent(state: NexusState) -> str:
     return state["intent"]  # "explain" | "debug" | "review" | "test"
 
 
-def _explain_node(state: NexusState) -> dict:
-    """V1 compatibility path: graph_rag_retrieve + chain.invoke() (sync, not streaming).
+def build_explain_context(
+    question: str,
+    repo_path: str,
+    db_path: str,
+    selected_file: str | None,
+    selected_range: list | None,
+) -> tuple[list, dict, str]:
+    """Synchronous context-builder for the explain streaming path.
 
-    Does NOT call explore_stream() — that is an async generator which cannot be
-    awaited with asyncio.run() inside a FastAPI async endpoint (raises RuntimeError:
-    'This event loop is already running'). chain.invoke() produces identical answer
-    quality using the same prompt and LLM.
+    Performs graph-RAG retrieval then injects the user's selected node (if any)
+    at the front of the context list and anchors the question to that symbol.
 
-    Lazy-imports get_llm and the SYSTEM_PROMPT to avoid ValidationError at import time.
-    Does NOT import _get_chain() from explorer.py — that function calls get_llm() and
-    get_settings() at call time without the lazy-import guard that this node requires
-    (the guard is the lazy import pattern itself, which is already applied here).
+    Safe to call from asyncio.to_thread() — contains no async constructs.
 
-    When selected_file + selected_range are provided, the node at that location is
-    injected as the first context node so the LLM explains the code the user selected
-    rather than the semantically closest match for the question text.
+    Returns:
+        (nodes, stats, anchored_question)
+        nodes:             List of CodeNode objects to use as LLM context.
+        stats:             Retrieval stats dict from graph_rag_retrieve.
+        anchored_question: Original question, rewritten to reference the selected
+                           symbol when a selection is provided.
     """
-    from langchain_core.prompts import ChatPromptTemplate  # noqa: PLC0415
-    from app.core.model_factory import get_llm  # noqa: PLC0415
-    from app.agent.prompts import SYSTEM_PROMPT  # noqa: PLC0415
-    from app.agent.explorer import format_context_block  # noqa: PLC0415
+    from app.retrieval.graph_rag import graph_rag_retrieve  # noqa: PLC0415
     from app.models.schemas import CodeNode  # noqa: PLC0415
 
-    question = state["question"]
-    repo_path = state["repo_path"]
-    selected_file = state.get("selected_file")
-    selected_range = state.get("selected_range")
     G = _get_cached_graph(repo_path)
 
-    # Attempt graph-RAG retrieval. Falls back to empty node list if postgres is
-    # unavailable (e.g. in tests where G is provided directly).
     nodes: list = []
     stats: dict = {}
     logger.info("[explain] starting retrieval: file=%r range=%r", selected_file, selected_range)
     try:
-        from app.retrieval.graph_rag import graph_rag_retrieve  # noqa: PLC0415
-        nodes, stats = graph_rag_retrieve(question, repo_path, G)
+        nodes, stats = graph_rag_retrieve(question, repo_path, G, db_path)
         logger.info("[explain] graph-rag retrieved %d nodes", len(nodes))
-    except Exception:  # noqa: BLE001
-        # In offline tests / environments without postgres, retrieval is skipped.
-        # The LLM will receive an empty context block and still produce an answer.
-        logger.warning("[explain] graph-rag retrieval failed, falling back to empty context")
+    except Exception as _exc:  # noqa: BLE001
+        logger.warning("[explain] graph-rag retrieval failed, falling back to empty context: %s", _exc)
 
-    # When the user has a file open with a selection, inject the selected node at the
-    # front of the context list so the LLM explains that specific code, not a
-    # semantically similar but unrelated function.
+    anchored_question = question
     target_id = _derive_target_from_file(G, selected_file, selected_range)
-    anchored_question = question  # may be rewritten below when selection is known
     if target_id and target_id in G:
         attrs = G.nodes[target_id]
         try:
             selected_node = CodeNode(**{k: v for k, v in attrs.items() if k in CodeNode.model_fields})
-            # Prepend so the selected node is the primary context; deduplicate the rest
             nodes = [selected_node] + [n for n in nodes if n.node_id != target_id]
             logger.info("[explain] injected selected node %r at front of context", target_id)
-            # Anchor the question to the specific symbol so the LLM cannot drift to
-            # other nodes in context when the user asks something vague like "explain this".
             anchored_question = (
                 f"The user has selected `{selected_node.name}` "
                 f"({selected_node.file_path}:{selected_node.line_start}-{selected_node.line_end}). "
@@ -238,7 +225,29 @@ def _explain_node(state: NexusState) -> dict:
     elif selected_file:
         logger.info("[explain] no graph node found for file=%r range=%r, using RAG context only", selected_file, selected_range)
 
-    # Build chain inline — same prompt structure as explorer._get_chain()
+    return nodes, stats, anchored_question
+
+
+def _explain_node(state: NexusState) -> dict:
+    """Explain node — delegates context building to build_explain_context, then
+    calls chain.invoke() (sync) to produce the full answer for the LangGraph path.
+
+    The streaming path in query_router.py uses build_explain_context directly
+    and pipes the result through explore_stream for token-by-token output.
+    """
+    from langchain_core.prompts import ChatPromptTemplate  # noqa: PLC0415
+    from app.core.model_factory import get_llm  # noqa: PLC0415
+    from app.agent.prompts import SYSTEM_PROMPT  # noqa: PLC0415
+    from app.agent.explorer import format_context_block  # noqa: PLC0415
+
+    nodes, stats, anchored_question = build_explain_context(
+        state["question"],
+        state["repo_path"],
+        state["db_path"],
+        state.get("selected_file"),
+        state.get("selected_range"),
+    )
+
     llm = get_llm()
     prompt = ChatPromptTemplate.from_messages([
         ("system", "{system_prompt}"),

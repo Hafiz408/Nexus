@@ -5,7 +5,7 @@ from asyncio import Semaphore
 from app.ingestion.walker import walk_repo, EXTENSION_TO_LANGUAGE
 from app.ingestion.ast_parser import parse_file
 from app.ingestion.graph_builder import build_graph
-from app.ingestion.embedder import embed_and_store, delete_embeddings_for_files
+from app.ingestion.embedder import embed_and_store, delete_embeddings_for_files, delete_embeddings_for_repo
 from app.ingestion.graph_store import save_graph, delete_nodes_for_files
 from app.ingestion.meta_store import set_embedding_meta
 from app.core.runtime_config import get_runtime_config
@@ -131,6 +131,13 @@ async def run_ingestion(
         logger.info("graph built: %d nodes, %d edges", G.number_of_nodes(), G.number_of_edges())
 
         await asyncio.to_thread(save_graph, G, repo_path, db_path)
+        # Full re-index: purge stale embeddings before re-embedding so the
+        # embeddings store stays in sync with the graph store. Without this,
+        # nodes removed between runs (e.g. TS files that failed to parse) linger
+        # in the embeddings DB, causing graph_rag_retrieve to return seeds that
+        # expand_via_graph cannot find, yielding empty context and "I'm not certain".
+        if changed_files is None:
+            await asyncio.to_thread(delete_embeddings_for_repo, repo_path, db_path)
         nodes_stored = await asyncio.to_thread(embed_and_store, all_nodes, repo_path, db_path)
         logger.info("embedded and stored %d nodes", nodes_stored)
 

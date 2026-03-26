@@ -64,6 +64,7 @@ def base_state(sample_graph) -> NexusState:
     return {
         "question": "explain func_a",
         "repo_path": "/repo",
+        "db_path": "/repo/.nexus/graph.db",
         "intent_hint": "explain",
         "target_node_id": "a.py::func_a",
         "selected_file": None,

@@ -2,21 +2,21 @@
 
 Covers:
   - 400 guards (unindexed / in-progress repo)
-  - V1 path (intent_hint=None or "auto"): graph-RAG + token stream
-  - V2 path (named intent): orchestrator routing for debug/review/test/explain
-  - Sentinel fall-through: "auto" and None both use V1 path
+  - Explain path (intent_hint=None, "auto", or "explain"): build_explain_context + token stream
+  - V2 path (named intent): orchestrator routing for debug/review/test
+  - Sentinel fall-through: "auto" and None both use explain streaming path
   - /review/post-pr: GITHUB_TOKEN gate + post_review_comments() call
 
 All external I/O is mocked — zero live LLM calls, zero live DB connections.
 
 Patch strategy:
-  - app.api.query_router.get_status         → monkeypatch.setattr
-  - app.api.query_router.load_graph         → monkeypatch.setattr
-  - app.api.query_router.graph_rag_retrieve → monkeypatch.setattr (V1 tests)
-  - app.api.query_router.explore_stream     → monkeypatch.setattr (V1 tests)
-  - app.agent.orchestrator.build_graph      → patch() at source namespace (V2 tests)
-  - app.config.get_settings                 → patch() (V2 + /review/post-pr tests)
-  - app.mcp.tools.post_review_comments      → patch() (/review/post-pr tests)
+  - app.api.query_router.get_status              → monkeypatch.setattr
+  - app.api.query_router.load_graph              → monkeypatch.setattr
+  - app.agent.orchestrator.build_explain_context → patch() at source namespace (explain tests)
+  - app.api.query_router.explore_stream          → monkeypatch.setattr (explain tests)
+  - app.agent.orchestrator.build_graph           → patch() at source namespace (V2 tests)
+  - app.config.get_settings                      → patch() (V2 + /review/post-pr tests)
+  - app.mcp.tools.post_review_comments           → patch() (/review/post-pr tests)
 """
 from __future__ import annotations
 
@@ -160,33 +160,32 @@ def test_empty_db_path_returns_422(client):
 
 
 # ---------------------------------------------------------------------------
-# V1 path tests (intent_hint=None or "auto")
+# Explain streaming path tests (intent_hint=None, "auto", or "explain")
 # ---------------------------------------------------------------------------
+
+def _patch_explain(monkeypatch, sample_node, sample_stats, tokens=("Hello", " world")):
+    """Patch the two callables used by the explain streaming path."""
+    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
+    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
+    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen(*tokens))
+
 
 def test_happy_path_yields_token_events(client, monkeypatch, sample_node, sample_stats):
     """Stream yields one event: token per LLM token."""
-    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda question, repo_path, G, db_path, max_nodes, hop_depth: ([sample_node], sample_stats),
-    )
-    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("Hello", " world"))
-    body = _read_stream(client, _BASE_BODY)
+    _patch_explain(monkeypatch, sample_node, sample_stats)
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([sample_node], sample_stats, "What is bar?")):
+        body = _read_stream(client, _BASE_BODY)
     token_events = [l for l in body.splitlines() if l.startswith("event: token")]
     assert len(token_events) == 2
 
 
 def test_happy_path_yields_citations_event(client, monkeypatch, sample_node, sample_stats):
     """Stream yields event: citations with correct node_id."""
-    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda question, repo_path, G, db_path, max_nodes, hop_depth: ([sample_node], sample_stats),
-    )
-    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("Hello"))
-    body = _read_stream(client, _BASE_BODY)
+    _patch_explain(monkeypatch, sample_node, sample_stats, tokens=("Hello",))
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([sample_node], sample_stats, "What is bar?")):
+        body = _read_stream(client, _BASE_BODY)
 
     lines = body.splitlines()
     citations_data = None
@@ -201,14 +200,10 @@ def test_happy_path_yields_citations_event(client, monkeypatch, sample_node, sam
 
 def test_happy_path_yields_done_event(client, monkeypatch, sample_node, sample_stats):
     """Stream yields event: done with retrieval_stats."""
-    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda question, repo_path, G, db_path, max_nodes, hop_depth: ([sample_node], sample_stats),
-    )
-    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("Hello"))
-    body = _read_stream(client, _BASE_BODY)
+    _patch_explain(monkeypatch, sample_node, sample_stats, tokens=("Hello",))
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([sample_node], sample_stats, "What is bar?")):
+        body = _read_stream(client, _BASE_BODY)
 
     lines = body.splitlines()
     done_data = None
@@ -223,14 +218,10 @@ def test_happy_path_yields_done_event(client, monkeypatch, sample_node, sample_s
 
 def test_event_order(client, monkeypatch, sample_node, sample_stats):
     """Events arrive in order: token, token, citations, done."""
-    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda question, repo_path, G, db_path, max_nodes, hop_depth: ([sample_node], sample_stats),
-    )
-    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("Hello", " world"))
-    body = _read_stream(client, _BASE_BODY)
+    _patch_explain(monkeypatch, sample_node, sample_stats)
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([sample_node], sample_stats, "What is bar?")):
+        body = _read_stream(client, _BASE_BODY)
 
     event_lines = [l for l in body.splitlines() if l.startswith("event:")]
     assert event_lines == ["event: token", "event: token", "event: citations", "event: done"]
@@ -238,14 +229,10 @@ def test_event_order(client, monkeypatch, sample_node, sample_stats):
 
 def test_citations_contain_required_fields(client, monkeypatch, sample_node, sample_stats):
     """Citations include all required fields per citation."""
-    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda question, repo_path, G, db_path, max_nodes, hop_depth: ([sample_node], sample_stats),
-    )
-    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("Hi"))
-    body = _read_stream(client, _BASE_BODY)
+    _patch_explain(monkeypatch, sample_node, sample_stats, tokens=("Hi",))
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([sample_node], sample_stats, "What is bar?")):
+        body = _read_stream(client, _BASE_BODY)
 
     lines = body.splitlines()
     citations_data = None
@@ -261,15 +248,13 @@ def test_citations_contain_required_fields(client, monkeypatch, sample_node, sam
 
 
 def test_error_event_on_retrieval_failure(client, monkeypatch):
-    """When graph_rag_retrieve raises, stream yields event: error with message."""
+    """When build_explain_context raises, stream yields event: error with message."""
     monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
     monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("db error")),
-    )
     monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen())
-    body = _read_stream(client, _BASE_BODY)
+    with patch("app.agent.orchestrator.build_explain_context",
+               side_effect=RuntimeError("db error")):
+        body = _read_stream(client, _BASE_BODY)
 
     lines = body.splitlines()
     error_data = None
@@ -284,55 +269,43 @@ def test_error_event_on_retrieval_failure(client, monkeypatch):
 
 def test_content_type_is_text_event_stream(client, monkeypatch, sample_node, sample_stats):
     """Response Content-Type must start with text/event-stream."""
-    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda question, repo_path, G, db_path, max_nodes, hop_depth: ([sample_node], sample_stats),
-    )
-    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("Hi"))
-    with client.stream("POST", "/query", json=_BASE_BODY) as r:
-        content_type = r.headers.get("content-type", "")
-        r.read()
+    _patch_explain(monkeypatch, sample_node, sample_stats, tokens=("Hi",))
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([sample_node], sample_stats, "What is bar?")):
+        with client.stream("POST", "/query", json=_BASE_BODY) as r:
+            content_type = r.headers.get("content-type", "")
+            r.read()
     assert content_type.startswith("text/event-stream")
 
 
-def test_auto_sentinel_uses_v1_path(client, monkeypatch):
-    """intent_hint='auto' routes to V1 path; orchestrator must NOT be called."""
-    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: None)
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda question, repo_path, G, db_path, max_nodes, hop_depth: ([], {}),
-    )
-    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("tok"))
-
-    with patch("app.agent.orchestrator.build_graph") as mock_bg:
+def test_auto_sentinel_uses_explain_streaming_path(client, monkeypatch, sample_node, sample_stats):
+    """intent_hint='auto' routes to explain streaming path; LangGraph orchestrator NOT called."""
+    _patch_explain(monkeypatch, sample_node, sample_stats, tokens=("tok",))
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([], {}, "What is fn?")) as mock_bec, \
+         patch("app.agent.orchestrator.build_graph") as mock_bg:
         body = _read_stream(
             client,
             {"question": "What is fn?", "repo_path": "/repo", "intent_hint": "auto", "db_path": "/repo/.nexus/graph.db"},
         )
         assert mock_bg.call_count == 0
+        assert mock_bec.call_count == 1
 
     assert "event: token" in body
 
 
-def test_none_intent_hint_uses_v1_path(client, monkeypatch):
-    """Omitting intent_hint (defaults to None) routes to V1 path; orchestrator NOT called."""
-    monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: None)
-    monkeypatch.setattr(
-        "app.api.query_router.graph_rag_retrieve",
-        lambda question, repo_path, G, db_path, max_nodes, hop_depth: ([], {}),
-    )
-    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("tok"))
-
-    with patch("app.agent.orchestrator.build_graph") as mock_bg:
+def test_none_intent_hint_uses_explain_streaming_path(client, monkeypatch, sample_node, sample_stats):
+    """Omitting intent_hint (defaults to None) routes to explain streaming path; orchestrator NOT called."""
+    _patch_explain(monkeypatch, sample_node, sample_stats, tokens=("tok",))
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([], {}, "What is fn?")) as mock_bec, \
+         patch("app.agent.orchestrator.build_graph") as mock_bg:
         body = _read_stream(
             client,
             {"question": "What is fn?", "repo_path": "/repo", "db_path": "/repo/.nexus/graph.db"},
         )
         assert mock_bg.call_count == 0
+        assert mock_bec.call_count == 1
 
     assert "event: token" in body
 
@@ -432,24 +405,25 @@ def test_v2_test_intent_routes_to_orchestrator(client, monkeypatch, nexus_dir):
     assert '"intent": "test"' in body
 
 
-def test_v2_explain_intent_routes_to_orchestrator(client, monkeypatch, nexus_dir):
+def test_v2_explain_intent_uses_streaming_path(client, monkeypatch, sample_node, sample_stats, nexus_dir):
+    """intent_hint='explain' uses the streaming explain path (tokens), NOT LangGraph."""
     monkeypatch.setattr("app.api.query_router.get_status", lambda repo_path: _complete_status())
-    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: None)
-
-    mock_explain = MagicMock()
-    mock_explain.model_dump.return_value = {"answer": "fn does X", "nodes": [], "stats": {}}
-    mock_graph = _make_mock_graph("explain", mock_explain)
+    monkeypatch.setattr("app.api.query_router.load_graph", lambda repo_path, db_path: nx.DiGraph())
+    monkeypatch.setattr("app.api.query_router.explore_stream", _make_async_gen("fn", " does X"))
     db_path = str(nexus_dir / "graph.db")
 
-    with patch("app.agent.orchestrator.build_graph", return_value=mock_graph), \
-         patch("app.config.get_settings", return_value=MagicMock(github_token="")), \
-         patch("langgraph.checkpoint.sqlite.SqliteSaver"):
+    with patch("app.agent.orchestrator.build_explain_context",
+               return_value=([sample_node], sample_stats, "Explain fn")) as mock_bec, \
+         patch("app.agent.orchestrator.build_graph") as mock_bg:
         body = _read_stream(
             client,
             {"question": "Explain fn", "repo_path": "/repo", "intent_hint": "explain", "db_path": db_path},
         )
+        assert mock_bg.call_count == 0   # LangGraph NOT invoked
+        assert mock_bec.call_count == 1  # context builder called once
 
-    assert "event: result" in body
+    assert "event: token" in body
+    assert "event: result" not in body
 
 
 def test_v2_orchestrator_error_yields_error_event(client, monkeypatch, nexus_dir):

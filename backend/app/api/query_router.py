@@ -23,7 +23,6 @@ from app.agent.explorer import explore_stream
 from app.ingestion.graph_store import load_graph
 from app.ingestion.pipeline import get_status, restore_status
 from app.models.schemas import QueryRequest
-from app.retrieval.graph_rag import graph_rag_retrieve
 
 router = APIRouter()
 
@@ -66,8 +65,8 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
             detail=f"repo '{request_body.repo_path}' has not been indexed or indexing is not complete",
         )
 
-    # V2 path: intent_hint is a named intent (not None and not "auto")
-    if request_body.intent_hint and request_body.intent_hint != "auto":
+    # V2 path: structured agents (debug / review / test) use LangGraph
+    if request_body.intent_hint and request_body.intent_hint not in ("auto", "explain"):
         async def v2_event_generator():
             try:
                 # Lazy imports — established project pattern (all V2 agents use this)
@@ -93,6 +92,7 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 initial_state = {
                     "question": request_body.question,
                     "repo_path": request_body.repo_path,
+                    "db_path": request_body.db_path,
                     "intent_hint": request_body.intent_hint,
                     "target_node_id": request_body.target_node_id,
                     "selected_file": request_body.selected_file,
@@ -171,29 +171,27 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
 
         return StreamingResponse(v2_event_generator(), media_type="text/event-stream")
 
-    # V1 path (unchanged — zero modifications below this comment)
+    # Explain path: selection-aware retrieval + streaming tokens
     async def event_generator():
         try:
-            # Load graph from cache (lazy, async-safe via to_thread)
-            G = await asyncio.to_thread(_get_graph, request_body.repo_path, request_body.db_path, request)
+            from app.agent.orchestrator import set_graph as _set_graph, build_explain_context  # noqa: PLC0415
 
-            # Step 1: retrieval — synchronous blocking I/O; run in thread pool
-            nodes, stats = await asyncio.to_thread(
-                graph_rag_retrieve,
+            G = await asyncio.to_thread(_get_graph, request_body.repo_path, request_body.db_path, request)
+            _set_graph(request_body.repo_path, G)
+
+            nodes, stats, anchored_question = await asyncio.to_thread(
+                build_explain_context,
                 request_body.question,
                 request_body.repo_path,
-                G,
                 request_body.db_path,
-                request_body.max_nodes,
-                request_body.hop_depth,
+                request_body.selected_file,
+                request_body.selected_range,
             )
 
-            # Step 2: stream tokens from LLM (async generator, no threading needed)
-            async for token in explore_stream(nodes, request_body.question):
+            async for token in explore_stream(nodes, anchored_question):
                 payload = json.dumps({"type": "token", "content": token})
                 yield f"event: token\ndata: {payload}\n\n"
 
-            # Step 3: citations event — plain dicts only (CodeNode is not JSON serializable)
             citations = [
                 {
                     "node_id": n.node_id,
@@ -206,8 +204,6 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 for n in nodes
             ]
             yield f"event: citations\ndata: {json.dumps({'type': 'citations', 'citations': citations})}\n\n"
-
-            # Step 4: done event with retrieval stats
             yield f"event: done\ndata: {json.dumps({'type': 'done', 'retrieval_stats': stats})}\n\n"
 
         except Exception as exc:  # noqa: BLE001

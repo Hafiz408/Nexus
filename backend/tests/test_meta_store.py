@@ -211,9 +211,10 @@ def test_run_ingestion_writes_embedding_meta(tmp_path):
         with patch("app.ingestion.pipeline.parse_file", return_value=([], [])):
             with patch("app.ingestion.pipeline.build_graph", return_value=G):
                 with patch("app.ingestion.pipeline.save_graph"):
-                    with patch("app.ingestion.pipeline.embed_and_store", return_value=1):
-                        with patch("app.ingestion.pipeline.get_embedding_client", return_value=mock_embedder):
-                            asyncio.run(run_ingestion(str(tmp_path), ["python"], db))
+                    with patch("app.ingestion.pipeline.delete_embeddings_for_repo"):
+                        with patch("app.ingestion.pipeline.embed_and_store", return_value=1):
+                            with patch("app.ingestion.pipeline.get_embedding_client", return_value=mock_embedder):
+                                asyncio.run(run_ingestion(str(tmp_path), ["python"], db))
 
     meta = get_embedding_meta(db)
     assert meta is not None
