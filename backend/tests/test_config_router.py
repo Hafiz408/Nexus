@@ -39,7 +39,9 @@ def reset_runtime_config():
 def test_post_config_returns_ok(client):
     resp = client.post("/api/config", json={"chat_provider": "openai", "chat_model": "gpt-4o"})
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert data["reindex_required"] is False
 
 
 def test_post_config_updates_chat_provider(client):

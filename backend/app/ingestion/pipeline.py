@@ -7,6 +7,9 @@ from app.ingestion.ast_parser import parse_file
 from app.ingestion.graph_builder import build_graph
 from app.ingestion.embedder import embed_and_store, delete_embeddings_for_files
 from app.ingestion.graph_store import save_graph, delete_nodes_for_files
+from app.ingestion.meta_store import set_embedding_meta
+from app.core.runtime_config import get_runtime_config
+from app.core.model_factory import get_embedding_client
 from app.models.schemas import IndexStatus
 
 logger = logging.getLogger(__name__)
@@ -121,6 +124,11 @@ async def run_ingestion(
         await asyncio.to_thread(save_graph, G, repo_path, db_path)
         nodes_stored = await asyncio.to_thread(embed_and_store, all_nodes, repo_path, db_path)
         logger.info("embedded and stored %d nodes", nodes_stored)
+
+        # Persist embedding config so mismatch can be detected on next config change
+        cfg = get_runtime_config()
+        embedder = get_embedding_client()
+        set_embedding_meta(db_path, cfg.embedding_provider, cfg.embedding_model, embedder.dimensions)
 
         if nodes_stored == 0:
             logger.warning(

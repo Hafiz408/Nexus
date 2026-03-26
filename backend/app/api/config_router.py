@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
 from app.core.runtime_config import update_runtime_config, get_runtime_config
+from app.ingestion.meta_store import get_embedding_meta
 
 router = APIRouter()
 
@@ -13,12 +14,26 @@ class ConfigRequest(BaseModel):
     embedding_model: Optional[str] = None
     api_keys: Optional[dict[str, str]] = None
     ollama_base_url: Optional[str] = None
+    db_path: Optional[str] = None  # if provided, check embedding mismatch
 
 
 @router.post("/config")
 def set_config(request: ConfigRequest):
-    update_runtime_config(request.model_dump(exclude_none=True))
-    return {"status": "ok"}
+    data = request.model_dump(exclude_none=True)
+    db_path = data.pop("db_path", None)
+    update_runtime_config(data)
+
+    reindex_required = False
+    if db_path:
+        stored = get_embedding_meta(db_path)
+        if stored is not None:
+            cfg = get_runtime_config()
+            reindex_required = (
+                stored["provider"] != cfg.embedding_provider or
+                stored["model"] != cfg.embedding_model
+            )
+
+    return {"status": "ok", "reindex_required": reindex_required}
 
 
 @router.get("/config/status")
