@@ -63,30 +63,76 @@ Question
 
 ## Installation
 
-### Option A — Download from GitHub Actions (latest build)
+### Option A — Install pre-built .vsix (end users)
 
 1. Go to [Actions](https://github.com/Hafiz408/Nexus/actions) → latest **Build and Package Nexus** run
 2. Download the `nexus-vsix` artifact
-3. In VS Code: `Extensions` → `...` → `Install from VSIX…` → select `nexus.vsix`
+3. In VS Code: `Extensions` → `···` → `Install from VSIX…` → select `nexus.vsix`
+
+The extension auto-starts the bundled backend — no Python or terminal required.
 
 > Artifacts are retained for 90 days. For permanent releases, see the [Releases](https://github.com/Hafiz408/Nexus/releases) page.
 
-### Option B — Build from source
+---
+
+### Option B — Run locally (development)
 
 **Prerequisites:** VS Code 1.74+ · Node.js 20+ · Python 3.11+
 
-```bash
-# 1. Build backend binary
-cd backend
-pip install -r requirements.txt pyinstaller
-python build.py           # outputs extension/bin/nexus-backend-mac (or .exe on Windows)
+#### 1. Clone and set up the backend
 
-# 2. Build and install extension
-cd extension
-npm install && npm run compile
+```bash
+git clone https://github.com/Hafiz408/Nexus.git
+cd Nexus/backend
+
+python -m venv ../venv
+source ../venv/bin/activate          # Windows: ..\venv\Scripts\activate
+pip install -r requirements.txt
+
+uvicorn app.main:app --reload --port 8000
+# → http://localhost:8000/api/health should return {"status":"ok"}
+```
+
+#### 2. Set up and run the extension
+
+In a separate terminal:
+
+```bash
+cd Nexus/extension
+npm install
+npm run build       # compiles TypeScript + React bundles into out/
+```
+
+Then in VS Code:
+1. Open the `extension/` folder (`File > Open Folder`)
+2. Press `F5` — an **Extension Development Host** window opens
+3. In that new window, open your target repo as the workspace
+
+> The extension detects that port 8000 is already occupied and skips spawning its own backend — your local `uvicorn` process is used instead (dev-mode passthrough).
+
+#### 3. Configure provider and index
+
+Inside the Extension Development Host window:
+
+1. `Cmd+Shift+P` → **Nexus: Set API Key** → pick your provider → paste key
+2. Open `Code > Settings > Extensions > Nexus` to set chat/embedding provider and model
+3. `Cmd+Shift+P` → **Nexus: Index Workspace** — indexes the open repo into `.nexus/graph.db`
+4. Once indexing completes, the chat input unlocks — ask a question
+
+---
+
+### Option C — Build .vsix from source
+
+```bash
+cd Nexus/backend
+pip install -r requirements.txt pyinstaller
+python build.py          # → extension/bin/nexus-backend-mac (or nexus-backend-win.exe)
+
+cd ../extension
+npm install && npm run build
 npm install -g @vscode/vsce
 vsce package --out nexus.vsix
-# VS Code: install nexus.vsix, or press F5 in extension/ for dev mode
+# Install: VS Code → Extensions → ··· → Install from VSIX…
 ```
 
 ## Configuration
