@@ -26,6 +26,15 @@ def restore_status_from_db() -> None:
     pass
 
 
+def restore_status(repo_path: str) -> None:
+    """Restore in-memory status to 'complete' for a previously-indexed repo.
+
+    Called by query_router when _status is empty after a restart but the
+    SQLite db confirms a valid index exists (nexus_meta has embedding info).
+    """
+    _status[repo_path] = IndexStatus(status="complete")
+
+
 def clear_status(repo_path: str) -> None:
     _status.pop(repo_path, None)
 

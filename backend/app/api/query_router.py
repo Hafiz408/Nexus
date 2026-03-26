@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 from app.agent.explorer import explore_stream
 from app.ingestion.graph_store import load_graph
-from app.ingestion.pipeline import get_status
+from app.ingestion.pipeline import get_status, restore_status
 from app.models.schemas import QueryRequest
 from app.retrieval.graph_rag import graph_rag_retrieve
 
@@ -45,6 +45,13 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
     only safe place to return HTTP errors (headers are sent once stream starts).
     """
     status = get_status(request_body.repo_path)
+    if status is None:
+        # In-memory status lost after restart — check SQLite to restore
+        from app.ingestion.meta_store import get_embedding_meta  # noqa: PLC0415
+        if get_embedding_meta(request_body.db_path) is not None:
+            restore_status(request_body.repo_path)
+            status = get_status(request_body.repo_path)
+
     logger.info(
         "POST /query repo=%r intent=%r status=%r target=%r file=%r",
         request_body.repo_path,
