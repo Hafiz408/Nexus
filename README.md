@@ -63,15 +63,13 @@ Question
 
 ## Installation
 
-### Option A — Install pre-built .vsix (end users)
+### Option A — VS Code Marketplace (recommended)
 
-1. Go to [Actions](https://github.com/Hafiz408/Nexus/actions) → latest **Build and Package Nexus** run
-2. Download the `nexus-vsix` artifact
-3. In VS Code: `Extensions` → `···` → `Install from VSIX…` → select `nexus.vsix`
+Search **Nexus AI** in the VS Code Extensions panel, or install directly:
+
+**[Install from Marketplace →](https://marketplace.visualstudio.com/items?itemName=Hafiz408.nexus-ai)**
 
 The extension auto-starts the bundled backend — no Python or terminal required.
-
-> Artifacts are retained for 90 days. For permanent releases, see the [Releases](https://github.com/Hafiz408/Nexus/releases) page.
 
 ---
 

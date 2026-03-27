@@ -2,7 +2,7 @@
   "name": "nexus-ai",
   "displayName": "Nexus AI",
   "description": "Graph-grounded code intelligence in VS Code",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "Hafiz408",
   "license": "MIT",
   "icon": "media/nexus-icon.png",

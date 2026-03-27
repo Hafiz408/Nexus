@@ -1,10 +1,10 @@
 # Nexus AI — Graph-Grounded Code Intelligence
 
-**Ask questions about your code in plain English. Get grounded, citation-backed answers — streamed live, right inside VS Code.**
+**Ask questions about your codebase in plain English. Get grounded, citation-backed answers — streamed live, right inside VS Code.**
 
 Nexus AI builds a **call graph + vector index** of your codebase and uses it to answer questions with full structural awareness. It doesn't just search for keywords — it understands how your code is connected.
 
-> **100% local & private.** Your code never leaves your machine. The index lives in `.nexus/graph.db` inside your workspace. No cloud database, no telemetry.
+> **100% local & private.** Your code never leaves your machine. The index lives in `.nexus/graph.db` inside your workspace. No cloud database, no telemetry, no server to manage.
 
 ---
 
@@ -20,39 +20,40 @@ Nexus AI builds a **call graph + vector index** of your codebase and uses it to 
 
 ---
 
-## How It Works
+## Features
 
-Nexus uses a **3-step Graph RAG pipeline**:
-
-1. **Semantic search** — embeds your question and finds the most similar code nodes
-2. **Graph expansion** — BFS traversal follows CALLS edges to surface callers and callees
-3. **Rerank** — combines semantic similarity, PageRank, and call-graph centrality to pick the best context
-
-This gives **+13% retrieval accuracy** over plain vector search, with the biggest gains in code that matters structurally but doesn't match the query keyword-for-keyword.
+- **Live streaming answers** — tokens stream into the chat panel as the LLM generates them
+- **Clickable citations** — every answer links to the exact file and line number in your editor
+- **Graph-aware retrieval** — BFS call-graph traversal surfaces structurally connected code that pure vector search misses (+13% RAGAS score vs vector-only)
+- **Incremental re-index** — file saves trigger automatic background re-indexing with a 2s debounce
+- **Secure API key storage** — keys stored in VS Code SecretStorage (OS keychain), never written to disk or `settings.json`
+- **GitHub PR integration** — post Review findings as inline comments directly to a pull request
+- **Embedding mismatch detection** — warns and blocks chat if you switch embedding models without re-indexing
+- **Multi-workspace support** — each workspace gets its own isolated `.nexus/graph.db` index
+- **Dev-mode passthrough** — if port 8000 is already occupied, the extension skips spawning its own backend
 
 ---
 
 ## Zero Setup
 
-Install the extension — that's it. The backend starts automatically in the background. No Python, no Docker, no terminal commands.
+Install the extension — that's it. The backend binary is bundled inside the extension and starts automatically when VS Code opens your workspace. No Python installation, no terminal commands, no Docker, no configuration files required.
 
 ---
 
 ## Getting Started
 
-**1. Install the extension**
+**1. Install**
 Search `Nexus AI` in the VS Code Extensions panel and click Install.
 
 **2. Set your API key**
 `Cmd+Shift+P` → `Nexus: Set API Key` → pick your provider → paste your key.
-Keys are stored in VS Code SecretStorage (OS keychain) and never written to disk.
 
 **3. Choose your provider**
-`Code → Settings → Extensions → Nexus AI`
+`Code → Settings → Extensions → Nexus AI` — pick chat and embedding provider.
 
 **4. Index your workspace**
 `Cmd+Shift+P` → `Nexus: Index Workspace`
-Creates `.nexus/graph.db` in your project. Chat unlocks once indexing completes.
+Chat unlocks once indexing completes. Your index is saved in `.nexus/graph.db` inside the workspace.
 
 **5. Ask a question**
 Click the Nexus AI icon in the Activity Bar and start chatting.
@@ -71,7 +72,7 @@ Click the Nexus AI icon in the Activity Bar and start chatting.
 
 Mix and match — use Anthropic for chat and Mistral for embeddings, for example.
 
-> **Changing embedding provider requires a re-index.** Nexus will warn you and disable chat until the new index is ready.
+> Changing embedding provider or model requires a re-index. Nexus will warn you and disable chat until the new index is ready.
 
 ---
 
@@ -100,8 +101,8 @@ Mix and match — use Anthropic for chat and Mistral for embeddings, for example
 
 ---
 
-## Source & Docs
+## Source & License
 
 - GitHub: [Hafiz408/Nexus](https://github.com/Hafiz408/Nexus)
-- Developer docs: [DEV.md](DEV.md)
 - License: MIT
+- Developer docs: [DEV.md](DEV.md)
