@@ -1,6 +1,6 @@
 {
-  "name": "nexus",
-  "displayName": "Nexus",
+  "name": "nexus-ai",
+  "displayName": "Nexus AI",
   "description": "Graph-grounded code intelligence in VS Code",
   "version": "0.1.0",
   "publisher": "Hafiz408",
