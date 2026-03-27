@@ -107,3 +107,21 @@ jobs:
         with:
           name: nexus-vsix
           path: extension/nexus.vsix
+
+  publish:
+    name: Publish to Marketplace
+    runs-on: ubuntu-latest
+    needs: [package]
+    steps:
+      - name: Download .vsix
+        uses: actions/download-artifact@v4
+        with:
+          name: nexus-vsix
+          path: extension/
+
+      - name: Publish to VS Code Marketplace
+        run: |
+          npm install -g @vscode/vsce
+          vsce publish --packagePath extension/nexus.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
