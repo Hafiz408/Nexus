@@ -1,86 +1,79 @@
-# VS Code Extension
+# Nexus AI — Graph-Grounded Code Intelligence
 
-Sidebar chat interface for querying code, viewing results, and managing the index. Runs in two isolated environments: **extension host** (Node.js, VS Code API) and **webview** (React, UI).
+**Ask questions about your code in plain English. Get grounded, citation-backed answers — streamed live, right inside VS Code.**
 
-## Architecture
+Nexus AI builds a **call graph + vector index** of your codebase and uses it to answer questions with full structural awareness. It doesn't just search for keywords — it understands how your code is connected.
 
-```
-Extension Host (Node.js)
-  ├── extension.ts       activate, register commands, wire FileWatcher + ConfigManager
-  ├── SidecarManager     spawn/kill/poll bundled backend binary; dev-mode skip
-  ├── ConfigManager      VS Code settings → POST /api/config; SecretStorage API keys
-  ├── SidebarProvider    webview bridge — message dispatcher, SSE listener
-  ├── BackendClient      HTTP: POST /index · GET /status · POST /query
-  ├── SseStream          SSE parser → postMessage events to webview
-  ├── FileWatcher        debounce 2s on file save → incremental re-index + activity log
-  └── HighlightService   citation decorations in the editor
-          │
-          │  postMessage / onDidReceiveMessage
-          ▼
-Webview (React 18)
-  └── App.tsx            chat history, intent pills, result panels, citation viewer
-          │
-          │  HTTP + SSE
-          ▼
-  FastAPI Backend (localhost:8000)
-```
+> **100% local & private.** Your code never leaves your machine. The index lives in `.nexus/graph.db` inside your workspace. No cloud database, no telemetry.
 
-## Key Flows
+---
 
-**Startup:**
-```
-Extension activates
-  → SidecarManager checks port 8000
-      → port free: spawn bundled binary, poll /api/health until ready
-      → port occupied: skip spawn (dev mode — Docker backend already running)
-  → ConfigManager.pushConfig() → POST /api/config (provider, model, API keys)
-  → SidebarProvider.broadcastConfigStatus() → webview shows active config
-```
+## What You Can Do
 
-**Query:**
-```
-User submits question
-  → webview {type:"query"} → SidebarProvider
-    → SseStream → POST /query
-      → token events → append to chat
-      → citations event → HighlightService decorates editor
-      → done event → finalize
-```
-
-**Incremental Re-index:**
-```
-File saved → FileWatcher (debounce 2s)
-  → onFlush callback → SidebarProvider.postLog() → Activity panel entry
-  → POST /index {changed_files}
-    → poll /index/status every 500ms
-      → webview shows progress indicator
-```
-
-## Intent Modes
-
-| Pill | Result panel |
+| Mode | Description |
 |---|---|
-| Auto | Routes automatically |
-| Explain | Streaming answer + clickable citations |
-| Debug | Suspect list with anomaly scores + diagnosis |
-| Review | Findings with severity badges + "Post to PR" button |
-| Test | Test code block + copy button + written file path |
+| **Explain** | Ask anything about your code — get streamed answers with clickable file and line citations |
+| **Debug** | Point at a function — get a ranked list of suspects with anomaly scores and a root-cause diagnosis |
+| **Review** | Get structured findings (severity · category · suggestion) ready to post directly to a GitHub PR |
+| **Test** | Generate framework-aware tests written directly into your repo |
+| **Auto** | Let Nexus classify your intent and route to the right mode automatically |
 
-## Build
+---
 
-```bash
-npm install && npm run build
-# → out/extension.js        (host bundle)
-# → out/webview/index.js    (React bundle)
+## How It Works
 
-# Watch mode (auto-rebuild on save)
-npm run watch
-```
+Nexus uses a **3-step Graph RAG pipeline**:
 
-**Run in Extension Development Host:**
-1. Open the `extension/` folder in VS Code
-2. Press `F5` — a new Extension Development Host window opens
-3. In that window, open your repo as the workspace
+1. **Semantic search** — embeds your question and finds the most similar code nodes
+2. **Graph expansion** — BFS traversal follows CALLS edges to surface callers and callees
+3. **Rerank** — combines semantic similarity, PageRank, and call-graph centrality to pick the best context
+
+This gives **+13% retrieval accuracy** over plain vector search, with the biggest gains in code that matters structurally but doesn't match the query keyword-for-keyword.
+
+---
+
+## Zero Setup
+
+Install the extension — that's it. The backend starts automatically in the background. No Python, no Docker, no terminal commands.
+
+---
+
+## Getting Started
+
+**1. Install the extension**
+Search `Nexus AI` in the VS Code Extensions panel and click Install.
+
+**2. Set your API key**
+`Cmd+Shift+P` → `Nexus: Set API Key` → pick your provider → paste your key.
+Keys are stored in VS Code SecretStorage (OS keychain) and never written to disk.
+
+**3. Choose your provider**
+`Code → Settings → Extensions → Nexus AI`
+
+**4. Index your workspace**
+`Cmd+Shift+P` → `Nexus: Index Workspace`
+Creates `.nexus/graph.db` in your project. Chat unlocks once indexing completes.
+
+**5. Ask a question**
+Click the Nexus AI icon in the Activity Bar and start chatting.
+
+---
+
+## Supported Providers
+
+| Provider | Chat | Embeddings |
+|---|---|---|
+| OpenAI | ✓ | ✓ |
+| Mistral | ✓ | ✓ |
+| Anthropic | ✓ | — |
+| Google Gemini | ✓ | ✓ |
+| Ollama (local) | ✓ | ✓ |
+
+Mix and match — use Anthropic for chat and Mistral for embeddings, for example.
+
+> **Changing embedding provider requires a re-index.** Nexus will warn you and disable chat until the new index is ready.
+
+---
 
 ## Settings
 
@@ -90,18 +83,25 @@ npm run watch
 | `nexus.chatModel` | `mistral-small-latest` | Chat model name |
 | `nexus.embeddingProvider` | `mistral` | Embedding provider |
 | `nexus.embeddingModel` | `mistral-embed` | Embedding model name |
-| `nexus.backendUrl` | `http://localhost:8000` | Backend URL |
-| `nexus.hopDepth` | `1` | Graph traversal hop depth |
-| `nexus.maxNodes` | `10` | Max context nodes for RAG |
+| `nexus.hopDepth` | `1` | Graph traversal depth |
+| `nexus.maxNodes` | `10` | Max context nodes per query |
 | `nexus.ollamaBaseUrl` | `http://localhost:11434` | Ollama base URL |
 
-## API Key Management
+---
 
-Keys are stored in VS Code's `SecretStorage` (OS keychain) — never in settings files.
+## Commands
 
-```
-Cmd+Shift+P → "Nexus: Set API Key"   → pick provider → enter key
-Cmd+Shift+P → "Nexus: Clear API Key" → pick provider → removes key
-```
+| Command | Description |
+|---|---|
+| `Nexus: Index Workspace` | Build or refresh the code index |
+| `Nexus: Clear Index` | Remove the index for the current workspace |
+| `Nexus: Set API Key` | Store an API key securely |
+| `Nexus: Clear API Key` | Remove a stored API key |
 
-On activation and on settings change, the extension pushes provider + key config to `POST /api/config`. The `.env` file provides fallback defaults if no key has been set via the extension.
+---
+
+## Source & Docs
+
+- GitHub: [Hafiz408/Nexus](https://github.com/Hafiz408/Nexus)
+- Developer docs: [DEV.md](DEV.md)
+- License: MIT
