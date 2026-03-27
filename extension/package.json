@@ -4,6 +4,7 @@
   "description": "Graph-grounded code intelligence in VS Code",
   "version": "0.1.0",
   "publisher": "Hafiz408",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Hafiz408/Nexus"
