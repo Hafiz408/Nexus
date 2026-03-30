@@ -43,7 +43,7 @@ Install the extension — that's it. The backend binary is bundled inside the ex
 ## Getting Started
 
 **1. Install**
-Search `Nexus AI` in the VS Code Extensions panel and click Install.
+Search `Nexus AI` in the VS Code Extensions panel and click Install, or install from [Open VSX Registry](https://open-vsx.org/extension/Hafiz408/nexus-ai) for VSCodium and other open editors.
 
 **2. Set your API key**
 `Cmd+Shift+P` → `Nexus: Set API Key` → pick your provider → paste your key.
@@ -104,5 +104,7 @@ Mix and match — use Anthropic for chat and Mistral for embeddings, for example
 ## Source & License
 
 - GitHub: [Hafiz408/Nexus](https://github.com/Hafiz408/Nexus)
+- VS Code Marketplace: [Nexus AI](https://marketplace.visualstudio.com/items?itemName=Hafiz408.nexus-ai)
+- Open VSX Registry: [Nexus AI](https://open-vsx.org/extension/Hafiz408/nexus-ai)
 - License: MIT
 - Developer docs: [DEV.md](DEV.md)
