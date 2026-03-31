@@ -101,8 +101,9 @@ export class SidecarManager implements vscode.Disposable {
   }
 
   private _binaryName(): string | undefined {
-    if (process.platform === 'darwin') { return 'nexus-backend-mac'; }
-    if (process.platform === 'win32') { return 'nexus-backend-win.exe'; }
+    // --onedir layout: extension/bin/<dir>/<executable>
+    if (process.platform === 'darwin') { return path.join('nexus-backend-mac', 'nexus-backend-mac'); }
+    if (process.platform === 'win32') { return path.join('nexus-backend-win', 'nexus-backend-win.exe'); }
     return undefined;
   }
 

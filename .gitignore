@@ -37,3 +37,5 @@ nexus_v2_starter_prompt.md
 /.planning
 test_output.py
 *.db
+/backend/build
+/extension/bin

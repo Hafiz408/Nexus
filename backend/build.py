@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-Build script: produces a single-file Nexus backend binary using PyInstaller.
-Output: nexus-backend-mac (macOS) or nexus-backend-win.exe (Windows)
+Build script: produces a Nexus backend binary using PyInstaller.
+Output layout (--onedir for fast startup — no per-launch extraction):
+  extension/bin/nexus-backend-mac/nexus-backend-mac   (macOS)
+  extension/bin/nexus-backend-win/nexus-backend-win.exe  (Windows)
+SidecarManager must reference the executable inside the directory, not the
+directory itself.
 """
 import sys
 import subprocess
@@ -47,9 +51,9 @@ def main():
 
     cmd = [
         sys.executable, '-m', 'PyInstaller',
-        '--onefile',
+        '--onedir',   # folder layout: no per-launch extraction → ~1s startup vs ~25s
         '--name', name,
-        '--distpath', '../extension/bin',  # output to extension/bin/ relative to backend/
+        '--distpath', '../extension/bin',  # output to extension/bin/<name>/ relative to backend/
         '--workpath', 'build/_pyinstaller',
         '--specpath', 'build',
         '--hidden-import', 'uvicorn.logging',
@@ -71,6 +75,8 @@ def main():
         '--collect-all', 'tree_sitter',
         '--collect-all', 'tree_sitter_python',
         '--collect-all', 'tree_sitter_typescript',
+        '--collect-all', 'numpy',
+        '--collect-all', 'scipy',
         'run.py',  # entrypoint that calls uvicorn.run(app)
     ]
 
