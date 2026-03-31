@@ -8,6 +8,8 @@ tree-sitter==0.25.2
 tree-sitter-python==0.25.0
 tree-sitter-typescript==0.23.2
 networkx>=3.4
+numpy
+scipy>=1.10.0
 mistralai>=2.0.0
 langchain-mistralai>=0.2.0
 langchain-anthropic>=0.3.0
