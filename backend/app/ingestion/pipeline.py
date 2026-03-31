@@ -5,7 +5,7 @@ from asyncio import Semaphore
 from app.ingestion.walker import walk_repo, EXTENSION_TO_LANGUAGE
 from app.ingestion.ast_parser import parse_file
 from app.ingestion.graph_builder import build_graph
-from app.ingestion.embedder import embed_and_store, delete_embeddings_for_files, delete_embeddings_for_repo
+from app.ingestion.embedder import embed_and_store, delete_embeddings_for_files, delete_embeddings_for_repo, init_vec_table
 from app.ingestion.graph_store import save_graph, delete_nodes_for_files
 from app.ingestion.meta_store import set_embedding_meta
 from app.core.runtime_config import get_runtime_config
@@ -137,6 +137,9 @@ async def run_ingestion(
         # in the embeddings DB, causing graph_rag_retrieve to return seeds that
         # expand_via_graph cannot find, yielding empty context and "I'm not certain".
         if changed_files is None:
+            # Ensure schema exists before deleting — on a fresh DB the tables
+            # don't exist yet (init_vec_table is otherwise called inside embed_and_store).
+            await asyncio.to_thread(init_vec_table, db_path)
             await asyncio.to_thread(delete_embeddings_for_repo, repo_path, db_path)
         nodes_stored = await asyncio.to_thread(embed_and_store, all_nodes, repo_path, db_path)
         logger.info("embedded and stored %d nodes", nodes_stored)

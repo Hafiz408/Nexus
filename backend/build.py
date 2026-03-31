@@ -98,7 +98,7 @@ def main():
     onedir_path = dist_dir / name          # e.g. extension/bin/nexus-backend-mac/
     archive_path = dist_dir / f'{name}.tar.gz'
 
-    print(f"Archiving {onedir_path} → {archive_path} ...")
+    print(f"Archiving {onedir_path} -> {archive_path} ...")
     with tarfile.open(archive_path, 'w:gz') as tar:
         tar.add(onedir_path, arcname=name)
 
