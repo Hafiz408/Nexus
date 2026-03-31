@@ -13,25 +13,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - name: Set up Python with loadable sqlite extensions (Homebrew)
+        run: |
+          brew install python@3.11
+          echo "$(brew --prefix python@3.11)/bin" >> $GITHUB_PATH
 
       - name: Verify sqlite-vec extension support
         run: |
-          python -c "import sqlite3; c=sqlite3.connect(':memory:'); c.enable_load_extension(True); print('enable_load_extension: OK')"
+          python3 -c "import sqlite3; c=sqlite3.connect(':memory:'); c.enable_load_extension(True); print('enable_load_extension: OK')"
 
       - name: Install dependencies
         run: |
           cd backend
-          pip install -r requirements.txt
-          pip install pyinstaller
+          pip3 install -r requirements.txt
+          pip3 install pyinstaller
 
       - name: Build binary
         run: |
           cd backend
-          python build.py
+          python3 build.py
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
