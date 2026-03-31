@@ -63,9 +63,13 @@ jobs:
             echo "Poll $i: $status"
             state=$(echo "$status" | python3 -c "import sys, json; print(json.load(sys.stdin)['status'])")
             if [ "$state" = "complete" ]; then
-              nodes=$(echo "$status" | python3 -c "import sys, json; print(json.load(sys.stdin)['nodes_indexed'])")
-              echo "Index complete — nodes: $nodes"
-              [ "$nodes" -gt 0 ] || { echo "ERROR: 0 nodes indexed"; exit 1; }
+              # edges_indexed reflects graph construction (no API key needed).
+              # nodes_indexed reflects embedding storage which requires a key — skip in CI.
+              edges=$(echo "$status" | python3 -c "import sys, json; print(json.load(sys.stdin)['edges_indexed'])")
+              files=$(echo "$status" | python3 -c "import sys, json; print(json.load(sys.stdin)['files_processed'])")
+              echo "Index complete — edges: $edges, files: $files"
+              [ "$edges" -gt 0 ] || { echo "ERROR: 0 edges — graph was not built"; exit 1; }
+              [ "$files" -gt 0 ] || { echo "ERROR: 0 files processed"; exit 1; }
               break
             elif [ "$state" = "failed" ]; then
               echo "ERROR: indexing failed"
