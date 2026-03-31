@@ -3,6 +3,7 @@ import * as cp from 'child_process';
 import * as path from 'path';
 import * as net from 'net';
 import * as fs from 'fs';
+import * as os from 'os';
 
 interface BackendLock {
   pid: number;
@@ -100,11 +101,66 @@ export class SidecarManager implements vscode.Disposable {
     } catch { return false; }
   }
 
-  private _binaryName(): string | undefined {
-    // --onedir layout: extension/bin/<dir>/<executable>
+  private _archiveName(): string | undefined {
+    if (process.platform === 'darwin') { return 'nexus-backend-mac.tar.gz'; }
+    if (process.platform === 'win32') { return 'nexus-backend-win.tar.gz'; }
+    return undefined;
+  }
+
+  /** Executable path inside the extracted directory. */
+  private _executableName(): string | undefined {
     if (process.platform === 'darwin') { return path.join('nexus-backend-mac', 'nexus-backend-mac'); }
     if (process.platform === 'win32') { return path.join('nexus-backend-win', 'nexus-backend-win.exe'); }
     return undefined;
+  }
+
+  /**
+   * Extract the bundled .tar.gz into globalStoragePath/<version>/ on first run,
+   * then return the path to the executable.  Subsequent calls for the same version
+   * skip extraction and return immediately.
+   */
+  private async _ensureExtracted(version: string): Promise<string | undefined> {
+    const archiveName = this._archiveName();
+    const executableName = this._executableName();
+    if (!archiveName || !executableName) { return undefined; }
+
+    const archivePath = path.join(this._extensionPath, 'bin', archiveName);
+    if (!fs.existsSync(archivePath)) {
+      this._channel.appendLine(`[SidecarManager] Archive not found at ${archivePath}. Skipping spawn.`);
+      return undefined;
+    }
+
+    // Cache extracted files under globalStoragePath/<version>/ so we only
+    // extract once per version and re-extract automatically on upgrade.
+    const cacheDir = path.join(path.dirname(this._lockfilePath), 'backend', version);
+    const executablePath = path.join(cacheDir, executableName);
+
+    if (fs.existsSync(executablePath)) {
+      this._channel.appendLine(`[SidecarManager] Using cached backend at ${executablePath}`);
+      return executablePath;
+    }
+
+    this._channel.appendLine(`[SidecarManager] Extracting backend archive to ${cacheDir} ...`);
+    fs.mkdirSync(cacheDir, { recursive: true });
+
+    await new Promise<void>((resolve, reject) => {
+      // `tar` is available on macOS, Linux, and Windows 10+.
+      const tarArgs = process.platform === 'win32'
+        ? ['-xzf', archivePath, '-C', cacheDir]
+        : ['-xzf', archivePath, '-C', cacheDir];
+      const tar = cp.spawn('tar', tarArgs, { stdio: 'pipe' });
+      tar.on('close', (code) => {
+        if (code === 0) { resolve(); }
+        else { reject(new Error(`tar exited with code ${code}`)); }
+      });
+      tar.on('error', reject);
+    });
+
+    // Ensure the executable bit is set (tar may not preserve it on Windows).
+    try { fs.chmodSync(executablePath, 0o755); } catch { /* non-fatal */ }
+
+    this._channel.appendLine(`[SidecarManager] Extraction complete.`);
+    return executablePath;
   }
 
   // ---------------------------------------------------------------------------
@@ -137,8 +193,7 @@ export class SidecarManager implements vscode.Disposable {
     }
 
     // --- Spawn path ---
-    const binaryName = this._binaryName();
-    if (!binaryName) {
+    if (!this._archiveName()) {
       this._channel.appendLine(
         `[SidecarManager] Unsupported platform: ${process.platform}. Skipping spawn.`
       );
@@ -146,11 +201,8 @@ export class SidecarManager implements vscode.Disposable {
       return this._backendUrl;
     }
 
-    const binaryPath = path.join(this._extensionPath, 'bin', binaryName);
-    if (!fs.existsSync(binaryPath)) {
-      this._channel.appendLine(
-        `[SidecarManager] Binary not found at ${binaryPath}. Skipping spawn.`
-      );
+    const binaryPath = await this._ensureExtracted(version);
+    if (!binaryPath) {
       this._backendUrl = 'http://127.0.0.1:8000';
       return this._backendUrl;
     }

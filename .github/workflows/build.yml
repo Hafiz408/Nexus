@@ -40,7 +40,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nexus-backend-mac
-          path: extension/bin/nexus-backend-mac/
+          path: extension/bin/nexus-backend-mac.tar.gz
 
   build-win:
     name: Build backend (Windows)
@@ -72,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nexus-backend-win
-          path: extension/bin/nexus-backend-win/
+          path: extension/bin/nexus-backend-win.tar.gz
 
   package:
     name: Package .vsix
@@ -98,8 +98,6 @@ jobs:
           name: nexus-backend-win
           path: extension/bin/
 
-      - name: Make Mac binary executable
-        run: chmod +x extension/bin/nexus-backend-mac/nexus-backend-mac
 
       - name: Install extension dependencies
         run: cd extension && npm ci

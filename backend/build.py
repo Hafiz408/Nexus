@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """
 Build script: produces a Nexus backend binary using PyInstaller.
-Output layout (--onedir for fast startup — no per-launch extraction):
-  extension/bin/nexus-backend-mac/nexus-backend-mac   (macOS)
-  extension/bin/nexus-backend-win/nexus-backend-win.exe  (Windows)
-SidecarManager must reference the executable inside the directory, not the
-directory itself.
+
+Strategy: --onedir for fast startup, then tar the output directory into a
+single .tar.gz so vsce packaging sees one file (not thousands).
+
+Output:
+  extension/bin/nexus-backend-mac.tar.gz   (macOS)
+  extension/bin/nexus-backend-win.tar.gz   (Windows)
+
+SidecarManager extracts the archive once into globalStoragePath keyed by
+version, then spawns the cached executable on every subsequent launch.
 """
 import sys
 import subprocess
 import platform
+import tarfile
 from pathlib import Path
 
 
@@ -82,7 +88,24 @@ def main():
 
     print(f"Building {name}...")
     result = subprocess.run(cmd, cwd=str(Path(__file__).parent))
-    sys.exit(result.returncode)
+    if result.returncode != 0:
+        sys.exit(result.returncode)
+
+    # Tar the --onedir output into a single archive so vsce packaging works.
+    # vsce's secret scanner fails with EISDIR when it walks thousands of loose files.
+    backend_dir = Path(__file__).parent
+    dist_dir = backend_dir.parent / 'extension' / 'bin'
+    onedir_path = dist_dir / name          # e.g. extension/bin/nexus-backend-mac/
+    archive_path = dist_dir / f'{name}.tar.gz'
+
+    print(f"Archiving {onedir_path} → {archive_path} ...")
+    with tarfile.open(archive_path, 'w:gz') as tar:
+        tar.add(onedir_path, arcname=name)
+
+    # Remove the raw directory so only the archive ships in the VSIX.
+    import shutil
+    shutil.rmtree(onedir_path)
+    print(f"Done. Archive size: {archive_path.stat().st_size / 1_048_576:.1f} MB")
 
 
 if __name__ == '__main__':
