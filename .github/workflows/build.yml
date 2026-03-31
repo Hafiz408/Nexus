@@ -24,14 +24,17 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
           cd backend
-          pip3 install -r requirements.txt
-          pip3 install pyinstaller
+          pip install -r requirements.txt
+          pip install pyinstaller
 
       - name: Build binary
         run: |
+          source .venv/bin/activate
           cd backend
-          python3 build.py
+          python build.py
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
