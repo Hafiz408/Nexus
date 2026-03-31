@@ -65,6 +65,12 @@ def main():
         '--hidden-import', 'app.api.config_router',
         '--hidden-import', 'app.api.index_router',
         '--hidden-import', 'app.api.query_router',
+        # Collect all files (including .dylib/.so/.abi3.so data files) for
+        # packages that load native extensions at runtime via __file__ paths.
+        '--collect-all', 'sqlite_vec',
+        '--collect-all', 'tree_sitter',
+        '--collect-all', 'tree_sitter_python',
+        '--collect-all', 'tree_sitter_typescript',
         'run.py',  # entrypoint that calls uvicorn.run(app)
     ]
 

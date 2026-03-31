@@ -135,7 +135,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           break;
 
         case 'configureKeys':
-          void vscode.commands.executeCommand('nexus.setup');
+          void vscode.commands.executeCommand('nexus.setApiKey');
           break;
 
         case 'postReviewToPR': {
