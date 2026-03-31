@@ -1,5 +1,9 @@
 import logging
+import os
+import signal
 import sys
+import threading
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,6 +14,26 @@ from app.api.index_router import router as index_router
 from app.api.query_router import router as query_router
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Idle watchdog — self-terminate after this many seconds with no requests.
+# Allows the detached sidecar to clean up when all IDE windows are closed.
+# ---------------------------------------------------------------------------
+_IDLE_TIMEOUT = 600  # 10 minutes
+_last_request_time = time.monotonic()
+
+
+def _start_idle_watchdog() -> None:
+    """Start a daemon thread that sends SIGTERM to this process after _IDLE_TIMEOUT idle seconds."""
+    def _watch() -> None:
+        while True:
+            time.sleep(30)
+            if time.monotonic() - _last_request_time > _IDLE_TIMEOUT:
+                logger.info("Nexus backend idle for %ds — shutting down.", _IDLE_TIMEOUT)
+                os.kill(os.getpid(), signal.SIGTERM)
+
+    threading.Thread(target=_watch, daemon=True, name="idle-watchdog").start()
+
 
 # Configure root logger so all module-level loggers (pipeline, walker, etc.) emit output
 logging.basicConfig(
@@ -44,10 +68,19 @@ def _check_sqlite_vec() -> None:
 async def lifespan(app: FastAPI):
     _check_sqlite_vec()
     app.state.graph_cache = {}   # dict[str, nx.DiGraph] — lazy per-repo graph cache
+    _start_idle_watchdog()
     yield
 
 
 app = FastAPI(title="Nexus API", version="1.0.0", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def _reset_idle_timer(request, call_next):
+    global _last_request_time
+    _last_request_time = time.monotonic()
+    return await call_next(request)
+
 
 # CORS must be registered before include_router — middleware wraps the full app stack
 app.add_middleware(

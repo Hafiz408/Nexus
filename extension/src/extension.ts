@@ -11,14 +11,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
 async function _activate(context: vscode.ExtensionContext): Promise<void> {
   const config = vscode.workspace.getConfiguration('nexus');
-  const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
 
-  // SIDECAR-01: Spawn bundled backend binary; skip if port is already occupied (dev mode)
-  const sidecar = new SidecarManager(context.extensionPath, backendUrl);
+  // SIDECAR-01: Start or reuse the bundled backend binary.
+  // Uses a lockfile in globalStorageUri so multiple IDE windows share one process.
+  // Developer override: if nexus.backendUrl is explicitly set, skip the sidecar entirely.
+  const backendUrlOverride = config.get<string>('backendUrl', '');
+  const useOverride = backendUrlOverride && backendUrlOverride !== 'http://localhost:8000';
+
+  const sidecar = new SidecarManager(context.extensionPath, context.globalStorageUri.fsPath);
   context.subscriptions.push(sidecar);
 
-  const started = await sidecar.start();
-  if (started) {
+  const backendUrl = useOverride
+    ? backendUrlOverride
+    : await sidecar.start();
+
+  if (!useOverride && sidecar.didSpawn) {
     try {
       await sidecar.waitForHealth();
     } catch (err: unknown) {

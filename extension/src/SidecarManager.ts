@@ -4,41 +4,201 @@ import * as path from 'path';
 import * as net from 'net';
 import * as fs from 'fs';
 
+interface BackendLock {
+  pid: number;
+  port: number;
+  version: string;
+}
+
 export class SidecarManager implements vscode.Disposable {
   private _process: cp.ChildProcess | undefined;
+  private _didSpawn = false;
   private readonly _channel: vscode.OutputChannel;
-  private readonly _backendUrl: string;
   private readonly _extensionPath: string;
+  private readonly _lockfilePath: string;
+  private _backendUrl = '';
 
-  constructor(extensionPath: string, backendUrl: string) {
+  /** True if this instance launched a new backend process (vs. reusing an existing one). */
+  get didSpawn(): boolean { return this._didSpawn; }
+
+  /** The backend URL resolved by start(). Empty string until start() is called. */
+  get backendUrl(): string { return this._backendUrl; }
+
+  constructor(extensionPath: string, globalStoragePath: string) {
     this._extensionPath = extensionPath;
-    this._backendUrl = backendUrl;
+    this._lockfilePath = path.join(globalStoragePath, 'backend.lock');
     this._channel = vscode.window.createOutputChannel('Nexus Backend');
   }
 
-  /** Returns true if port 8000 is already occupied (dev mode) */
-  private _isPortOccupied(): Promise<boolean> {
-    return new Promise((resolve) => {
-      const socket = net.createConnection({ host: 'localhost', port: 8000 });
-      const timer = setTimeout(() => {
-        socket.destroy();
-        resolve(false);
-      }, 500);
+  // ---------------------------------------------------------------------------
+  // Lockfile helpers
+  // ---------------------------------------------------------------------------
 
-      socket.on('connect', () => {
-        clearTimeout(timer);
-        socket.destroy();
-        resolve(true);
-      });
+  private _readLock(): BackendLock | null {
+    try {
+      return JSON.parse(fs.readFileSync(this._lockfilePath, 'utf-8')) as BackendLock;
+    } catch { return null; }
+  }
 
-      socket.on('error', () => {
-        clearTimeout(timer);
-        resolve(false);
+  private _writeLock(lock: BackendLock): void {
+    try {
+      fs.mkdirSync(path.dirname(this._lockfilePath), { recursive: true });
+      // Atomic write: temp file + rename prevents a concurrent reader seeing partial JSON
+      const tmp = this._lockfilePath + '.tmp';
+      fs.writeFileSync(tmp, JSON.stringify(lock));
+      fs.renameSync(tmp, this._lockfilePath);
+    } catch { /* non-fatal — dynamic port still works, reuse just won't happen */ }
+  }
+
+  /** Delete the lockfile only if it still belongs to the given PID. */
+  private _deleteLock(ownedPid: number): void {
+    try {
+      const lock = this._readLock();
+      if (lock?.pid === ownedPid) {
+        fs.unlinkSync(this._lockfilePath);
+      }
+    } catch { /* already gone */ }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Port + process helpers
+  // ---------------------------------------------------------------------------
+
+  private _getVersion(): string {
+    try {
+      const pkg = JSON.parse(
+        fs.readFileSync(path.join(this._extensionPath, 'package.json'), 'utf-8')
+      ) as { version?: string };
+      return pkg.version ?? '0.0.0';
+    } catch { return '0.0.0'; }
+  }
+
+  private _isProcessAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0); // signal 0 = liveness probe; throws ESRCH if process is gone
+      return true;
+    } catch { return false; }
+  }
+
+  private _getFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const server = net.createServer();
+      server.listen(0, '127.0.0.1', () => {
+        const { port } = server.address() as net.AddressInfo;
+        server.close(() => resolve(port));
       });
+      server.on('error', reject);
     });
   }
 
-  /** Poll GET /api/health until HTTP 200 or timeout */
+  private async _checkHealth(url: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${url}/api/health`);
+      if (!res.ok) { return false; }
+      const json = await res.json() as { status?: string };
+      return json.status === 'ok';
+    } catch { return false; }
+  }
+
+  private _binaryName(): string | undefined {
+    if (process.platform === 'darwin') { return 'nexus-backend-mac'; }
+    if (process.platform === 'win32') { return 'nexus-backend-win.exe'; }
+    return undefined;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Public API
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Start or reuse a backend process.
+   *
+   * Reuse path  : lockfile exists + version matches + PID alive + healthy  → return existing URL.
+   * Spawn path  : anything else → pick a free OS port, spawn binary, write lockfile.
+   * Skipped     : unsupported platform or binary missing → returns fallback URL (nothing spawned).
+   *
+   * Check `didSpawn` after calling to decide whether to wait for health.
+   */
+  async start(): Promise<string> {
+    const version = this._getVersion();
+
+    // --- Reuse path ---
+    const lock = this._readLock();
+    if (lock && lock.version === version && this._isProcessAlive(lock.pid)) {
+      const url = `http://127.0.0.1:${lock.port}`;
+      if (await this._checkHealth(url)) {
+        this._channel.appendLine(
+          `[SidecarManager] Reusing existing backend at ${url} (PID ${lock.pid}).`
+        );
+        this._backendUrl = url;
+        return url;
+      }
+    }
+
+    // --- Spawn path ---
+    const binaryName = this._binaryName();
+    if (!binaryName) {
+      this._channel.appendLine(
+        `[SidecarManager] Unsupported platform: ${process.platform}. Skipping spawn.`
+      );
+      this._backendUrl = 'http://127.0.0.1:8000';
+      return this._backendUrl;
+    }
+
+    const binaryPath = path.join(this._extensionPath, 'bin', binaryName);
+    if (!fs.existsSync(binaryPath)) {
+      this._channel.appendLine(
+        `[SidecarManager] Binary not found at ${binaryPath}. Skipping spawn.`
+      );
+      this._backendUrl = 'http://127.0.0.1:8000';
+      return this._backendUrl;
+    }
+
+    const port = await this._getFreePort();
+    const url = `http://127.0.0.1:${port}`;
+    this._channel.appendLine(`[SidecarManager] Spawning backend on port ${port}: ${binaryPath}`);
+
+    const proc = cp.spawn(binaryPath, ['--port', String(port)], {
+      detached: true,              // independent of the extension host process
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    proc.unref();                  // don't keep the extension host alive for this child
+    this._process = proc;
+    this._didSpawn = true;
+
+    proc.stdout?.on('data', (data: Buffer) => {
+      for (const line of data.toString().split(/\r?\n/)) {
+        if (line.trim()) { this._channel.appendLine(`[stdout] ${line}`); }
+      }
+    });
+
+    proc.stderr?.on('data', (data: Buffer) => {
+      for (const line of data.toString().split(/\r?\n/)) {
+        if (line.trim()) { this._channel.appendLine(`[stderr] ${line}`); }
+      }
+    });
+
+    proc.on('exit', (code, signal) => {
+      this._channel.appendLine(
+        `[SidecarManager] Backend process exited — code: ${code}, signal: ${signal}`
+      );
+      this._process = undefined;
+    });
+
+    proc.on('error', (err) => {
+      this._channel.appendLine(`[SidecarManager] Failed to start backend: ${err.message}`);
+      this._process = undefined;
+    });
+
+    if (proc.pid !== undefined) {
+      this._writeLock({ pid: proc.pid, port, version });
+    }
+
+    this._backendUrl = url;
+    return url;
+  }
+
+  /** Poll GET /api/health until HTTP 200 or timeout. Only call this after a fresh spawn. */
   async waitForHealth(timeoutMs = 30_000): Promise<void> {
     const healthUrl = `${this._backendUrl}/api/health`;
     const deadline = Date.now() + timeoutMs;
@@ -53,92 +213,25 @@ export class SidecarManager implements vscode.Disposable {
       } catch {
         // backend not ready yet — keep polling
       }
-
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
     }
 
-    throw new Error(`[SidecarManager] Backend did not respond with HTTP 200 within ${timeoutMs}ms`);
+    throw new Error(`[SidecarManager] Backend did not respond within ${timeoutMs}ms`);
   }
 
-  /** Resolve the binary name for the current platform */
-  private _binaryName(): string | undefined {
-    if (process.platform === 'darwin') {
-      return 'nexus-backend-mac';
-    } else if (process.platform === 'win32') {
-      return 'nexus-backend-win.exe';
-    }
-    return undefined;
-  }
-
-  /** Spawn the sidecar binary. Returns false if port already occupied (dev skip). */
-  async start(): Promise<boolean> {
-    const occupied = await this._isPortOccupied();
-    if (occupied) {
-      this._channel.appendLine('[SidecarManager] Port 8000 already in use — skipping sidecar spawn (dev mode).');
-      return false;
-    }
-
-    const binaryName = this._binaryName();
-    if (!binaryName) {
-      this._channel.appendLine(`[SidecarManager] Unsupported platform: ${process.platform}. Skipping spawn.`);
-      return false;
-    }
-
-    const binaryPath = path.join(this._extensionPath, 'bin', binaryName);
-
-    if (!fs.existsSync(binaryPath)) {
-      this._channel.appendLine(`[SidecarManager] Binary not found at ${binaryPath}. Skipping spawn.`);
-      return false;
-    }
-
-    this._channel.appendLine(`[SidecarManager] Spawning backend: ${binaryPath}`);
-
-    const proc = cp.spawn(binaryPath, [], { stdio: ['ignore', 'pipe', 'pipe'] });
-    this._process = proc;
-
-    proc.stdout?.on('data', (data: Buffer) => {
-      const lines = data.toString().split(/\r?\n/);
-      for (const line of lines) {
-        if (line.trim()) {
-          this._channel.appendLine(`[stdout] ${line}`);
-        }
-      }
-    });
-
-    proc.stderr?.on('data', (data: Buffer) => {
-      const lines = data.toString().split(/\r?\n/);
-      for (const line of lines) {
-        if (line.trim()) {
-          this._channel.appendLine(`[stderr] ${line}`);
-        }
-      }
-    });
-
-    proc.on('exit', (code, signal) => {
-      this._channel.appendLine(`[SidecarManager] Backend process exited — code: ${code}, signal: ${signal}`);
-      this._process = undefined;
-    });
-
-    proc.on('error', (err) => {
-      this._channel.appendLine(`[SidecarManager] Failed to start backend process: ${err.message}`);
-      this._process = undefined;
-    });
-
-    return true;
-  }
-
-  /** Reveal the backend output channel in the UI */
+  /** Reveal the backend output channel in the UI. */
   showOutputChannel(): void {
     this._channel.show();
   }
 
-  /** Kill the sidecar process */
+  /**
+   * Clean up this manager instance.
+   *
+   * The backend process is NOT killed — it is detached and shared across all
+   * windows. It will self-terminate via its idle watchdog once all clients stop
+   * sending requests.
+   */
   dispose(): void {
-    if (this._process) {
-      this._channel.appendLine('[SidecarManager] Terminating backend process.');
-      this._process.kill();
-      this._process = undefined;
-    }
     this._channel.dispose();
   }
 }

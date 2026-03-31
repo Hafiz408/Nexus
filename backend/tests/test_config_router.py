@@ -97,7 +97,9 @@ def test_health_returns_200(client):
 
 def test_health_returns_ok_json(client):
     resp = client.get("/api/health")
-    assert resp.json() == {"status": "ok"}
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert "version" in data
 
 
 # ---------------------------------------------------------------------------

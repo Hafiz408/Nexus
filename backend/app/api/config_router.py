@@ -6,6 +6,8 @@ from app.ingestion.meta_store import get_embedding_meta
 
 router = APIRouter()
 
+NEXUS_VERSION = "4.0.6"
+
 
 class ConfigRequest(BaseModel):
     chat_provider: Optional[str] = None
@@ -50,4 +52,4 @@ def get_config_status():
 
 @router.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": NEXUS_VERSION}
