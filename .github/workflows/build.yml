@@ -19,7 +19,8 @@ jobs:
           python-version: '3.11'
 
       - name: Verify sqlite-vec extension support
-        run: python -c "import sqlite3; c=sqlite3.connect(':memory:'); c.enable_load_extension(True); print('enable_load_extension: OK')"
+        run: |
+          python -c "import sqlite3; c=sqlite3.connect(':memory:'); c.enable_load_extension(True); print('enable_load_extension: OK')"
 
       - name: Install dependencies
         run: |
@@ -50,7 +51,8 @@ jobs:
           python-version: '3.11'
 
       - name: Verify sqlite-vec extension support
-        run: python -c "import sqlite3; c=sqlite3.connect(':memory:'); c.enable_load_extension(True); print('enable_load_extension: OK')"
+        run: |
+          python -c "import sqlite3; c=sqlite3.connect(':memory:'); c.enable_load_extension(True); print('enable_load_extension: OK')"
 
       - name: Install dependencies
         run: |
