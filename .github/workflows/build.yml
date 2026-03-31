@@ -18,6 +18,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install backend dependencies
         run: cd backend && pip install -r requirements.prod.txt
 
@@ -41,6 +46,15 @@ jobs:
           print('Health check: PASSED')
           "
 
+      - name: Push config with API key
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          curl -sf -X POST http://127.0.0.1:8900/api/config \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_provider\": \"mistral\", \"embedding_provider\": \"mistral\", \"chat_model\": \"mistral-small-latest\", \"embedding_model\": \"mistral-embed\", \"api_keys\": {\"mistral\": \"$MISTRAL_API_KEY\"}, \"db_path\": \"/tmp/ci-test.db\"}"
+          echo "Config pushed"
+
       - name: Index smoke test
         run: |
           REPO_PATH="$(pwd)/backend/app"
@@ -55,9 +69,11 @@ jobs:
             if [ "$state" = "complete" ]; then
               edges=$(echo "$status" | python3 -c "import sys, json; print(json.load(sys.stdin)['edges_indexed'])")
               files=$(echo "$status" | python3 -c "import sys, json; print(json.load(sys.stdin)['files_processed'])")
-              echo "Index complete — edges: $edges, files: $files"
-              [ "$edges" -gt 0 ] || { echo "ERROR: 0 edges"; exit 1; }
+              nodes=$(echo "$status" | python3 -c "import sys, json; print(json.load(sys.stdin)['nodes_indexed'])")
+              echo "Index complete — edges: $edges, files: $files, nodes (embedded): $nodes"
+              [ "$edges" -gt 0 ] || { echo "ERROR: 0 edges — graph was not built"; exit 1; }
               [ "$files" -gt 0 ] || { echo "ERROR: 0 files processed"; exit 1; }
+              [ "$nodes" -gt 0 ] || { echo "ERROR: 0 nodes embedded — check MISTRAL_API_KEY secret"; exit 1; }
               break
             elif [ "$state" = "failed" ]; then
               echo "ERROR: indexing failed"; exit 1
@@ -65,14 +81,17 @@ jobs:
             sleep 2
           done
 
-      - name: Chat smoke test (SSE stream)
+      - name: Chat smoke test (full LLM stream)
         run: |
           REPO_PATH="$(pwd)/backend/app"
           response=$(curl -s -X POST http://127.0.0.1:8900/query \
             -H "Content-Type: application/json" \
             -d "{\"question\": \"What does graph_builder.py do?\", \"repo_path\": \"$REPO_PATH\", \"db_path\": \"/tmp/ci-test.db\", \"max_nodes\": 3, \"hop_depth\": 1}" || true)
-          echo "$response" | head -c 500
-          echo "$response" | grep -q "^event:" || { echo "ERROR: no SSE events in response"; exit 1; }
+          echo "SSE response preview:"
+          echo "$response" | head -c 800
+          echo "$response" | grep -q "^event: token" || { echo "ERROR: no token events — LLM did not stream"; exit 1; }
+          echo "$response" | grep -q "^event: citations" || { echo "ERROR: no citations event"; exit 1; }
+          echo "$response" | grep -q "^event: done" || { echo "ERROR: no done event — stream did not complete"; exit 1; }
           echo "Chat SSE stream: PASSED"
 
   build-mac:
