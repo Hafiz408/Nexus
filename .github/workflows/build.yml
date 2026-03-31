@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  smoke-test:
-    name: Smoke test
+  backend-smoke-test:
+    name: Backend smoke test (health + index + chat)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,10 +89,67 @@ jobs:
           echo "$response" | grep -q "^event: done" || { echo "ERROR: no done event — stream did not complete"; exit 1; }
           echo "Chat SSE stream: PASSED"
 
+  changelog-check:
+    name: Version consistency check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed to read all tags
+
+      - name: Verify tag, package.json, and CHANGELOG all match
+        env:
+          GIT_REF: ${{ github.ref }}
+        run: |
+          # Resolve version: use the pushed tag if available, else latest semver tag
+          if [[ "$GIT_REF" == refs/tags/v* ]]; then
+            VERSION="${GIT_REF#refs/tags/v}"
+            echo "Triggered by tag: $VERSION"
+          else
+            VERSION=$(git tag --list "v*" --sort=-version:refname | head -1 | sed "s/^v//")
+            echo "workflow_dispatch — using latest tag: $VERSION"
+          fi
+
+          echo "Checking version: $VERSION"
+
+          # 1. package.json must match
+          PKG_VERSION=$(python3 -c "import json; print(json.load(open('extension/package.json'))['version'])")
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "ERROR: package.json version ($PKG_VERSION) does not match tag ($VERSION)"
+            exit 1
+          fi
+          echo "package.json: $PKG_VERSION — OK"
+
+          # 2. CHANGELOG.md must have an entry
+          if grep -qF "## [$VERSION]" extension/CHANGELOG.md; then
+            echo "CHANGELOG.md: entry for $VERSION found — OK"
+          else
+            echo "ERROR: No CHANGELOG.md entry for version $VERSION"
+            echo "Add a '## [$VERSION]' section to extension/CHANGELOG.md before tagging."
+            exit 1
+          fi
+
+  extension-build:
+    name: Extension build check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd extension && npm ci
+
+      - name: Build extension
+        run: cd extension && npm run build
+
   build-mac:
     name: Build backend (macOS)
     runs-on: macos-latest
-    needs: [smoke-test]
+    needs: [backend-smoke-test, changelog-check, extension-build]
     steps:
       - uses: actions/checkout@v4
 
@@ -128,7 +185,7 @@ jobs:
   build-win:
     name: Build backend (Windows)
     runs-on: windows-latest
-    needs: [smoke-test]
+    needs: [backend-smoke-test, changelog-check, extension-build]
     steps:
       - uses: actions/checkout@v4
 
