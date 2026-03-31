@@ -83,6 +83,15 @@ def main():
         '--collect-all', 'tree_sitter_typescript',
         '--collect-all', 'numpy',
         '--collect-all', 'scipy',
+        '--strip',                          # strip debug symbols from all .so/.dylib
+        '--optimize', '2',                  # strip docstrings + asserts from bytecode
+        # Exclude test/benchmark data bundled inside numpy and scipy
+        '--exclude-module', 'scipy.special.tests',
+        '--exclude-module', 'scipy.stats.tests',
+        '--exclude-module', 'scipy.optimize.tests',
+        '--exclude-module', 'numpy.tests',
+        '--exclude-module', 'numpy.testing',
+        '--exclude-module', 'numpy.testing._private',
         'run.py',  # entrypoint that calls uvicorn.run(app)
     ]
 
@@ -99,7 +108,7 @@ def main():
     archive_path = dist_dir / f'{name}.tar.gz'
 
     print(f"Archiving {onedir_path} -> {archive_path} ...")
-    with tarfile.open(archive_path, 'w:gz') as tar:
+    with tarfile.open(archive_path, 'w:gz', compresslevel=9) as tar:
         tar.add(onedir_path, arcname=name)
 
     # Remove the raw directory so only the archive ships in the VSIX.

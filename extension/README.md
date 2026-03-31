@@ -46,7 +46,7 @@ Install the extension — that's it. The backend binary is bundled inside the ex
 Search `Nexus AI` in the VS Code Extensions panel and click Install, or install from [Open VSX Registry](https://open-vsx.org/extension/Hafiz408/nexus-ai) for VSCodium and other open editors.
 
 **2. Set your API key**
-`Cmd+Shift+P` → `Nexus: Set API Key` → pick your provider → paste your key.
+`Cmd+Shift+P` → `Nexus: Setup — Configure API Key` → pick your provider → paste your key.
 
 **3. Choose your provider**
 `Code → Settings → Extensions → Nexus AI` — pick chat and embedding provider.
@@ -87,6 +87,7 @@ Mix and match — use Anthropic for chat and Mistral for embeddings, for example
 | `nexus.hopDepth` | `1` | Graph traversal depth |
 | `nexus.maxNodes` | `10` | Max context nodes per query |
 | `nexus.ollamaBaseUrl` | `http://localhost:11434` | Ollama base URL |
+| `nexus.backendUrl` | `http://localhost:8000` | Backend URL (advanced — override if running backend manually) |
 
 ---
 
@@ -96,8 +97,10 @@ Mix and match — use Anthropic for chat and Mistral for embeddings, for example
 |---|---|
 | `Nexus: Index Workspace` | Build or refresh the code index |
 | `Nexus: Clear Index` | Remove the index for the current workspace |
-| `Nexus: Set API Key` | Store an API key securely |
+| `Nexus: Setup — Configure API Key` | Guided setup flow to configure your API key |
+| `Nexus: Set API Key (choose provider)` | Store an API key for a specific provider |
 | `Nexus: Clear API Key` | Remove a stored API key |
+| `Nexus: Open Settings` | Open Nexus extension settings directly |
 
 ---
 

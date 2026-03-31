@@ -1,7 +1,7 @@
 import { IndexStatus } from './types';
 
 export class BackendClient {
-  constructor(private readonly backendUrl: string) {}
+  constructor(readonly backendUrl: string) {}
 
   async startIndex(repoPath: string, dbPath: string): Promise<void> {
     const res = await fetch(`${this.backendUrl}/index`, {

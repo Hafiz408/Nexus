@@ -22,6 +22,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private _repoPath: string | undefined;
   private _reindexRequired = false;
   private _neverIndexed = true;
+  private _missingProviders: string[] = [];
 
   private get _dbPath(): string {
     const path = require('path') as typeof import('path');
@@ -76,8 +77,22 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       switch (msg.type) {
         case 'query':
           if (this._repoPath) {
-            const config = vscode.workspace.getConfiguration('nexus');
-            const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
+            // Gate on missing API key before hitting the backend
+            if (this._missingProviders.length > 0) {
+              void webviewView.webview.postMessage({
+                type: 'error',
+                message: `API key not set for: ${this._missingProviders.join(', ')}. Use "Nexus: Setup — Configure API Key" to add it.`,
+              });
+              void vscode.window.showWarningMessage(
+                `Nexus: Missing API key for ${this._missingProviders.join(', ')}.`,
+                'Set API Key'
+              ).then(action => {
+                if (action === 'Set API Key') {
+                  void vscode.commands.executeCommand('nexus.setup');
+                }
+              });
+              break;
+            }
             this._highlight.clearHighlights();   // HIGH-02: clear on new query
             // Capture active editor context for review/test intents
             const editor = vscode.window.activeTextEditor;
@@ -91,7 +106,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               msg.question,
               this._repoPath,
               webviewView.webview,
-              backendUrl,
+              this._client.backendUrl,
               (citations) => { void this._highlight.highlightCitations(citations); },
               msg.intent_hint,
               msg.target_node_id,   // forwarded from webview (undefined if not provided)
@@ -139,10 +154,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           break;
 
         case 'postReviewToPR': {
-          const config = vscode.workspace.getConfiguration('nexus');
-          const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
           try {
-            const response = await fetch(`${backendUrl}/review/post-pr`, {
+            const response = await fetch(`${this._client.backendUrl}/review/post-pr`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -220,6 +233,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   broadcastKeyStatus(missing: string[]): void {
+    this._missingProviders = missing;
     void this._view?.webview.postMessage({ type: 'keyStatus', missing });
   }
 
