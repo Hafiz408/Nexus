@@ -127,6 +127,11 @@ export class SidecarManager implements vscode.Disposable {
     return true;
   }
 
+  /** Reveal the backend output channel in the UI */
+  showOutputChannel(): void {
+    this._channel.show();
+  }
+
   /** Kill the sidecar process */
   dispose(): void {
     if (this._process) {

@@ -23,7 +23,16 @@ EMBED_BATCH_SIZE = 100
 def _vec_conn(db_path: str) -> sqlite3.Connection:
     """Open a SQLite connection with sqlite-vec extension loaded."""
     conn = sqlite3.connect(db_path)
-    conn.enable_load_extension(True)
+    try:
+        conn.enable_load_extension(True)
+    except AttributeError:
+        conn.close()
+        raise RuntimeError(
+            "sqlite3.enable_load_extension is not available in this Python build.\n"
+            "Reinstall Python with loadable-extension support:\n"
+            "  PYTHON_CONFIGURE_OPTS='--enable-loadable-sqlite-extensions' "
+            "pyenv install 3.11.13 --force"
+        ) from None
     sqlite_vec.load(conn)
     conn.enable_load_extension(False)
     return conn

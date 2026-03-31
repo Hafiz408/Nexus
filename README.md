@@ -83,9 +83,14 @@ The extension auto-starts the bundled backend — no Python or terminal required
 git clone https://github.com/Hafiz408/Nexus.git
 cd Nexus/backend
 
+# Python must be compiled with loadable-extension support (required for sqlite-vec)
+# If using pyenv: PYTHON_CONFIGURE_OPTS="--enable-loadable-sqlite-extensions" pyenv install 3.11.13
+
 python -m venv ../venv
 source ../venv/bin/activate          # Windows: ..\venv\Scripts\activate
 pip install -r requirements.txt
+
+cp .env.example .env                 # then edit .env with your API key(s)
 
 uvicorn app.main:app --reload --port 8000
 # → http://localhost:8000/api/health should return {"status":"ok"}

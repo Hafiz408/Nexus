@@ -135,7 +135,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           break;
 
         case 'configureKeys':
-          void vscode.commands.executeCommand('nexus.setApiKey');
+          void vscode.commands.executeCommand('nexus.setup');
           break;
 
         case 'postReviewToPR': {
@@ -217,6 +217,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   postLog(level: 'info' | 'warning' | 'error', message: string): void {
     void this._view?.webview.postMessage({ type: 'log', level, message });
+  }
+
+  broadcastKeyStatus(missing: string[]): void {
+    void this._view?.webview.postMessage({ type: 'keyStatus', missing });
   }
 
   broadcastConfigStatus(): void {

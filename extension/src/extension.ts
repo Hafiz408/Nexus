@@ -19,11 +19,19 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
 
   const started = await sidecar.start();
   if (started) {
-    await sidecar.waitForHealth().catch((err: unknown) => {
-      // Backend didn't come up in time — log but don't crash the extension
+    try {
+      await sidecar.waitForHealth();
+    } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[Nexus] ${msg}`);
-    });
+      const action = await vscode.window.showErrorMessage(
+        'Nexus: Backend failed to start. See the output channel for details.',
+        'Open Logs'
+      );
+      if (action === 'Open Logs') {
+        sidecar.showOutputChannel();
+      }
+    }
   }
 
   // Construct ONE shared BackendClient — both SidebarProvider and FileWatcher use it
@@ -59,9 +67,28 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
   // KEYS-01/02: SecretStorage API key commands
   const configManager = new ConfigManager(context, client);
 
+  /** Re-compute which providers are missing keys and tell the webview. */
+  const syncKeyStatus = async (): Promise<void> => {
+    const missing = await configManager.getMissingProviders();
+    provider.broadcastKeyStatus(missing);
+  };
+
   context.subscriptions.push(
-    vscode.commands.registerCommand('nexus.setApiKey', () => configManager.setApiKey()),
-    vscode.commands.registerCommand('nexus.clearApiKey', () => configManager.clearApiKey()),
+    vscode.commands.registerCommand('nexus.setApiKey', async () => {
+      await configManager.setApiKey();
+      await syncKeyStatus();
+    }),
+    vscode.commands.registerCommand('nexus.clearApiKey', async () => {
+      await configManager.clearApiKey();
+      await syncKeyStatus();
+    }),
+    vscode.commands.registerCommand('nexus.setup', async () => {
+      await configManager.setupMissingKeys();
+      await syncKeyStatus();
+    }),
+    vscode.commands.registerCommand('nexus.openSettings', () =>
+      vscode.commands.executeCommand('workbench.action.openSettings', '@ext:Hafiz408.nexus-ai')
+    ),
   );
 
   // EXT-04: Wire FileWatcher for incremental re-index on save (WATCH-01/02/03).
@@ -82,9 +109,33 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
   // CONF-01: Push config after sidecar is healthy (backend ready to accept config)
   void configManager.pushConfig(dbPath).catch(() => { /* backend may not be ready yet */ });
 
+  // Broadcast initial key status to webview so setup guide renders correctly on load
+  void syncKeyStatus();
+
   // EMBD-03: Snapshot current embedding settings to detect changes
   let prevEmbeddingProvider = config.get<string>('embeddingProvider', 'mistral');
   let prevEmbeddingModel = config.get<string>('embeddingModel', 'mistral-embed');
+
+  // ONBOARD-01: Prompt first-time users to set an API key
+  const welcomed = context.globalState.get<boolean>('nexus.welcomed');
+  if (!welcomed) {
+    const providers = ['openai', 'mistral', 'anthropic', 'ollama', 'gemini'] as const;
+    const hasKey = (await Promise.all(
+      providers.map(p => context.secrets.get(`nexus.apiKey.${p}`))
+    )).some(Boolean);
+
+    if (!hasKey) {
+      const action = await vscode.window.showInformationMessage(
+        'Welcome to Nexus AI! Set your API key to get started.',
+        'Set API Key',
+        'Later'
+      );
+      if (action === 'Set API Key') {
+        await vscode.commands.executeCommand('nexus.setup');
+      }
+    }
+    await context.globalState.update('nexus.welcomed', true);
+  }
 
   // CONF-01: Re-push on settings change
   context.subscriptions.push(
@@ -110,10 +161,9 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
         prevEmbeddingModel = newEmbeddingModel;
 
         const result = await configManager.pushConfig(dbPath).catch(() => ({ reindex_required: false }));
-        // Notify webview of reindex state (never_indexed stays as-is — false param means don't force-set it)
         provider.setReindexState(result.reindex_required, false);
-        // Broadcast updated config status to webview
         provider.broadcastConfigStatus();
+        await syncKeyStatus();
       }
     })
   );

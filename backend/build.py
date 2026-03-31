@@ -9,7 +9,33 @@ import platform
 from pathlib import Path
 
 
+def _check_sqlite_vec_support() -> None:
+    """Abort the build if the current Python cannot load SQLite extensions.
+
+    sqlite-vec requires enable_load_extension, which is only available when
+    Python is compiled with --enable-loadable-sqlite-extensions. Catching this
+    here prevents shipping a binary that fails on every user's machine.
+    """
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.enable_load_extension(True)
+        conn.close()
+    except AttributeError:
+        conn.close()
+        print(
+            "ERROR: sqlite3.enable_load_extension is not available in this Python build.\n"
+            "The produced binary would fail for all users. Rebuild Python first:\n"
+            "  PYTHON_CONFIGURE_OPTS='--enable-loadable-sqlite-extensions' "
+            "pyenv install 3.11.13 --force\n"
+            "Then recreate your venv and retry.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def main():
+    _check_sqlite_vec_support()
     system = platform.system()
     if system == 'Darwin':
         name = 'nexus-backend-mac'

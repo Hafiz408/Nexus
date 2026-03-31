@@ -9,6 +9,8 @@ from app.api.config_router import router as config_router
 from app.api.index_router import router as index_router
 from app.api.query_router import router as query_router
 
+logger = logging.getLogger(__name__)
+
 # Configure root logger so all module-level loggers (pipeline, walker, etc.) emit output
 logging.basicConfig(
     level=logging.INFO,
@@ -17,8 +19,30 @@ logging.basicConfig(
 )
 
 
+def _check_sqlite_vec() -> None:
+    """Verify sqlite-vec can be loaded; exit with a clear message if not."""
+    import sqlite3 as _sqlite3
+    import sqlite_vec as _sqlite_vec
+    conn = _sqlite3.connect(":memory:")
+    try:
+        conn.enable_load_extension(True)
+    except AttributeError:
+        conn.close()
+        logger.error(
+            "sqlite3.enable_load_extension is not available in this Python build. "
+            "Nexus requires it for vector search.\n"
+            "Fix: PYTHON_CONFIGURE_OPTS='--enable-loadable-sqlite-extensions' "
+            "pyenv install 3.11.13 --force"
+        )
+        sys.exit(1)
+    _sqlite_vec.load(conn)
+    conn.enable_load_extension(False)
+    conn.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _check_sqlite_vec()
     app.state.graph_cache = {}   # dict[str, nx.DiGraph] — lazy per-repo graph cache
     yield
 

@@ -62,6 +62,7 @@ type IncomingMessage =
   | { type: 'indexStatus'; status: IndexStatus }
   | { type: 'reindexState'; reindex_required: boolean; never_indexed: boolean }
   | { type: 'configStatus'; chat_provider: string; chat_model: string; embedding_provider: string; embedding_model: string }
+  | { type: 'keyStatus'; missing: string[] }
   | { type: 'log'; level: LogEntry['level']; message: string }
   | {
       type: 'result';
@@ -435,6 +436,7 @@ export function App(): React.JSX.Element {
   const [selectedIntent, setSelectedIntent] = useState<IntentOption>('explain');
   const [reindexRequired, setReindexRequired] = useState(false);
   const [neverIndexed, setNeverIndexed] = useState(true);
+  const [missingKeys, setMissingKeys] = useState<string[]>([]);
   const [configStatus, setConfigStatus] = useState<ConfigStatus>({
     chat_provider: 'mistral',
     chat_model: 'mistral-small-latest',
@@ -524,6 +526,10 @@ export function App(): React.JSX.Element {
         case 'reindexState':
           setReindexRequired(msg.reindex_required);
           setNeverIndexed(msg.never_indexed);
+          break;
+
+        case 'keyStatus':
+          setMissingKeys(msg.missing);
           break;
 
         case 'configStatus':
@@ -684,18 +690,37 @@ export function App(): React.JSX.Element {
 
       {/* ① STATUS BAR */}
       <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--vscode-sideBar-border)', fontSize: '11px', color: 'var(--vscode-descriptionForeground)' }}>
-        <div>Chat: <strong>{configStatus.chat_provider}</strong> / {configStatus.chat_model}</div>
-        <div>Embed: <strong>{configStatus.embedding_provider}</strong> / {configStatus.embedding_model}</div>
-        <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: neverIndexed ? 'var(--vscode-statusBarItem-warningBackground)' : reindexRequired ? 'orange' : 'var(--vscode-terminal-ansiGreen)' }}>
-            {neverIndexed ? '⚠ Never indexed' : reindexRequired ? '⚠ Reindex required' : '✓ Index valid'}
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div>Chat: <strong>{configStatus.chat_provider}</strong> / {configStatus.chat_model}</div>
+            <div>Embed: <strong>{configStatus.embedding_provider}</strong> / {configStatus.embedding_model}</div>
+          </div>
           <button
             onClick={() => vscode.postMessage({ type: 'configureKeys' })}
-            style={{ fontSize: '10px', padding: '2px 6px', cursor: 'pointer', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)', border: 'none', borderRadius: '2px' }}
+            title="Open Settings"
+            style={{ fontSize: '10px', padding: '2px 6px', cursor: 'pointer', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)', border: 'none', borderRadius: '2px', flexShrink: 0 }}
           >
-            Configure Keys
+            ⚙ Settings
           </button>
+        </div>
+        <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {missingKeys.length > 0 ? (
+            <span style={{ color: 'var(--vscode-statusBarItem-warningForeground, orange)' }}>
+              ⚠ API key missing for <strong>{missingKeys.join(', ')}</strong>
+            </span>
+          ) : (
+            <span style={{ color: neverIndexed ? 'var(--vscode-statusBarItem-warningForeground, orange)' : reindexRequired ? 'orange' : 'var(--vscode-terminal-ansiGreen)' }}>
+              {neverIndexed ? '⚠ Not yet indexed' : reindexRequired ? '⚠ Reindex required' : '✓ Ready'}
+            </span>
+          )}
+          {missingKeys.length > 0 && (
+            <button
+              onClick={() => vscode.postMessage({ type: 'configureKeys' })}
+              style={{ fontSize: '10px', padding: '2px 6px', cursor: 'pointer', background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', border: 'none', borderRadius: '2px' }}
+            >
+              Set API Key
+            </button>
+          )}
         </div>
       </div>
 
@@ -754,12 +779,50 @@ export function App(): React.JSX.Element {
           <div className="chat-scroll-area">
           <div className="message-list">
             {messages.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-title">Ask your codebase</div>
-                <div className="empty-state-hint">
-                  Functions, patterns, architecture — just ask.
+              missingKeys.length > 0 || neverIndexed ? (
+                <div className="empty-state">
+                  <div className="empty-state-title">Get started</div>
+                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: missingKeys.length === 0 ? 'var(--vscode-terminal-ansiGreen)' : 'var(--vscode-statusBarItem-warningForeground, orange)', fontWeight: 'bold', fontSize: '13px' }}>
+                        {missingKeys.length === 0 ? '✓' : '○'}
+                      </span>
+                      <span style={{ fontSize: '12px' }}>
+                        API key{missingKeys.length > 0 && <> — <strong>{missingKeys.join(', ')}</strong></>}
+                      </span>
+                      {missingKeys.length > 0 && (
+                        <button
+                          onClick={() => vscode.postMessage({ type: 'configureKeys' })}
+                          style={{ marginLeft: 'auto', fontSize: '11px', padding: '2px 8px', cursor: 'pointer', background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', border: 'none', borderRadius: '2px' }}
+                        >
+                          Set key
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: !neverIndexed ? 'var(--vscode-terminal-ansiGreen)' : 'var(--vscode-statusBarItem-warningForeground, orange)', fontWeight: 'bold', fontSize: '13px' }}>
+                        {!neverIndexed ? '✓' : '○'}
+                      </span>
+                      <span style={{ fontSize: '12px' }}>Index workspace</span>
+                      {neverIndexed && (
+                        <button
+                          onClick={handleIndexWorkspace}
+                          style={{ marginLeft: 'auto', fontSize: '11px', padding: '2px 8px', cursor: 'pointer', background: 'var(--vscode-button-background)', color: 'var(--vscode-button-foreground)', border: 'none', borderRadius: '2px' }}
+                        >
+                          Index now
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-state-title">Ask your codebase</div>
+                  <div className="empty-state-hint">
+                    Functions, patterns, architecture — just ask.
+                  </div>
+                </div>
+              )
             ) : (
               messages.map((msg, idx) => {
                 const isLastStreaming = msg.isStreaming && idx === messages.length - 1;

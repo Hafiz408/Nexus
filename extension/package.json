@@ -2,7 +2,7 @@
   "name": "nexus-ai",
   "displayName": "Nexus AI",
   "description": "AI code assistant powered by call-graph + vector search. Ask, debug, review, and generate tests — all locally.",
-  "version": "4.0.3",
+  "version": "4.0.4",
   "publisher": "Hafiz408",
   "license": "MIT",
   "icon": "media/nexus-icon.png",
@@ -48,8 +48,16 @@
         "title": "Nexus: Clear Index"
       },
       {
+        "command": "nexus.setup",
+        "title": "Nexus: Setup — Configure API Key"
+      },
+      {
+        "command": "nexus.openSettings",
+        "title": "Nexus: Open Settings"
+      },
+      {
         "command": "nexus.setApiKey",
-        "title": "Nexus: Set API Key"
+        "title": "Nexus: Set API Key (choose provider)"
       },
       {
         "command": "nexus.clearApiKey",
@@ -78,7 +86,7 @@
           "type": "string",
           "enum": ["openai", "mistral", "anthropic", "ollama", "gemini"],
           "default": "mistral",
-          "description": "AI provider for chat (LLM)"
+          "markdownDescription": "AI provider for chat (LLM). **After selecting, store your key:** `Cmd+Shift+P` → `Nexus: Set API Key`. Keys are saved in VS Code's SecretStorage — never written to disk."
         },
         "nexus.chatModel": {
           "type": "string",
@@ -89,7 +97,7 @@
           "type": "string",
           "enum": ["openai", "mistral", "ollama", "gemini"],
           "default": "mistral",
-          "description": "AI provider for embeddings (Anthropic excluded — no embedding API)"
+          "markdownDescription": "AI provider for embeddings (Anthropic excluded — no embedding API). If this differs from your chat provider, run `Nexus: Set API Key` once for each provider."
         },
         "nexus.embeddingModel": {
           "type": "string",
