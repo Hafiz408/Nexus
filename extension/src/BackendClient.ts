@@ -59,6 +59,15 @@ export class BackendClient {
     return resp.json() as Promise<{ reindex_required: boolean }>;
   }
 
+  /** Keepalive — resets the backend idle watchdog. Fire-and-forget; errors are silently swallowed. */
+  async ping(): Promise<void> {
+    try {
+      await fetch(`${this.backendUrl}/api/health`);
+    } catch {
+      // Backend may be temporarily unreachable — not actionable here
+    }
+  }
+
   // SSE-01: poll every 2 seconds until complete or failed
   pollUntilComplete(
     repoPath: string,

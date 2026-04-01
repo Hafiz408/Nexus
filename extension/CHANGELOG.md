@@ -2,6 +2,14 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.0.9] - 2026-04-01
+
+### Fixed
+- **Module-level code selection now answered correctly** — when a user selects code that is not a function or class (e.g. module-level initialisation, `if __name__ == "__main__"` blocks), the explain path previously answered from unrelated graph-RAG context with no indication the selection was missed. The backend now reads the selected lines directly from disk and answers based on those lines, with an explicit note in the response that the code is not in the graph index.
+- **Backend killed after 10 minutes of idle typing** — the idle watchdog fired after 600 s of no HTTP traffic, which affected users who left VS Code open without querying for a while. The extension now sends a keepalive ping to the backend every 3 minutes, and the watchdog threshold has been raised to 15 minutes as a fallback for truly closed/crashed windows.
+
+---
+
 ## [4.0.8] - 2026-04-01
 
 ### Fixed

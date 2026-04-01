@@ -8,7 +8,7 @@ AI-powered code assistant that understands your codebase through a **call graph 
 
 | Mode | What it does |
 |---|---|
-| **Explain** | Semantic + graph-aware retrieval; streams tokens with clickable file citations |
+| **Explain** | Semantic + graph-aware retrieval; streams tokens with clickable file citations. When the selected code is module-level (not a function/class), the selected lines are read directly from disk and used as context. |
 | **Debug** | BFS call-graph traversal, anomaly scoring, ranked suspect list with diagnosis |
 | **Review** | Structured findings (severity · category · suggestion), postable to GitHub PRs |
 | **Test** | Framework-aware test generation written directly to your repo |

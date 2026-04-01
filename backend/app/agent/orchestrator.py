@@ -172,6 +172,30 @@ def _route_by_intent(state: NexusState) -> str:
     return state["intent"]  # "explain" | "debug" | "review" | "test"
 
 
+def _read_raw_lines(file_path: str, selected_range: list[int] | None) -> str | None:
+    """Read raw source lines from file_path for the given 1-based line range.
+
+    Returns the extracted text, or None if the file cannot be read.
+    Limits output to 200 lines to avoid flooding the LLM context window.
+    """
+    try:
+        with open(file_path, encoding="utf-8", errors="replace") as fh:
+            all_lines = fh.readlines()
+        if selected_range and len(selected_range) >= 2:
+            start = max(0, selected_range[0] - 1)   # 1-based → 0-based
+            end = min(len(all_lines), selected_range[1])
+            lines = all_lines[start:end]
+        elif selected_range and len(selected_range) == 1:
+            idx = max(0, selected_range[0] - 1)
+            lines = all_lines[idx : idx + 1]
+        else:
+            lines = all_lines[:200]
+        lines = lines[:200]  # hard cap
+        return "".join(lines).rstrip()
+    except OSError:
+        return None
+
+
 def build_explain_context(
     question: str,
     repo_path: str,
@@ -223,7 +247,36 @@ def build_explain_context(
         except Exception:  # noqa: BLE001
             logger.warning("[explain] could not build CodeNode for target %r, skipping injection", target_id)
     elif selected_file:
-        logger.info("[explain] no graph node found for file=%r range=%r, using RAG context only", selected_file, selected_range)
+        logger.info(
+            "[explain] no graph node found for file=%r range=%r — not a indexed symbol (e.g. module-level code); "
+            "falling back to raw selected lines",
+            selected_file, selected_range,
+        )
+        raw_lines = _read_raw_lines(selected_file, selected_range)
+        import os as _os  # noqa: PLC0415
+        fname = _os.path.basename(selected_file)
+        line_info = (
+            f"lines {selected_range[0]}–{selected_range[1]}"
+            if selected_range and len(selected_range) >= 2
+            else f"line {selected_range[0]}" if selected_range else "selected lines"
+        )
+        if raw_lines:
+            logger.info("[explain] injected %d raw lines as fallback context", len(raw_lines.splitlines()))
+            anchored_question = (
+                f"Note: The selected code in `{fname}` ({line_info}) is not in the graph index "
+                f"(it is likely module-level code or has not been indexed as a symbol). "
+                f"Answer based on the following selected lines:\n\n"
+                f"```\n{raw_lines}\n```\n\n"
+                f"{question}"
+            )
+        else:
+            logger.warning("[explain] could not read raw lines for file=%r", selected_file)
+            anchored_question = (
+                f"Note: The selected code in `{fname}` ({line_info}) is not in the graph index "
+                f"(it is likely module-level code or has not been indexed as a symbol) "
+                f"and the source file could not be read. "
+                f"{question}"
+            )
 
     return nodes, stats, anchored_question
 

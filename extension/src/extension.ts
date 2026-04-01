@@ -44,6 +44,11 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
   // Construct ONE shared BackendClient — both SidebarProvider and FileWatcher use it
   const client = new BackendClient(backendUrl);
 
+  // SIDECAR-02: Keepalive ping every 3 minutes so the backend idle watchdog (900s)
+  // does not fire while VS Code is open but the user is not actively querying.
+  const keepaliveInterval = setInterval(() => { void client.ping(); }, 3 * 60 * 1000);
+  context.subscriptions.push({ dispose: () => clearInterval(keepaliveInterval) });
+
   const provider = new SidebarProvider(context.extensionUri, client);
 
   // EXT-01: Register WebviewViewProvider for nexus.sidebar

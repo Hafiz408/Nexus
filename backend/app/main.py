@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Idle watchdog — self-terminate after this many seconds with no requests.
 # Allows the detached sidecar to clean up when all IDE windows are closed.
 # ---------------------------------------------------------------------------
-_IDLE_TIMEOUT = 600  # 10 minutes
+_IDLE_TIMEOUT = 900  # 15 minutes — fallback for crashed/closed VS Code windows
 _last_request_time = time.monotonic()
 
 
