@@ -262,11 +262,28 @@ def build_explain_context(
         )
         if raw_lines:
             logger.info("[explain] injected %d raw lines as fallback context", len(raw_lines.splitlines()))
+            # Inject raw lines as a synthetic CodeNode so they appear in
+            # format_context_block(nodes) — the field the LLM is instructed
+            # to answer from. Putting them only in anchored_question caused
+            # the LLM to ignore them (system prompt: answer ONLY from context).
+            from app.models.schemas import CodeNode  # noqa: PLC0415
+            line_start = selected_range[0] if selected_range else 1
+            line_end = selected_range[1] if selected_range and len(selected_range) >= 2 else line_start
+            synthetic = CodeNode(
+                node_id=f"{selected_file}::__module_selection__",
+                name=f"selected code ({line_info})",
+                type="module",
+                file_path=selected_file,
+                line_start=line_start,
+                line_end=line_end,
+                body_preview=raw_lines,
+                signature="",
+                docstring="Note: this is module-level code not tracked as a graph symbol.",
+            )
+            nodes = [synthetic] + nodes
             anchored_question = (
-                f"Note: The selected code in `{fname}` ({line_info}) is not in the graph index "
-                f"(it is likely module-level code or has not been indexed as a symbol). "
-                f"Answer based on the following selected lines:\n\n"
-                f"```\n{raw_lines}\n```\n\n"
+                f"The user selected code in `{fname}` ({line_info}). "
+                f"It is module-level code (not a named symbol in the graph index). "
                 f"{question}"
             )
         else:
