@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as net from 'net';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as crypto from 'crypto';
 
 interface BackendLock {
   pid: number;
@@ -106,6 +107,94 @@ export class SidecarManager implements vscode.Disposable {
     if (process.platform === 'darwin') { return path.join('nexus-backend-mac', 'nexus-backend-mac'); }
     if (process.platform === 'win32') { return path.join('nexus-backend-win', 'nexus-backend-win.exe'); }
     return undefined;
+  }
+
+  /**
+   * Fetches the checksums.sha256 file from the GitHub Release and returns the
+   * SHA256 hash for the given archive name.
+   */
+  private async _fetchChecksum(baseUrl: string, archiveName: string): Promise<string> {
+    this._channel.appendLine(`[SidecarManager] Fetching checksum for ${archiveName}...`);
+    const res = await fetch(`${baseUrl}/checksums.sha256`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch checksums: HTTP ${res.status}`);
+    }
+    const text = await res.text();
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) { continue; }
+      const spaceIdx = trimmed.indexOf(' ');
+      if (spaceIdx === -1) { continue; }
+      const hash = trimmed.slice(0, spaceIdx);
+      const filename = trimmed.slice(spaceIdx).trim();
+      if (filename === archiveName) {
+        return hash;
+      }
+    }
+    throw new Error(`No checksum found for ${archiveName} in checksums.sha256`);
+  }
+
+  /**
+   * Stream-downloads a file from `url`, reports incremental progress via the
+   * VS Code progress API, verifies the SHA256 digest against `expectedHash`,
+   * and writes the verified bytes to `destPath`.
+   *
+   * Deletes the temp file and throws on SHA256 mismatch.
+   */
+  private async _downloadAndVerify(
+    url: string,
+    destPath: string,
+    expectedHash: string,
+    progress: vscode.Progress<{ message?: string; increment?: number }>,
+  ): Promise<void> {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Download failed: HTTP ${res.status}`);
+    }
+    if (!res.body) {
+      throw new Error('Response body is null');
+    }
+    const contentLength = parseInt(res.headers.get('content-length') ?? '0', 10);
+    const hash = crypto.createHash('sha256');
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    let lastPct = 0;
+
+    for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+      hash.update(chunk);
+      chunks.push(chunk);
+      received += chunk.length;
+      if (contentLength > 0) {
+        const pct = Math.floor((received / contentLength) * 100);
+        if (pct > lastPct) {
+          progress.report({ increment: pct - lastPct });
+          lastPct = pct;
+        }
+      }
+    }
+
+    const digest = hash.digest('hex');
+    if (digest !== expectedHash) {
+      fs.rmSync(destPath, { force: true });
+      throw new Error(`SHA256 mismatch: expected ${expectedHash}, got ${digest}`);
+    }
+
+    fs.writeFileSync(destPath, Buffer.concat(chunks));
+    this._channel.appendLine(`[SidecarManager] Download complete: ${received} bytes, SHA256 verified.`);
+  }
+
+  /**
+   * Shows an error notification for a failed download, offering a button to
+   * open the GitHub Releases page for manual download.
+   */
+  private async _showDownloadError(errMsg: string): Promise<void> {
+    const action = await vscode.window.showErrorMessage(
+      `Nexus: Failed to download backend — ${errMsg}. Download manually or check your network.`,
+      'Open GitHub Releases',
+    );
+    if (action === 'Open GitHub Releases') {
+      await vscode.env.openExternal(vscode.Uri.parse('https://github.com/Hafiz408/Nexus/releases'));
+    }
   }
 
   /**
