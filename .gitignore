@@ -39,3 +39,4 @@ test_output.py
 *.db
 /backend/build
 /extension/bin
+/docs/guide
