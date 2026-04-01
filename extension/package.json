@@ -2,7 +2,7 @@
   "name": "nexus-ai",
   "displayName": "Nexus AI",
   "description": "AI code assistant powered by call-graph + vector search. Ask, debug, review, and generate tests — all locally.",
-  "version": "4.0.9",
+  "version": "4.0.10",
   "publisher": "Hafiz408",
   "license": "MIT",
   "icon": "media/nexus-icon.png",
@@ -138,7 +138,7 @@
     }
   },
   "scripts": {
-    "build": "node esbuild.js",
+    "build": "node esbuild.js && find out -name '*.map' -delete 2>/dev/null; true",
     "watch": "node esbuild.js --watch",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.webview.json"
   },

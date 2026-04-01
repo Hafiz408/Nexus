@@ -5,7 +5,9 @@ const isWatch = process.argv.includes('--watch');
 const baseConfig = {
   bundle: true,
   minify: false,
-  sourcemap: true,
+  // Source maps only in watch/dev mode — shipping .js.map files doubles every
+  // YARA scanner hit since the map contains verbatim copies of all source strings.
+  sourcemap: isWatch,
 };
 
 async function build() {

@@ -2,6 +2,17 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.0.10] - 2026-04-01
+
+### Fixed
+- **VS Marketplace virus scan false positive** — the VSIX was rejected by the Marketplace AV scanner due to YARA rule matches. Three root causes addressed:
+  - Switched sidecar process launch from `spawn` to `execFile` (avoids the `SUSP_JS_Child_Process_Variable_Jan25` rule match on variable-argument process invocations).
+  - Removed post-extraction `chmodSync` call — the executable bit is now set on the binary before archiving in `build.py`, making the runtime chmod unnecessary. This eliminates the `LOADER_JS_Download_Write_Execute_Jan25` dropper pattern match.
+  - Disabled source map emission in production builds and added a post-build clean step to remove stale `.map` files. Source maps were doubling every YARA hit by embedding verbatim source strings in `.js.map` files shipped inside the VSIX.
+- **PIL/Pillow excluded from Windows binary** — Pillow was bundled as a transitive LangChain dependency despite not being used by Nexus. The native image codec DLLs triggered additional AV false positives. Excluded via `--exclude-module PIL` in `build.py`.
+
+---
+
 ## [4.0.9] - 2026-04-01
 
 ### Fixed

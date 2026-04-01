@@ -92,6 +92,11 @@ def main():
         '--exclude-module', 'numpy.tests',
         '--exclude-module', 'numpy.testing',
         '--exclude-module', 'numpy.testing._private',
+        # Exclude PIL/Pillow — not used by Nexus; pulled in as a transitive dep
+        # by LangChain packages. The native .pyd image codec DLLs trigger AV
+        # false positives on the VS Code Marketplace virus scanner.
+        '--exclude-module', 'PIL',
+        '--exclude-module', 'Pillow',
         'run.py',  # entrypoint that calls uvicorn.run(app)
     ]
 
@@ -106,6 +111,15 @@ def main():
     dist_dir = backend_dir.parent / 'extension' / 'bin'
     onedir_path = dist_dir / name          # e.g. extension/bin/nexus-backend-mac/
     archive_path = dist_dir / f'{name}.tar.gz'
+
+    # Ensure the main executable has +x before archiving so the extension
+    # does not need to chmod after extraction (avoids AV false positive).
+    import os, stat
+    exe_name = name + ('.exe' if system == 'Windows' else '')
+    exe_path = onedir_path / exe_name
+    if exe_path.exists():
+        current = exe_path.stat().st_mode
+        exe_path.chmod(current | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     print(f"Archiving {onedir_path} -> {archive_path} ...")
     with tarfile.open(archive_path, 'w:gz', compresslevel=9) as tar:

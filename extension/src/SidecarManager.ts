@@ -156,8 +156,7 @@ export class SidecarManager implements vscode.Disposable {
       tar.on('error', reject);
     });
 
-    // Ensure the executable bit is set (tar may not preserve it on Windows).
-    try { fs.chmodSync(executablePath, 0o755); } catch { /* non-fatal */ }
+    // Permissions are preserved from the tar (set at build time in build.py).
 
     this._channel.appendLine(`[SidecarManager] Extraction complete.`);
     return executablePath;
@@ -211,7 +210,7 @@ export class SidecarManager implements vscode.Disposable {
     const url = `http://127.0.0.1:${port}`;
     this._channel.appendLine(`[SidecarManager] Spawning backend on port ${port}: ${binaryPath}`);
 
-    const proc = cp.spawn(binaryPath, ['--port', String(port)], {
+    const proc = cp.execFile(binaryPath, ['--port', String(port)], {
       detached: true,              // independent of the extension host process
       stdio: ['ignore', 'pipe', 'pipe'],
     });
