@@ -16,3 +16,4 @@ out/webview.js
 out/**/*.map
 esbuild.js
 tsconfig*.json
+bin/**
