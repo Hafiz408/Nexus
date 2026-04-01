@@ -307,8 +307,19 @@ export class SidecarManager implements vscode.Disposable {
       return this._backendUrl;
     }
 
-    const binaryPath = await this._ensureExtracted(version);
+    let binaryPath: string | undefined;
+    try {
+      binaryPath = await this._ensureExtracted(version);
+    } catch (err) {
+      // Download or checksum failure on cold path — show error notification per CONTEXT.md
+      const errMsg = err instanceof Error ? err.message : String(err);
+      this._channel.appendLine(`[SidecarManager] Download failed: ${errMsg}`);
+      await this._showDownloadError(errMsg);
+      this._backendUrl = 'http://127.0.0.1:8000';
+      return this._backendUrl;
+    }
     if (!binaryPath) {
+      // Unsupported platform or dev-build 404 — silent fallback to port 8000
       this._backendUrl = 'http://127.0.0.1:8000';
       return this._backendUrl;
     }
