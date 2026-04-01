@@ -74,12 +74,6 @@ export class SidecarManager implements vscode.Disposable {
     } catch { return '0.0.0'; }
   }
 
-  private _isProcessAlive(pid: number): boolean {
-    try {
-      process.kill(pid, 0); // signal 0 = liveness probe; throws ESRCH if process is gone
-      return true;
-    } catch { return false; }
-  }
 
   private _getFreePort(): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -148,7 +142,7 @@ export class SidecarManager implements vscode.Disposable {
       const tarArgs = process.platform === 'win32'
         ? ['-xzf', archivePath, '-C', cacheDir]
         : ['-xzf', archivePath, '-C', cacheDir];
-      const tar = cp.spawn('tar', tarArgs, { stdio: 'pipe' });
+      const tar = cp.execFile('tar', tarArgs);
       tar.on('close', (code) => {
         if (code === 0) { resolve(); }
         else { reject(new Error(`tar exited with code ${code}`)); }
@@ -179,8 +173,9 @@ export class SidecarManager implements vscode.Disposable {
     const version = this._getVersion();
 
     // --- Reuse path ---
+    // HTTP health check is the sole gating condition — no process.kill liveness probe.
     const lock = this._readLock();
-    if (lock && lock.version === version && this._isProcessAlive(lock.pid)) {
+    if (lock && lock.version === version) {
       const url = `http://127.0.0.1:${lock.port}`;
       if (await this._checkHealth(url)) {
         this._channel.appendLine(
@@ -210,11 +205,7 @@ export class SidecarManager implements vscode.Disposable {
     const url = `http://127.0.0.1:${port}`;
     this._channel.appendLine(`[SidecarManager] Spawning backend on port ${port}: ${binaryPath}`);
 
-    const proc = cp.execFile(binaryPath, ['--port', String(port)], {
-      detached: true,              // independent of the extension host process
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    proc.unref();                  // don't keep the extension host alive for this child
+    const proc = cp.execFile(binaryPath, ['--port', String(port)]);
     this._process = proc;
     this._didSpawn = true;
 
@@ -279,9 +270,8 @@ export class SidecarManager implements vscode.Disposable {
   /**
    * Clean up this manager instance.
    *
-   * The backend process is NOT killed — it is detached and shared across all
-   * windows. It will self-terminate via its idle watchdog once all clients stop
-   * sending requests.
+   * The backend process is NOT killed here — it will self-terminate via its
+   * idle watchdog once all clients stop sending requests.
    */
   dispose(): void {
     this._channel.dispose();
