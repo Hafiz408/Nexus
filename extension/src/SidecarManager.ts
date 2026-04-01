@@ -198,39 +198,61 @@ export class SidecarManager implements vscode.Disposable {
   }
 
   /**
-   * Extract the bundled .tar.gz into globalStoragePath/<version>/ on first run,
-   * then return the path to the executable.  Subsequent calls for the same version
-   * skip extraction and return immediately.
+   * Ensures the backend binary for the given version is available on disk,
+   * downloading from GitHub Releases on cache miss.
+   *
+   * Warm path (cache hit): returns immediately with no network call or notification.
+   * Cold path (cache miss): fetches checksum, streams binary with progress UI,
+   *   verifies SHA256, extracts, deletes archive.
+   * Dev-build / no-matching-release: checksum fetch returns 404 → logs warning,
+   *   returns undefined (caller falls back to port 8000).
    */
   private async _ensureExtracted(version: string): Promise<string | undefined> {
     const archiveName = this._archiveName();
     const executableName = this._executableName();
     if (!archiveName || !executableName) { return undefined; }
 
-    const archivePath = path.join(this._extensionPath, 'bin', archiveName);
-    if (!fs.existsSync(archivePath)) {
-      this._channel.appendLine(`[SidecarManager] Archive not found at ${archivePath}. Skipping spawn.`);
-      return undefined;
-    }
-
-    // Cache extracted files under globalStoragePath/<version>/ so we only
-    // extract once per version and re-extract automatically on upgrade.
+    // Warm-path guard: binary already cached — no network call, no notification (DIST-02, PRES-02)
     const cacheDir = path.join(path.dirname(this._lockfilePath), 'backend', version);
     const executablePath = path.join(cacheDir, executableName);
-
     if (fs.existsSync(executablePath)) {
       this._channel.appendLine(`[SidecarManager] Using cached backend at ${executablePath}`);
       return executablePath;
     }
 
-    this._channel.appendLine(`[SidecarManager] Extracting backend archive to ${cacheDir} ...`);
-    fs.mkdirSync(cacheDir, { recursive: true });
+    // Cold path: download from GitHub Releases
+    const baseUrl = `https://github.com/Hafiz408/Nexus/releases/download/v${version}`;
+    const archiveUrl = `${baseUrl}/${archiveName}`;
 
+    // Fetch checksum before download — if 404, this is a dev build / no matching release
+    let expectedHash: string;
+    try {
+      expectedHash = await this._fetchChecksum(baseUrl, archiveName);
+    } catch (err) {
+      // Dev build / no-matching-release fallback: log warning + return undefined to use port 8000
+      this._channel.appendLine(`[SidecarManager] Checksum fetch failed: ${err instanceof Error ? err.message : String(err)}. No GitHub Release for v${version}?`);
+      return undefined;
+    }
+
+    // Download with progress notification (DIST-01, PRES-01, PRES-03)
+    fs.mkdirSync(cacheDir, { recursive: true });
+    const tmpPath = path.join(cacheDir, archiveName + '.tmp');
+
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Downloading Nexus backend\u2026',
+        cancellable: false,
+      },
+      async (progress) => {
+        await this._downloadAndVerify(archiveUrl, tmpPath, expectedHash, progress);
+      }
+    );
+
+    // Extract to cache directory
+    this._channel.appendLine(`[SidecarManager] Extracting backend archive to ${cacheDir} ...`);
     await new Promise<void>((resolve, reject) => {
-      // `tar` is available on macOS, Linux, and Windows 10+.
-      const tarArgs = process.platform === 'win32'
-        ? ['-xzf', archivePath, '-C', cacheDir]
-        : ['-xzf', archivePath, '-C', cacheDir];
+      const tarArgs = ['-xzf', tmpPath, '-C', cacheDir];
       const tar = cp.execFile('tar', tarArgs);
       tar.on('close', (code) => {
         if (code === 0) { resolve(); }
@@ -239,9 +261,10 @@ export class SidecarManager implements vscode.Disposable {
       tar.on('error', reject);
     });
 
-    // Permissions are preserved from the tar (set at build time in build.py).
+    // Delete temp archive after successful extraction (CONTEXT.md: "Downloaded archive is deleted after successful extraction")
+    fs.rmSync(tmpPath, { force: true });
+    this._channel.appendLine('[SidecarManager] Extraction complete.');
 
-    this._channel.appendLine(`[SidecarManager] Extraction complete.`);
     return executablePath;
   }
 
