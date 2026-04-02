@@ -31,7 +31,6 @@ if _env.exists():
             k, v = _line.split("=", 1)
             os.environ.setdefault(k.strip(), v.strip())
 
-from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 from ragas import EvaluationDataset, evaluate, RunConfig
 from ragas.dataset_schema import SingleTurnSample
 from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -101,10 +100,10 @@ def build_contexts(nodes: list[CodeNode]) -> list[str]:
     ]
 
 
-async def main(limit: int | None) -> None:
+async def main(limit: int | None, judge: str, ollama_chat_model: str, ollama_embed_model: str) -> None:
     print(f"\nNexus RAGAS — New vs Old retrieval")
     print(f"  repo:    {REPO_PATH}")
-    print(f"  db:      {DB_PATH}\n")
+    print(f"  db:      {DB_PATH}")
 
     print("Loading graph...")
     G = load_graph(REPO_PATH, DB_PATH)
@@ -115,21 +114,31 @@ async def main(limit: int | None) -> None:
         golden = golden[:limit]
     print(f"  {len(golden)} questions to evaluate\n")
 
-    mistral_key = (
-        os.environ.get("MISTRAL_API_KEY")
-        or os.environ.get("LLM_PROVIDER_API_KEY")
-        or os.environ.get("EMBEDDING_PROVIDER_API_KEY")
-    )
-    if not mistral_key:
-        raise RuntimeError("No API key found. Set MISTRAL_API_KEY or LLM_PROVIDER_API_KEY in .env")
-    llm = LangchainLLMWrapper(ChatMistralAI(model="mistral-large-latest", temperature=0, api_key=mistral_key))
-    emb = LangchainEmbeddingsWrapper(MistralAIEmbeddings(model="mistral-embed", api_key=mistral_key))
+    if judge == "ollama":
+        from langchain_ollama import ChatOllama, OllamaEmbeddings
+        ollama_base = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+        llm = LangchainLLMWrapper(ChatOllama(model=ollama_chat_model, temperature=0, base_url=ollama_base))
+        emb = LangchainEmbeddingsWrapper(OllamaEmbeddings(model=ollama_embed_model, base_url=ollama_base))
+        print(f"  judge:   ollama  chat={ollama_chat_model}  embed={ollama_embed_model}  base={ollama_base}")
+    else:
+        from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
+        mistral_key = (
+            os.environ.get("MISTRAL_API_KEY")
+            or os.environ.get("LLM_PROVIDER_API_KEY")
+            or os.environ.get("EMBEDDING_PROVIDER_API_KEY")
+        )
+        if not mistral_key:
+            raise RuntimeError("No API key found. Set MISTRAL_API_KEY or LLM_PROVIDER_API_KEY in .env")
+        llm = LangchainLLMWrapper(ChatMistralAI(model="mistral-large-latest", temperature=0, api_key=mistral_key))
+        emb = LangchainEmbeddingsWrapper(MistralAIEmbeddings(model="mistral-embed", api_key=mistral_key))
+        print(f"  judge:   mistral (mistral-large-latest)")
+
     metrics = [
         Faithfulness(llm=llm),
         ResponseRelevancy(llm=llm, embeddings=emb),
         ContextPrecision(llm=llm),
     ]
-    run_config = RunConfig(timeout=120, max_retries=3)
+    run_config = RunConfig(timeout=180, max_retries=2)
 
     new_samples: list[SingleTurnSample] = []
     old_samples: list[SingleTurnSample] = []
@@ -142,9 +151,8 @@ async def main(limit: int | None) -> None:
         qid = entry.get("id", f"Q{i:02d}")
         print(f"[{i}/{len(golden)}] {qid}: {q[:65]}...")
 
-        # Throttle: 1 embed call per question + 1 LLM answer call per pipeline
-        # 15s gap gives Mistral rate limiter time to recover between questions
-        if i > 1:
+        # Throttle only for Mistral (rate limited API); Ollama runs locally with no limit
+        if i > 1 and judge != "ollama":
             time.sleep(15)
 
         # NEW: graph_rag_retrieve (FTS + test-penalty + BFS + rerank).
@@ -277,5 +285,11 @@ async def main(limit: int | None) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="Limit to first N questions")
+    parser.add_argument("--judge", choices=["mistral", "ollama"], default="ollama",
+                        help="LLM backend for RAGAS scoring (default: ollama)")
+    parser.add_argument("--ollama-chat-model", default="qwen2.5:7b",
+                        help="Ollama chat model for RAGAS judge (default: qwen2.5:7b)")
+    parser.add_argument("--ollama-embed-model", default="nomic-embed-text",
+                        help="Ollama embedding model for RAGAS judge (default: nomic-embed-text)")
     args = parser.parse_args()
-    asyncio.run(main(args.limit))
+    asyncio.run(main(args.limit, args.judge, args.ollama_chat_model, args.ollama_embed_model))

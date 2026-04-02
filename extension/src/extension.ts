@@ -176,11 +176,14 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
   // EXT-04: Wire FileWatcher for incremental re-index on save (WATCH-01/02/03).
   // Auto-index is intentionally disabled — user triggers the first index manually
   // via the "Index Workspace" button or the nexus.indexWorkspace command.
+  // One watcher per workspace folder supports multi-root workspaces.
   let dbPath: string | undefined;
-  if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-    const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    dbPath = path.join(repoPath, '.nexus', 'graph.db');
-    const watcher = new FileWatcher(repoPath, client, dbPath, (files) => {
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    const repoPath = folder.uri.fsPath;
+    const folderDbPath = path.join(repoPath, '.nexus', 'graph.db');
+    // Use the first folder's db path for config push (single-backend config)
+    dbPath ??= folderDbPath;
+    const watcher = new FileWatcher(repoPath, client, folderDbPath, (files) => {
       const names = files.map(f => path.basename(f)).join(', ');
       provider.postLog('info', `Auto-reindex: ${files.length} file(s) saved — ${names}`);
     });
@@ -241,7 +244,12 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
         prevEmbeddingProvider = newEmbeddingProvider;
         prevEmbeddingModel = newEmbeddingModel;
 
-        const result = await configManager.pushConfig(dbPath).catch(() => ({ reindex_required: false }));
+        let result = { reindex_required: false };
+        try {
+          result = await configManager.pushConfig(dbPath);
+        } catch (err) {
+          provider.postLog('warning', `Config push failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
         provider.setReindexState(result.reindex_required, false);
         provider.broadcastConfigStatus();
         await syncKeyStatus();

@@ -1,6 +1,16 @@
 import * as vscode from 'vscode';
 import { Citation } from './types';
 
+const QUERY_TIMEOUT_MS = 30_000;
+
+/** Build an AbortSignal that fires on the earliest of: user cancel or 30 s timeout. */
+function makeFetchSignal(userSignal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(QUERY_TIMEOUT_MS);
+  if (!userSignal) { return timeout; }
+  // AbortSignal.any is Node 20+ / Electron 31+ — both ship with current VS Code.
+  return AbortSignal.any([userSignal, timeout]);
+}
+
 export async function streamQuery(
   question: string,
   repoPath: string,
@@ -12,17 +22,21 @@ export async function streamQuery(
   selectedFile?: string,
   selectedRange?: [number, number],
   repoRoot?: string,
-  dbPath?: string,         // NEW — added at end, optional for backwards compat
+  dbPath?: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   const config = vscode.workspace.getConfiguration('nexus');
   const maxNodes = config.get<number>('maxNodes', 10);
   const hopDepth = config.get<number>('hopDepth', 1);
+
+  const fetchSignal = makeFetchSignal(signal);
 
   let response: Response;
   try {
     response = await fetch(`${backendUrl}/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: fetchSignal,
       body: JSON.stringify({
         question,
         repo_path: repoPath,
@@ -37,6 +51,11 @@ export async function streamQuery(
       }),
     });
   } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      if (signal?.aborted) { return; }  // user-requested cancel — silent
+      void webview.postMessage({ type: 'error', message: 'Query timed out. Please try again.' });
+      return;
+    }
     void webview.postMessage({ type: 'error', message: `Cannot reach backend: ${String(err)}` });
     return;
   }
@@ -112,6 +131,12 @@ export async function streamQuery(
       }
     }
   } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      if (signal?.aborted) { return; }  // user-requested cancel — silent
+      // Timeout fired during streaming
+      void webview.postMessage({ type: 'error', message: 'Query timed out. Please try again.' });
+      return;
+    }
     // Stream interrupted (backend crash, network drop) — notify webview so isStreaming resets
     void webview.postMessage({
       type: 'error',

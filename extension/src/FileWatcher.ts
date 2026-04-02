@@ -12,8 +12,9 @@ export class FileWatcher {
     private readonly _dbPath: string,
     private readonly _onFlush?: (files: string[]) => void
   ) {
-    // WATCH-01: RelativePattern scopes watcher to workspace root only (not global FS)
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    // WATCH-01: RelativePattern scopes watcher to this specific repo folder (not global FS).
+    // Use getWorkspaceFolder so multi-root workspaces each get their own scoped watcher.
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(this._repoPath));
     const pattern = workspaceFolder
       ? new vscode.RelativePattern(workspaceFolder, '**/*.{py,ts,tsx,js,jsx}')
       : '**/*.{py,ts,tsx,js,jsx}';

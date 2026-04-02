@@ -24,6 +24,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private _reindexRequired = false;
   private _neverIndexed = true;
   private _missingProviders: string[] = [];
+  private _indexInProgress = false;
+  private _queryAbortController?: AbortController;
+  private _pollAbortController?: AbortController;
 
   private get _dbPath(): string {
     return path.join(this._repoPath ?? '', '.nexus', 'graph.db');
@@ -95,6 +98,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               break;
             }
             this._highlight.clearHighlights();   // HIGH-02: clear on new query
+            // Cancel any in-flight stream before starting a new one
+            this._queryAbortController?.abort();
+            this._queryAbortController = new AbortController();
             // Capture active editor context for review/test intents
             const editor = vscode.window.activeTextEditor;
             const selectedFile = editor?.document.uri.fsPath;
@@ -114,7 +120,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               selectedFile,          // from active editor (undefined if no editor open)
               selectedRange,         // from active selection (undefined if no selection or empty)
               this._repoPath,        // repo_root = workspace root (same as repoPath)
-              this._dbPath,          // NEW: local db path for v3 local-first
+              this._dbPath,
+              this._queryAbortController.signal,
             );
           } else {
             void webviewView.webview.postMessage({
@@ -193,16 +200,26 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       void vscode.window.showWarningMessage('Nexus: No workspace folder open.');
       return;
     }
-
+    if (this._indexInProgress) {
+      return;
+    }
+    this._indexInProgress = true;
+    this._pollAbortController = new AbortController();
     try {
       await this._client.startIndex(this._repoPath, this._dbPath);
       void this._postStatus({ status: 'running' });
 
-      await this._client.pollUntilComplete(this._repoPath, (status) => {
-        void this._postStatus(status);
-      });
+      await this._client.pollUntilComplete(
+        this._repoPath,
+        (status) => { void this._postStatus(status); },
+        undefined,
+        this._pollAbortController.signal,
+      );
     } catch (err) {
       void this._postStatus({ status: 'failed', error: String(err) });
+    } finally {
+      this._indexInProgress = false;
+      this._pollAbortController = undefined;
     }
   }
 
@@ -262,6 +279,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   dispose(): void {
+    this._queryAbortController?.abort();
+    this._pollAbortController?.abort();
     this._highlight.dispose();
   }
 
