@@ -27,7 +27,10 @@ def set_config(request: ConfigRequest):
 
     reindex_required = False
     if db_path:
-        stored = get_embedding_meta(db_path)
+        try:
+            stored = get_embedding_meta(db_path)
+        except Exception:
+            stored = None
         if stored is not None:
             cfg = get_runtime_config()
             reindex_required = (

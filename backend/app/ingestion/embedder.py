@@ -17,7 +17,56 @@ from app.models.schemas import CodeNode
 
 logger = logging.getLogger(__name__)
 
-EMBED_BATCH_SIZE = 100
+# Maximum characters sent per text to the embedding API.
+# Keeps each input well under all providers' per-text token limits
+# (Gemini: ~2 K tokens, OpenAI: ~8 K, Mistral/Ollama: ~16 K).
+MAX_EMBED_TEXT_CHARS = 6_000  # ≈ 1 500 tokens @ 4 chars/token
+
+# Conservative token budget per API request (total across all texts in one call).
+# Mistral mistral-embed hard-caps at 16 384 — we target 12 000 to leave headroom.
+EMBED_TOKEN_BUDGET = 12_000
+
+# Absolute ceiling on items per batch regardless of token estimate.
+EMBED_BATCH_SIZE_MAX = 64
+
+
+def _build_batches(nodes: list) -> list[list]:
+    """Build variable-size batches that stay within the per-request token budget.
+
+    Each text is first capped at MAX_EMBED_TEXT_CHARS to respect per-input limits.
+    Batches are then accumulated until the estimated token count would exceed
+    EMBED_TOKEN_BUDGET or the item cap EMBED_BATCH_SIZE_MAX, whichever is hit first.
+
+    Token count is estimated as len(text) // 4 (4 chars ≈ 1 token).
+    This avoids importing a tokeniser while being conservative enough in practice.
+    """
+    batches: list[list] = []
+    current: list = []
+    current_tokens = 0
+
+    for node in nodes:
+        text = node.embedding_text[:MAX_EMBED_TEXT_CHARS]
+        est = max(1, len(text) // 4)
+
+        flush = (
+            current
+            and (
+                current_tokens + est > EMBED_TOKEN_BUDGET
+                or len(current) >= EMBED_BATCH_SIZE_MAX
+            )
+        )
+        if flush:
+            batches.append(current)
+            current = []
+            current_tokens = 0
+
+        current.append(node)
+        current_tokens += est
+
+    if current:
+        batches.append(current)
+
+    return batches
 
 
 def _vec_conn(db_path: str) -> sqlite3.Connection:
@@ -25,6 +74,9 @@ def _vec_conn(db_path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     try:
         conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        conn.enable_load_extension(False)
+        return conn
     except AttributeError:
         conn.close()
         raise RuntimeError(
@@ -33,9 +85,9 @@ def _vec_conn(db_path: str) -> sqlite3.Connection:
             "  PYTHON_CONFIGURE_OPTS='--enable-loadable-sqlite-extensions' "
             "pyenv install 3.11.13 --force"
         ) from None
-    sqlite_vec.load(conn)
-    conn.enable_load_extension(False)
-    return conn
+    except Exception:
+        conn.close()
+        raise
 
 
 def init_vec_table(db_path: str) -> None:
@@ -119,8 +171,15 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
     importing this module does not raise a ValidationError when API keys
     are absent (e.g. during test collection).
 
-    Processes nodes in batches of EMBED_BATCH_SIZE (100). Each batch is
-    upserted atomically to both stores:
+    Batches are built dynamically by _build_batches() to stay within the
+    per-request token budget (EMBED_TOKEN_BUDGET) rather than using a fixed
+    item count. This prevents large-repo failures where many long functions
+    would overflow the embedding API's token limit.
+
+    Each text is additionally capped at MAX_EMBED_TEXT_CHARS before being sent
+    to the API (the full embedding_text is still written to FTS5 for LLM context).
+
+    Each batch is upserted atomically to both stores:
       - sqlite-vec: delete old rows + insert new (vec0 has no ON CONFLICT support)
       - FTS5:       DELETE + INSERT (FTS5 has no ON CONFLICT support)
 
@@ -139,82 +198,88 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
     init_vec_table(db_path)
     _init_fts_table(db_path)
 
+    # Deduplicate across the full node list before batching.
+    seen: dict[str, CodeNode] = {}
+    for n in nodes:
+        seen[n.node_id] = n
+    deduped = list(seen.values())
+
+    batches = _build_batches(deduped)
+    logger.debug(
+        "embed_and_store: %d nodes → %d batches (token-aware)",
+        len(deduped), len(batches),
+    )
+
     total_stored = 0
 
-    for i in range(0, len(nodes), EMBED_BATCH_SIZE):
-        raw_batch = nodes[i : i + EMBED_BATCH_SIZE]
-        # Guard: deduplicate within the batch so upsert never sees the same id twice.
-        batch_map: dict[str, CodeNode] = {}
-        for n in raw_batch:
-            batch_map[n.node_id] = n
-        batch = list(batch_map.values())
-        texts = [n.embedding_text for n in batch]
+    for batch_idx, batch in enumerate(batches):
+        # Cap each text at MAX_EMBED_TEXT_CHARS for the API call only.
+        texts = [n.embedding_text[:MAX_EMBED_TEXT_CHARS] for n in batch]
 
         try:
             embeddings = embedder.embed(texts)
         except Exception as exc:
             exc_str = str(exc)
             # Re-raise rate-limit / capacity errors so run_ingestion surfaces them
-            # as IndexStatus(status="failed") rather than silently skipping batches
-            # and reporting "0 nodes indexed" with a misleading file-type warning.
+            # as IndexStatus(status="failed") rather than silently skipping batches.
             if "429" in exc_str or "rate" in exc_str.lower() or "capacity" in exc_str.lower():
                 raise
             logger.warning(
-                "embed_and_store: embedding batch %d-%d failed (%s) — skipping batch",
-                i, i + len(batch), exc,
+                "embed_and_store: batch %d/%d (%d nodes) embed failed (%s) — skipping",
+                batch_idx + 1, len(batches), len(batch), exc,
             )
             continue
 
         # --- Upsert to sqlite-vec ---
-        vec_conn = _vec_conn(db_path)
+        # vec_conn is opened INSIDE the try so any sqlite-vec failure is caught
+        # rather than propagating uncaught to run_ingestion.
         try:
-            for n, emb in zip(batch, embeddings):
-                # Check if an existing meta row exists; if so, delete old vec row too
-                existing = vec_conn.execute(
-                    "SELECT vec_rowid FROM code_embeddings_meta WHERE node_id = ?",
-                    (n.node_id,),
-                ).fetchone()
-                if existing is not None:
-                    old_vec_rowid = existing[0]
-                    if old_vec_rowid is not None:
-                        vec_conn.execute(
-                            "DELETE FROM code_embeddings_vec WHERE rowid = ?",
-                            (old_vec_rowid,),
-                        )
-                    vec_conn.execute(
-                        "DELETE FROM code_embeddings_meta WHERE node_id = ?",
+            vec_conn = _vec_conn(db_path)
+            try:
+                for n, emb in zip(batch, embeddings):
+                    existing = vec_conn.execute(
+                        "SELECT vec_rowid FROM code_embeddings_meta WHERE node_id = ?",
                         (n.node_id,),
+                    ).fetchone()
+                    if existing is not None:
+                        old_vec_rowid = existing[0]
+                        if old_vec_rowid is not None:
+                            vec_conn.execute(
+                                "DELETE FROM code_embeddings_vec WHERE rowid = ?",
+                                (old_vec_rowid,),
+                            )
+                        vec_conn.execute(
+                            "DELETE FROM code_embeddings_meta WHERE node_id = ?",
+                            (n.node_id,),
+                        )
+
+                    embedding_bytes = sqlite_vec.serialize_float32(emb)
+                    vec_conn.execute(
+                        "INSERT INTO code_embeddings_vec(embedding) VALUES (?)",
+                        (embedding_bytes,),
                     )
+                    new_vec_rowid = vec_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
-                # Insert new vector row
-                embedding_bytes = sqlite_vec.serialize_float32(emb)
-                vec_conn.execute(
-                    "INSERT INTO code_embeddings_vec(embedding) VALUES (?)",
-                    (embedding_bytes,),
-                )
-                new_vec_rowid = vec_conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-                # Insert metadata row
-                vec_conn.execute(
-                    """
-                    INSERT INTO code_embeddings_meta
-                        (node_id, repo_path, name, file_path, line_start, line_end, vec_rowid)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (n.node_id, repo_path, n.name, n.file_path, n.line_start, n.line_end, new_vec_rowid),
-                )
-            vec_conn.commit()
+                    vec_conn.execute(
+                        """
+                        INSERT INTO code_embeddings_meta
+                            (node_id, repo_path, name, file_path, line_start, line_end, vec_rowid)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (n.node_id, repo_path, n.name, n.file_path, n.line_start, n.line_end, new_vec_rowid),
+                    )
+                vec_conn.commit()
+            finally:
+                vec_conn.close()
         except Exception as exc:
             logger.warning(
-                "embed_and_store: sqlite-vec upsert for batch %d-%d failed (%s) — skipping batch",
-                i, i + len(batch), exc,
+                "embed_and_store: batch %d/%d sqlite-vec upsert failed (%s) — skipping",
+                batch_idx + 1, len(batches), exc,
             )
-            vec_conn.close()
             continue
-        finally:
-            vec_conn.close()
 
         # --- Upsert to FTS5 (DELETE + INSERT, no ON CONFLICT in FTS5) ---
+        # FTS5 stores the full embedding_text (not truncated) for LLM context.
         sqlite_conn = sqlite3.connect(db_path)
         try:
             sqlite_conn.executemany(
@@ -228,8 +293,8 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
             sqlite_conn.commit()
         except Exception as exc:
             logger.warning(
-                "embed_and_store: FTS5 upsert for batch %d-%d failed (%s) — vec stored, FTS skipped",
-                i, i + len(batch), exc,
+                "embed_and_store: batch %d/%d FTS5 upsert failed (%s) — vec stored, FTS skipped",
+                batch_idx + 1, len(batches), exc,
             )
         finally:
             sqlite_conn.close()

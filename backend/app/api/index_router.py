@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 from app.ingestion.embedder import delete_embeddings_for_repo
@@ -49,7 +51,10 @@ async def delete_index(repo_path: str, db_path: str):
     """Remove all FTS5 and SQLite graph data for the given repo_path."""
     if not db_path or not db_path.strip():
         raise HTTPException(status_code=422, detail="db_path must be a non-empty path")
-    delete_embeddings_for_repo(repo_path, db_path)
-    delete_graph_for_repo(repo_path, db_path)
+    try:
+        await asyncio.to_thread(delete_embeddings_for_repo, repo_path, db_path)
+        await asyncio.to_thread(delete_graph_for_repo, repo_path, db_path)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete index: {exc}") from exc
     clear_status(repo_path)
     return {"status": "deleted", "repo_path": repo_path}

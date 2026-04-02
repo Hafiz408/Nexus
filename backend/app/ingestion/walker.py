@@ -8,8 +8,38 @@ import pathspec
 logger = logging.getLogger(__name__)
 
 SKIP_DIRS: set[str] = {
-    ".git", "node_modules", "__pycache__", ".venv", "venv",
-    "dist", "build", ".next", "coverage",
+    # ── Version control ──────────────────────────────────────────────────────
+    ".git", ".svn", ".hg",
+
+    # ── Python virtual environments ──────────────────────────────────────────
+    ".venv", "venv", "env", ".env",
+    "virtualenv", ".virtualenv",
+
+    # ── Python build / cache artefacts ───────────────────────────────────────
+    "__pycache__", "__pypackages__",
+    ".tox", ".nox",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".hypothesis",
+    "htmlcov", ".eggs",
+
+    # ── JavaScript / Node ────────────────────────────────────────────────────
+    "node_modules", ".yarn", ".pnp",
+
+    # ── Build outputs ────────────────────────────────────────────────────────
+    "dist", "build", "out", "target",
+
+    # ── Framework-specific output / cache dirs ───────────────────────────────
+    ".next", ".nuxt", ".output", ".svelte-kit",
+    ".expo", ".turbo",
+    "storybook-static",
+
+    # ── Coverage ─────────────────────────────────────────────────────────────
+    "coverage",
+
+    # ── Generic caches ───────────────────────────────────────────────────────
+    ".cache", ".parcel-cache",
+
+    # ── Temporary / log dirs ─────────────────────────────────────────────────
+    "tmp", "temp", "log", "logs",
 }
 
 EXTENSION_TO_LANGUAGE: dict[str, str] = {
@@ -70,7 +100,9 @@ def walk_repo(
     for root, dirs, files in os.walk(str(repo_root)):
         dirs[:] = [
             d for d in dirs
-            if d not in SKIP_DIRS and not d.endswith(".egg-info")
+            if d not in SKIP_DIRS
+            and not d.endswith(".egg-info")
+            and not d.endswith(".dist-info")
         ]
         if ".gitignore" in files:
             gi_path = Path(root) / ".gitignore"
@@ -81,7 +113,9 @@ def walk_repo(
     for root, dirs, files in os.walk(str(repo_root)):
         dirs[:] = [
             d for d in dirs
-            if d not in SKIP_DIRS and not d.endswith(".egg-info")
+            if d not in SKIP_DIRS
+            and not d.endswith(".egg-info")
+            and not d.endswith(".dist-info")
         ]
 
         for file_name in files:

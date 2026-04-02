@@ -28,26 +28,29 @@ def _get_conn(db_path: str) -> sqlite3.Connection:
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS graph_nodes (
+                node_id    TEXT NOT NULL,
+                repo_path  TEXT NOT NULL,
+                file_path  TEXT NOT NULL,
+                attrs_json TEXT NOT NULL,
+                PRIMARY KEY (node_id, repo_path)
+            );
 
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS graph_nodes (
-            node_id    TEXT NOT NULL,
-            repo_path  TEXT NOT NULL,
-            file_path  TEXT NOT NULL,
-            attrs_json TEXT NOT NULL,
-            PRIMARY KEY (node_id, repo_path)
-        );
-
-        CREATE TABLE IF NOT EXISTS graph_edges (
-            source     TEXT NOT NULL,
-            target     TEXT NOT NULL,
-            repo_path  TEXT NOT NULL,
-            attrs_json TEXT NOT NULL DEFAULT '{}',
-            PRIMARY KEY (source, target, repo_path)
-        );
-    """)
-    conn.commit()
-    return conn
+            CREATE TABLE IF NOT EXISTS graph_edges (
+                source     TEXT NOT NULL,
+                target     TEXT NOT NULL,
+                repo_path  TEXT NOT NULL,
+                attrs_json TEXT NOT NULL DEFAULT '{}',
+                PRIMARY KEY (source, target, repo_path)
+            );
+        """)
+        conn.commit()
+        return conn
+    except Exception:
+        conn.close()
+        raise
 
 
 def save_graph(G: nx.DiGraph, repo_path: str, db_path: str) -> None:

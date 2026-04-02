@@ -16,7 +16,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from app.ingestion.graph_store import save_graph, load_graph, delete_nodes_for_files
-from app.ingestion.embedder import embed_and_store, EMBED_BATCH_SIZE, delete_embeddings_for_files
+from app.ingestion.embedder import embed_and_store, EMBED_BATCH_SIZE_MAX, EMBED_TOKEN_BUDGET, delete_embeddings_for_files
 from app.models.schemas import CodeNode
 
 
@@ -202,9 +202,10 @@ def test_repos_isolated_in_single_db(tmp_db, sample_graph):
 # Stub vec tables (plain SQLite) replace the vec0 virtual table.
 # ---------------------------------------------------------------------------
 
-def test_embed_batch_size_constant():
-    """EMBED-04: batch size is 100."""
-    assert EMBED_BATCH_SIZE == 100
+def test_embed_batch_constants():
+    """EMBED-04: token-aware batching constants are within expected bounds."""
+    assert EMBED_BATCH_SIZE_MAX <= 64
+    assert EMBED_TOKEN_BUDGET <= 16_384  # Mistral hard cap
 
 
 def test_embed_and_store_returns_count(tmp_db, sample_nodes, mock_mistral_client):

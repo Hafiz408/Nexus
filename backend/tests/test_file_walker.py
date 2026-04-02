@@ -108,3 +108,37 @@ def test_both_languages(sample_repo_path):
     languages = {r["language"] for r in results}
     assert "python" in languages
     assert "typescript" in languages
+
+
+@pytest.mark.parametrize("skip_dir", [
+    "venv", ".venv", "env", ".env", "virtualenv",
+    ".tox", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    "htmlcov", ".eggs",
+    ".yarn",
+    "out", "target",
+    ".nuxt", ".output", ".svelte-kit", ".expo", ".turbo",
+    "storybook-static",
+    ".cache", ".parcel-cache",
+    "tmp", "temp", "log", "logs",
+    ".svn", ".hg",
+])
+def test_skips_non_code_dirs(tmp_path, skip_dir):
+    """Walker must not descend into any standard non-code directory."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "real.py").write_text("def real(): pass")
+    skip = tmp_path / skip_dir
+    skip.mkdir()
+    (skip / "noise.py").write_text("def noise(): pass")
+    results = walk_repo(str(tmp_path), ["python"])
+    paths = [Path(r["path"]).relative_to(tmp_path).parts[0] for r in results]
+    assert skip_dir not in paths
+    assert any("src" in Path(r["path"]).parts for r in results)
+
+
+def test_skips_dist_info_dir(tmp_path):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "real.py").write_text("def real(): pass")
+    (tmp_path / "somelib-1.0.dist-info").mkdir()
+    (tmp_path / "somelib-1.0.dist-info" / "METADATA").write_text("Name: somelib")
+    results = walk_repo(str(tmp_path), ["python"])
+    assert all("dist-info" not in r["path"] for r in results)

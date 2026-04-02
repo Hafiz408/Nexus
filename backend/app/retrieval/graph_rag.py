@@ -48,10 +48,10 @@ def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> lis
     query_bytes = sqlite_vec.serialize_float32(query_vec)
 
     conn = sqlite3.connect(db_path)
-    conn.enable_load_extension(True)
-    sqlite_vec.load(conn)
-    conn.enable_load_extension(False)
     try:
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        conn.enable_load_extension(False)
         rows = conn.execute(
             """
             SELECT meta.node_id, vec.distance
@@ -127,15 +127,19 @@ def rerank_and_assemble(
 ) -> list[CodeNode]:
     """Score each expanded node and return top max_nodes as CodeNode objects.
 
-    Applies the exact RAG-03 formula verbatim:
-        score = (semantic_score if seed else 0.3) + (0.2 * pagerank) + (0.1 * in_degree_norm)
+    Dual-score formula:
+        graph_score   = 0.2 × pagerank + 0.1 × in_degree_norm
+        final_score   = 0.7 × semantic_score + 0.3 × graph_score
+
+    semantic_score is the cosine similarity from the seed dict, or 0.0 for
+    BFS-expanded non-seed nodes. This means:
+      - Seed nodes can score up to 1.0 (driven by query relevance).
+      - Expanded non-seed nodes can score at most 0.3 (graph topology only).
+    The old flat 0.3 fallback gave identical base scores to all expanded nodes
+    regardless of which seed — or how relevant a seed — brought them in.
 
     in_degree_norm = node in_degree / max in_degree across all expanded nodes.
     Zero-division guard: max_in_degree defaults to 1 when all nodes have in_degree 0.
-
-    Full CodeNode objects are reconstructed from G.nodes[node_id] attributes —
-    the graph stores complete model_dump from the ingestion pipeline, whereas
-    code_embeddings_meta only stores (node_id, name, file_path, line_start, line_end).
 
     Args:
         expanded_node_ids: Set of node IDs from expand_via_graph.
@@ -146,8 +150,6 @@ def rerank_and_assemble(
     Returns:
         Top max_nodes CodeNode objects sorted by descending composite score.
     """
-    # Compute max in_degree for normalisation — guard against zero-division.
-    # Use `or 1` so that a list of all-zeros also yields max_in_degree=1.
     in_degrees = [G.nodes[n].get("in_degree", 0) for n in expanded_node_ids if n in G]
     max_in_degree = (max(in_degrees) if in_degrees else 0) or 1
 
@@ -157,11 +159,11 @@ def rerank_and_assemble(
             continue
         attrs = G.nodes[node_id]
 
-        # Exact RAG-03 formula — do not modify
-        semantic = seed_scores.get(node_id, 0.3)  # 0.3 fallback for non-seed nodes
+        semantic = seed_scores.get(node_id, 0.0)  # 0.0 for non-seed expanded nodes
         pagerank = attrs.get("pagerank", 0.0)
         in_degree_norm = attrs.get("in_degree", 0) / max_in_degree
-        score = semantic + (0.2 * pagerank) + (0.1 * in_degree_norm)
+        graph_score = 0.2 * pagerank + 0.1 * in_degree_norm
+        score = 0.7 * semantic + 0.3 * graph_score
 
         # Reconstruct CodeNode from graph attributes (complete model_dump stored there)
         node = CodeNode(**{k: v for k, v in attrs.items() if k in CodeNode.model_fields})
@@ -171,24 +173,45 @@ def rerank_and_assemble(
     return [node for _, node in scored[:max_nodes]]
 
 
+_FTS_STOPWORDS: frozenset[str] = frozenset({
+    # Question words
+    "how", "what", "when", "where", "why", "who", "which",
+    # Common verbs
+    "is", "are", "was", "were", "be", "been", "being",
+    "do", "does", "did", "done", "have", "has", "had",
+    "can", "could", "will", "would", "should", "may", "might",
+    "use", "used", "using", "work", "works", "make", "makes",
+    "add", "added", "get", "set", "run", "runs",
+    # Prepositions / conjunctions
+    "the", "and", "for", "with", "from", "into", "via",
+    "that", "this", "these", "those", "its", "your",
+    "you", "not", "also", "then", "than",
+    # Code-adjacent noise (appear in nearly every file)
+    "def", "class", "return", "import", "pass", "none",
+    "true", "false", "self",
+})
+
+
 def fts_search(query: str, repo_path: str, top_k: int, db_path: str) -> list[tuple[str, float]]:
     """FTS5 keyword search over indexed symbol names for the given repo.
 
-    Tokenises the query into identifier-like words and runs a BM25 search
-    over the code_fts table (indexed columns: name, embedding_text). Complements
-    semantic search by catching exact/prefix matches that vector similarity may miss
-    (e.g. the user types a precise function name). Because embedding_text contains
-    signature + docstring + body_preview, the BM25 search covers richer content than
-    name alone.
+    Tokenises the query into identifier-like words, strips stopwords, and runs
+    a BM25 search over the code_fts table (indexed columns: name, embedding_text).
+    Complements semantic search by catching exact/prefix matches that vector
+    similarity may miss (e.g. the user types a precise function name).
+
+    Stopword filtering prevents common question words ("how", "what", "use", etc.)
+    from flooding the FTS seed set with unrelated matches before BFS expansion.
 
     Results are scored in [0, 0.85] so that perfect FTS matches rank below
     perfect semantic matches (score 1.0) when the two are merged.
 
-    Returns list[tuple[str, float]] — (node_id, score) pairs.
+    Returns list[tuple[str, float]] — (node_id, score) pairs, or [] if no
+    meaningful keywords remain after stopword filtering.
     """
     # Extract identifier-like tokens; skip very short words to avoid FTS noise
     words = re.findall(r"[a-zA-Z_]\w*", query)
-    words = [w for w in words if len(w) > 2]
+    words = [w for w in words if len(w) > 2 and w.lower() not in _FTS_STOPWORDS]
     if not words:
         return []
 
@@ -237,9 +260,11 @@ def graph_rag_retrieve(
     """Orchestrate the full 3-step Graph RAG retrieval pipeline.
 
     Step 1 — dual search: embed query (semantic) + FTS5 keyword search.
+              FTS uses stopword-filtered tokens, capped at 5 results.
               Results are merged; per-node score = max(semantic, fts).
     Step 2 — expand_via_graph: BFS expand seed node set by hop_depth hops.
-    Step 3 — rerank_and_assemble: score-weighted reranking, return top max_nodes.
+    Step 3 — rerank_and_assemble: dual-score reranking (0.7×semantic + 0.3×graph),
+              return top max_nodes.
 
     Args:
         query:     Natural language query string.
@@ -260,8 +285,10 @@ def graph_rag_retrieve(
     seed_scores: dict[str, float] = {node_id: score for node_id, score in seed_results}
     semantic_count = len(seed_scores)
 
-    # Step 1b: FTS keyword search — merge, keeping max score per node
-    fts_results = fts_search(query, repo_path, top_k=max_nodes, db_path=db_path)
+    # Step 1b: FTS keyword search — merge, keeping max score per node.
+    # top_k is capped at 5: FTS is a precision supplement for exact symbol lookups,
+    # not a broad recall mechanism. More than 5 FTS results dilutes seed quality.
+    fts_results = fts_search(query, repo_path, top_k=5, db_path=db_path)
     fts_new = 0
     for node_id, score in fts_results:
         if node_id not in seed_scores:

@@ -68,6 +68,7 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
     # V2 path: structured agents (debug / review / test) use LangGraph
     if request_body.intent_hint and request_body.intent_hint not in ("auto", "explain"):
         async def v2_event_generator():
+            _conn = None
             try:
                 # Lazy imports — established project pattern (all V2 agents use this)
                 # Prevents import-time ValidationError when API keys are absent.
@@ -86,8 +87,8 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 _nexus_dir = _os.path.dirname(request_body.db_path)
                 _os.makedirs(_nexus_dir, exist_ok=True)
                 checkpoints_path = _os.path.join(_nexus_dir, "checkpoints.db")
-                conn = _sqlite3.connect(checkpoints_path, check_same_thread=False)
-                graph = build_graph(checkpointer=SqliteSaver(conn))
+                _conn = _sqlite3.connect(checkpoints_path, check_same_thread=False)
+                graph = build_graph(checkpointer=SqliteSaver(_conn))
 
                 initial_state = {
                     "question": request_body.question,
@@ -170,6 +171,9 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 logger.exception("v2 error: %s", exc)
                 payload = json.dumps({"type": "error", "message": str(exc)})
                 yield f"event: error\ndata: {payload}\n\n"
+            finally:
+                if _conn is not None:
+                    _conn.close()
 
         return StreamingResponse(v2_event_generator(), media_type="text/event-stream")
 
@@ -245,11 +249,14 @@ async def post_review_to_pr(request_body: _PostPRRequest):
             detail="GITHUB_TOKEN not configured on server",
         )
 
-    result = post_review_comments(
-        findings=request_body.findings,
-        repo=request_body.repo,
-        pr_number=request_body.pr_number,
-        commit_sha=request_body.commit_sha,
-        github_token=settings.github_token,
-    )
+    try:
+        result = post_review_comments(
+            findings=request_body.findings,
+            repo=request_body.repo,
+            pr_number=request_body.pr_number,
+            commit_sha=request_body.commit_sha,
+            github_token=settings.github_token,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to post PR comments: {exc}") from exc
     return result

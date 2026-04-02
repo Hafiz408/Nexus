@@ -8,14 +8,18 @@ def _get_conn(db_path: str) -> sqlite3.Connection:
     if parent:
         os.makedirs(parent, exist_ok=True)
     conn = sqlite3.connect(db_path)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS nexus_meta (
-            key   TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        )
-    """)
-    conn.commit()
-    return conn
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS nexus_meta (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+        return conn
+    except Exception:
+        conn.close()
+        raise
 
 
 def get_meta(db_path: str, key: str) -> str | None:
