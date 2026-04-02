@@ -2,7 +2,7 @@
 
 **Ask questions about your codebase in plain English. Get grounded, citation-backed answers — streamed live, right inside VS Code.**
 
-Nexus AI builds a **call graph + vector index** of your codebase and uses it to answer questions with full structural awareness. It doesn't just search for keywords — it understands how your code is connected.
+Nexus AI builds a **call graph + vector index** of your codebase and uses it to answer questions with full structural awareness. It doesn't just search for keywords — it understands how your code is connected through a [dual-search retrieval pipeline](https://github.com/Hafiz408/Nexus/blob/main/backend/app/retrieval/README.md) combining semantic vector search with FTS5 keyword search and BFS graph traversal.
 
 > **100% local & private.** Your code never leaves your machine. The index lives in `.nexus/graph.db` inside your workspace. No cloud database, no telemetry, no server to manage.
 
@@ -21,16 +21,15 @@ Nexus AI builds a **call graph + vector index** of your codebase and uses it to 
 
 ## Features
 
+- **Graph-aware retrieval** — BFS call-graph traversal surfaces callers and callees of your seed nodes, exposing structurally connected code that pure vector search misses (+13% composite RAGAS score vs vector-only)
+- **Dual-search pipeline** — semantic vector search and FTS5 BM25 keyword search run in parallel; scores merged per-node by max. Catches exact symbol-name queries that embedding similarity alone misses
+- **Score-boosted ranking** — final score = semantic similarity + 0.2×PageRank centrality + 0.1×in-degree; test files penalised 0.5× so source implementation consistently ranks above test files
 - **Live streaming answers** — tokens stream into the chat panel as the LLM generates them
 - **Clickable citations** — every answer links to the exact file and line number in your editor
-- **Dual-search retrieval** — semantic vector search + FTS5 BM25 keyword search run in parallel; results merged by max score. Catches exact symbol-name queries that embedding similarity alone misses.
-- **Graph-aware context** — BFS call-graph traversal surfaces structurally connected code that pure vector search misses (+13% RAGAS score vs vector-only)
-- **Score-boosted ranking** — semantic similarity + 0.2×PageRank centrality + 0.1×in-degree; test files penalised 0.5× so source code consistently ranks above tests
-- **Incremental re-index** — file saves trigger automatic background re-indexing with a 2s debounce
+- **Incremental re-index** — file saves trigger automatic background re-indexing with a 2s debounce; index stays current without manual intervention
+- **Embedding mismatch detection** — detects when you switch embedding providers or models and blocks chat until the index is rebuilt with the new model
 - **Secure API key storage** — keys stored in VS Code SecretStorage (OS keychain), never written to disk or `settings.json`
-- **GitHub PR integration** — post Review findings as inline comments directly to a pull request
-- **Embedding mismatch detection** — warns and blocks chat if you switch embedding models without re-indexing
-- **Multi-workspace support** — each workspace gets its own isolated `.nexus/graph.db` index
+- **Multi-workspace support** — each workspace gets its own isolated `.nexus/graph.db` index; opening multiple workspaces never cross-contaminates results
 - **Dev-mode passthrough** — if port 8000 is already occupied, the extension skips spawning its own backend (useful for local development)
 
 ---

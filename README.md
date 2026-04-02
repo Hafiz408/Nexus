@@ -63,6 +63,8 @@ Question
                └── score < 0.7 → retry (max 2×)
 ```
 
+See [backend/app/retrieval/README.md](backend/app/retrieval/README.md) for a detailed breakdown of the dual-search and graph expansion pipeline, including eval results.
+
 ## Installation
 
 ### Option A — VS Code Marketplace (recommended)
@@ -166,17 +168,32 @@ The extension pushes provider/model/key config to the backend at startup and on 
 
 Every push to a `v*` tag triggers **GitHub Actions** (`.github/workflows/build.yml`):
 
-| Job | Runner | Purpose |
-|---|---|---|
-| `backend-unit-tests` | `ubuntu-latest` | 273 unit tests — no API keys required |
-| `backend-smoke-test` | `ubuntu-latest` | Live index + chat stream against Mistral |
-| `changelog-check` | `ubuntu-latest` | Verifies tag, `package.json`, and `CHANGELOG.md` all match |
-| `extension-build` | `ubuntu-latest` | TypeScript compile check |
-| `build-mac` | `macos-latest` | PyInstaller binary → `nexus-backend-mac.tar.gz` |
-| `build-win` | `windows-latest` | PyInstaller binary → `nexus-backend-win.tar.gz` |
-| `github-release` | `ubuntu-latest` | Uploads binaries + `checksums.sha256` as permanent GitHub Release assets |
-| `package` | `ubuntu-latest` | Lightweight `.vsix` (~1.5 MB, no binaries) |
-| `publish` | `ubuntu-latest` | Publishes to VS Code Marketplace and Open VSX Registry |
+```
+tag push  ──────────────────────────────────────────────────────────┐
+                                                                     │
+          ┌──────────────────── Validation (parallel) ─────────────┐│
+          │  backend-unit-tests   273 tests, no API keys            ││
+          │  backend-smoke-test   live index + chat stream          ││
+          │  changelog-check      tag = package.json = CHANGELOG    ││
+          │  extension-build      TypeScript compile check          ││
+          └──────────────────────────────┬──────────────────────────┘│
+                                         │ all pass                   │
+                         ┌───────────────┴───────────────┐           │
+                         │       Build (parallel)        │           │
+                         │  build-mac   macOS PyInstaller │           │
+                         │  build-win   Windows PyInstaller│          │
+                         └───────────────┬───────────────┘           │
+                                         │                            │
+                                  github-release  ◄──────────────────┘
+                             binaries + checksums.sha256
+                             uploaded as GitHub Release assets
+                                         │
+                                      package
+                              lightweight .vsix  (~1.5 MB, no binaries)
+                                         │
+                                       publish
+                              VS Code Marketplace + Open VSX Registry
+```
 
 The VSIX contains no native binaries — on first activation the extension downloads the correct platform binary from the GitHub Release, verifies its SHA256 checksum, and caches it in VS Code's global storage.
 
