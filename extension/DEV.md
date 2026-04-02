@@ -148,29 +148,9 @@ vsce package --out nexus-local.vsix
 
 > If you built a local backend binary (`python build.py` from `backend/`), place it in `extension/bin/` before packaging — the local `.vsix` will use it instead of downloading from GitHub Releases.
 
-## Settings
+Settings, commands, and API key management → [README.md](README.md).
 
-| Setting | Default | Description |
-|---|---|---|
-| `nexus.chatProvider` | `mistral` | LLM provider for chat |
-| `nexus.chatModel` | `mistral-small-latest` | Chat model name |
-| `nexus.embeddingProvider` | `mistral` | Embedding provider |
-| `nexus.embeddingModel` | `mistral-embed` | Embedding model name |
-| `nexus.backendUrl` | `http://localhost:8000` | Backend URL |
-| `nexus.hopDepth` | `1` | Graph traversal hop depth |
-| `nexus.maxNodes` | `15` | Max context nodes for RAG |
-| `nexus.ollamaBaseUrl` | `http://localhost:11434` | Ollama base URL |
-
-## API Key Management
-
-Keys are stored in VS Code's `SecretStorage` (OS keychain) — never in settings files.
-
-```
-Cmd+Shift+P → "Nexus: Set API Key"   → pick provider → enter key
-Cmd+Shift+P → "Nexus: Clear API Key" → pick provider → removes key
-```
-
-On activation and on settings change, the extension pushes provider + key config to `POST /api/config`. In local dev mode (Option B), the `.env` file provides fallback defaults if no key has been set via the extension.
+> **Dev note:** `ConfigManager` watches for `vscode.workspace.onDidChangeConfiguration` on the `nexus` namespace and calls `pushConfig()` on every change, so settings take effect immediately without a reload. In local dev mode (Option B), the backend `.env` file provides fallback defaults if no key has been set via the extension.
 
 ## Binary Cache
 
