@@ -153,6 +153,12 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
         try:
             embeddings = embedder.embed(texts)
         except Exception as exc:
+            exc_str = str(exc)
+            # Re-raise rate-limit / capacity errors so run_ingestion surfaces them
+            # as IndexStatus(status="failed") rather than silently skipping batches
+            # and reporting "0 nodes indexed" with a misleading file-type warning.
+            if "429" in exc_str or "rate" in exc_str.lower() or "capacity" in exc_str.lower():
+                raise
             logger.warning(
                 "embed_and_store: embedding batch %d-%d failed (%s) — skipping batch",
                 i, i + len(batch), exc,

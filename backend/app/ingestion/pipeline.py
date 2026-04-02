@@ -162,8 +162,8 @@ async def run_ingestion(
         if nodes_stored == 0:
             logger.warning(
                 "indexing complete but 0 nodes stored for %s — "
-                "no functions/classes were extracted. "
-                "Verify the repo contains Python or TypeScript source files.",
+                "check that the repo contains .py/.ts/.tsx/.js/.jsx files "
+                "and that the embedding API key is valid and not rate-limited.",
                 repo_path,
             )
 
