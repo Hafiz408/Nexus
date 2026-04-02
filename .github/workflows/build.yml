@@ -22,7 +22,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install backend dependencies
-        run: cd backend && pip install -r requirements.txt
+        run: cd backend && pip install -r requirements.txt pytest
 
       - name: Run pytest
         run: |
