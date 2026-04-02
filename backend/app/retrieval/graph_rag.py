@@ -11,6 +11,7 @@ graph_rag_retrieve orchestrates all three steps and returns (list[CodeNode], sta
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 
 import networkx as nx
@@ -170,6 +171,59 @@ def rerank_and_assemble(
     return [node for _, node in scored[:max_nodes]]
 
 
+def fts_search(query: str, repo_path: str, top_k: int, db_path: str) -> list[tuple[str, float]]:
+    """FTS5 keyword search over indexed symbol names for the given repo.
+
+    Tokenises the query into identifier-like words and runs a BM25 search
+    over the code_fts table (indexed column: name). Complements semantic
+    search by catching exact/prefix matches that vector similarity may miss
+    (e.g. the user types a precise function name).
+
+    Results are scored in [0, 0.85] so that perfect FTS matches rank below
+    perfect semantic matches (score 1.0) when the two are merged.
+
+    Returns list[tuple[str, float]] — (node_id, score) pairs.
+    """
+    # Extract identifier-like tokens; skip very short words to avoid FTS noise
+    words = re.findall(r"[a-zA-Z_]\w*", query)
+    words = [w for w in words if len(w) > 2]
+    if not words:
+        return []
+
+    # OR joins give broad recall; FTS5 BM25 ranking handles relevance ordering
+    fts_query = " OR ".join(words)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        rows = conn.execute(
+            """
+            SELECT f.node_id, f.rank
+            FROM code_fts f
+            JOIN code_embeddings_meta m ON m.node_id = f.node_id
+            WHERE code_fts MATCH ? AND m.repo_path = ?
+            ORDER BY rank
+            LIMIT ?
+            """,
+            (fts_query, repo_path, top_k),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        # FTS5 MATCH can raise on certain query strings (special chars, empty vocab)
+        return []
+    finally:
+        conn.close()
+
+    if not rows:
+        return []
+
+    # BM25 rank is negative (more negative = better). Normalise to [0, 0.85]:
+    #   best result  → 0.85
+    #   worst result → proportionally lower
+    min_rank = min(r[1] for r in rows)
+    if min_rank == 0:
+        return [(row[0], 0.5) for row in rows]
+    return [(row[0], min(0.85, abs(row[1]) / abs(min_rank) * 0.85)) for row in rows]
+
+
 def graph_rag_retrieve(
     query: str,
     repo_path: str,
@@ -180,7 +234,8 @@ def graph_rag_retrieve(
 ) -> tuple[list[CodeNode], dict]:
     """Orchestrate the full 3-step Graph RAG retrieval pipeline.
 
-    Step 1 — semantic_search: embed query, find top-k nearest nodes in sqlite-vec.
+    Step 1 — dual search: embed query (semantic) + FTS5 keyword search.
+              Results are merged; per-node score = max(semantic, fts).
     Step 2 — expand_via_graph: BFS expand seed node set by hop_depth hops.
     Step 3 — rerank_and_assemble: score-weighted reranking, return top max_nodes.
 
@@ -195,13 +250,28 @@ def graph_rag_retrieve(
     Returns:
         Tuple of:
           - list[CodeNode]: Top max_nodes reranked CodeNode objects.
-          - dict: Stats with seed_count, expanded_count, returned_count, hop_depth.
+          - dict: Stats with seed_count, expanded_count, returned_count, hop_depth,
+                  semantic_seeds, fts_seeds.
     """
-    # Step 1: semantic vector search
+    # Step 1a: semantic vector search
     seed_results = semantic_search(query, repo_path, top_k=max_nodes, db_path=db_path)
-    seed_scores = {node_id: score for node_id, score in seed_results}
+    seed_scores: dict[str, float] = {node_id: score for node_id, score in seed_results}
+    semantic_count = len(seed_scores)
 
-    # Step 2: BFS graph expansion from seed node IDs
+    # Step 1b: FTS keyword search — merge, keeping max score per node
+    fts_results = fts_search(query, repo_path, top_k=max_nodes, db_path=db_path)
+    fts_new = 0
+    for node_id, score in fts_results:
+        if node_id not in seed_scores:
+            fts_new += 1
+        if node_id not in seed_scores or score > seed_scores[node_id]:
+            seed_scores[node_id] = score
+    logger.info(
+        "retrieval seeds: semantic=%d fts=%d (fts_new=%d) total=%d",
+        semantic_count, len(fts_results), fts_new, len(seed_scores),
+    )
+
+    # Step 2: BFS graph expansion from merged seed node IDs
     expanded = expand_via_graph(list(seed_scores.keys()), G, hop_depth)
 
     # Step 3: score-weighted reranking
@@ -209,6 +279,8 @@ def graph_rag_retrieve(
 
     stats = {
         "seed_count": len(seed_scores),
+        "semantic_seeds": semantic_count,
+        "fts_seeds": len(fts_results),
         "expanded_count": len(expanded),
         "returned_count": len(nodes),
         "hop_depth": hop_depth,

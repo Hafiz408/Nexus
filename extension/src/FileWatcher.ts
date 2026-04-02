@@ -20,9 +20,13 @@ export class FileWatcher {
 
     this._watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-    // WATCH-01: subscribe to save and new-file events (NOT onDidDelete — out of scope)
+    // WATCH-01: subscribe to save, new-file, and delete events
     this._watcher.onDidChange(uri => this._onFileEvent(uri));
     this._watcher.onDidCreate(uri => this._onFileEvent(uri));
+    // Deleted files must be cleaned up from the index — nodes and FTS rows
+    // would otherwise linger as ghost entries that vector search can find but
+    // the graph cannot expand from (causing "seed node not in graph" warnings).
+    this._watcher.onDidDelete(uri => this._onFileEvent(uri));
   }
 
   private _onFileEvent(uri: vscode.Uri): void {

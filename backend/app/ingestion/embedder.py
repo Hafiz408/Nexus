@@ -82,9 +82,12 @@ def init_vec_table(db_path: str) -> None:
 def _init_fts_table(db_path: str) -> None:
     """Create the code_fts FTS5 virtual table idempotently.
 
-    FTS5 content='' means the table stores its own copies of indexed text
-    (no external content). node_id is UNINDEXED so it is stored but not
-    searched; name is the primary search column.
+    Indexed columns: name, embedding_text (signature + docstring + body_preview).
+    node_id and file_path are UNINDEXED — stored for lookup but not searched.
+
+    Migration: if the table exists with the old schema (name-only, no embedding_text),
+    it is dropped and recreated. FTS data is derived — embed_and_store repopulates
+    it on the next ingestion run.
     """
     parent = os.path.dirname(db_path)
     if parent:
@@ -92,9 +95,17 @@ def _init_fts_table(db_path: str) -> None:
 
     conn = sqlite3.connect(db_path)
     try:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='code_fts'"
+        ).fetchone()
+        if row is not None and "embedding_text" not in row[0]:
+            # Old schema (name-only) — drop so CREATE below rebuilds with embedding_text
+            conn.execute("DROP TABLE code_fts")
+            conn.commit()
+
         conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS code_fts
-            USING fts5(node_id UNINDEXED, name, file_path UNINDEXED)
+            USING fts5(node_id UNINDEXED, name, file_path UNINDEXED, embedding_text)
         """)
         conn.commit()
     finally:
@@ -205,8 +216,8 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
                 [(n.node_id,) for n in batch],
             )
             sqlite_conn.executemany(
-                "INSERT INTO code_fts(node_id, name, file_path) VALUES (?, ?, ?)",
-                [(n.node_id, n.name, n.file_path) for n in batch],
+                "INSERT INTO code_fts(node_id, name, file_path, embedding_text) VALUES (?, ?, ?, ?)",
+                [(n.node_id, n.name, n.file_path, n.embedding_text) for n in batch],
             )
             sqlite_conn.commit()
         except Exception as exc:

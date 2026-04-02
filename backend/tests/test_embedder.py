@@ -220,6 +220,31 @@ def test_embed_and_store_returns_count(tmp_db, sample_nodes, mock_mistral_client
     assert count == len(sample_nodes)
 
 
+def test_fts5_table_includes_embedding_text_column(tmp_db, sample_nodes, mock_mistral_client):
+    """After embed_and_store, FTS5 indexes embedding_text so body content is searchable.
+
+    Uses a word ('def') that appears only in embedding_text, not in name or file_path.
+    With the old name-only schema this query would return 0 rows.
+    """
+    _create_stub_vec_tables(tmp_db)
+    with patch("app.ingestion.embedder.get_embedding_client", return_value=mock_mistral_client):
+        with patch("app.ingestion.embedder.init_vec_table"):
+            with patch("app.ingestion.embedder._vec_conn", side_effect=sqlite3.connect):
+                with patch("app.ingestion.embedder.sqlite_vec") as mock_sv:
+                    mock_sv.load = MagicMock()
+                    mock_sv.serialize_float32 = MagicMock(return_value=b"\x00" * 4096)
+                    embed_and_store(sample_nodes, "/tmp/fts_emb_repo", tmp_db)
+    conn = sqlite3.connect(tmp_db)
+    # "def" is in embedding_text ("def func_0():...") but NOT in name or file_path
+    rows = conn.execute(
+        "SELECT node_id FROM code_fts WHERE embedding_text MATCH 'def'"
+    ).fetchall()
+    conn.close()
+    assert len(rows) == len(sample_nodes), (
+        "FTS embedding_text not indexed — all nodes have 'def' in embedding_text"
+    )
+
+
 def test_fts5_table_supports_name_match(tmp_db, sample_nodes, mock_mistral_client):
     """EMBED-03: After embed_and_store, FTS5 supports exact name MATCH."""
     _create_stub_vec_tables(tmp_db)

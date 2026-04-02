@@ -68,7 +68,11 @@ async def run_ingestion(
     db_path: str,
     changed_files: list[str] | None = None,
 ) -> IndexStatus:
-    _status[repo_path] = IndexStatus(status="running")
+    # Incremental re-index: keep the existing complete status so queries aren't
+    # blocked during the brief update window. Only full re-indexes (changed_files
+    # is None) mark the index as unavailable while it's being rebuilt from scratch.
+    if changed_files is None:
+        _status[repo_path] = IndexStatus(status="running")
 
     try:
         logger.info("run_ingestion started: repo=%s languages=%s incremental=%s",
@@ -78,9 +82,14 @@ async def run_ingestion(
             logger.info("incremental re-index: %d changed files", len(changed_files))
             delete_nodes_for_files(changed_files, repo_path, db_path)
             delete_embeddings_for_files(changed_files, repo_path, db_path)
+            import os as _os  # noqa: PLC0415
             ext_map: dict[str, str] = {ext.lstrip("."): lang for ext, lang in EXTENSION_TO_LANGUAGE.items()}
             files_to_parse: list[dict] = []
             for f in changed_files:
+                if not _os.path.exists(f):
+                    # Deleted file — nodes/embeddings already cleaned up above; nothing to parse.
+                    logger.info("incremental: skipping deleted file %s", f)
+                    continue
                 if "." in f:
                     suffix = f.rsplit(".", 1)[-1].lower()
                     if suffix in ext_map and ext_map[suffix] in languages:
@@ -96,7 +105,8 @@ async def run_ingestion(
                 repo_path, languages,
             )
 
-        _status[repo_path] = IndexStatus(status="running", files_processed=len(files_to_parse))
+        if changed_files is None:
+            _status[repo_path] = IndexStatus(status="running", files_processed=len(files_to_parse))
 
         all_nodes, all_edges = await _parse_concurrent(files_to_parse, repo_path)
         logger.info("parsed %d nodes, %d raw edges from %d files",

@@ -196,6 +196,22 @@ def _read_raw_lines(file_path: str, selected_range: list[int] | None) -> str | N
         return None
 
 
+def _is_virtual_document(path: str | None) -> bool:
+    """Return True for VS Code virtual document URIs (output panels, untitled buffers, etc.)
+    that are not real filesystem paths. These must not be treated as selected files."""
+    if not path:
+        return False
+    # VS Code output panel URIs follow the pattern:
+    # "extension-output-<publisher>.<name>-#<n>-<label>"
+    # They never start with "/" or a drive letter, and always contain "-#" or similar markers.
+    import os as _os  # noqa: PLC0415
+    return not _os.path.isabs(path) and (
+        path.startswith("extension-output-")
+        or path.startswith("output:")
+        or path.startswith("untitled:")
+    )
+
+
 def build_explain_context(
     question: str,
     repo_path: str,
@@ -220,7 +236,38 @@ def build_explain_context(
     from app.retrieval.graph_rag import graph_rag_retrieve  # noqa: PLC0415
     from app.models.schemas import CodeNode  # noqa: PLC0415
 
+    # Discard virtual document paths (VS Code output panels, untitled buffers) —
+    # they are not real files and cannot be read or matched against graph nodes.
+    if _is_virtual_document(selected_file):
+        logger.info("[explain] ignoring virtual document path: %r", selected_file)
+        selected_file = None
+        selected_range = None
+
+    # Reject unsupported file types early with a clear user-facing message
+    # rather than silently returning "I'm not certain".
+    if selected_file and not _is_virtual_document(selected_file):
+        import os as _os  # noqa: PLC0415
+        from app.ingestion.walker import EXTENSION_TO_LANGUAGE as _EXT_MAP  # noqa: PLC0415
+        _suffix = _os.path.splitext(selected_file)[1].lower()
+        if _suffix and _suffix not in _EXT_MAP:
+            raise ValueError(
+                f"'{_suffix}' files are not supported. "
+                f"Nexus currently indexes Python and JavaScript/TypeScript files "
+                f"(.py, .ts, .tsx, .js, .jsx)."
+            )
+
     G = _get_cached_graph(repo_path)
+
+    # Empty index — nothing was parsed from the repo (e.g. only unsupported
+    # file types present, or index was never completed).
+    # G is None only in tests where the cache is seeded with None as a sentinel;
+    # skip the check and let the retrieval try/except handle it gracefully.
+    if G is not None and len(G.nodes) == 0:
+        raise ValueError(
+            "No code has been indexed for this repository. "
+            "Nexus indexes Python and JavaScript/TypeScript files (.py, .ts, .tsx, .js, .jsx). "
+            "Make sure the repository contains supported source files and re-index."
+        )
 
     nodes: list = []
     stats: dict = {}
@@ -229,6 +276,12 @@ def build_explain_context(
         nodes, stats = graph_rag_retrieve(question, repo_path, G, db_path)
         logger.info("[explain] graph-rag retrieved %d nodes", len(nodes))
     except Exception as _exc:  # noqa: BLE001
+        exc_str = str(_exc)
+        # Re-raise transient infra errors (rate limits, auth failures) so the
+        # SSE error event surfaces a useful message instead of silently returning
+        # empty context and answering "I'm not certain".
+        if "429" in exc_str or "rate" in exc_str.lower() or "capacity" in exc_str.lower():
+            raise
         logger.warning("[explain] graph-rag retrieval failed, falling back to empty context: %s", _exc)
 
     anchored_question = question
