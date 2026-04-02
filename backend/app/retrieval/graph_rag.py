@@ -148,7 +148,8 @@ def rerank_and_assemble(
         max_nodes:         Maximum number of CodeNode objects to return.
 
     Returns:
-        Top max_nodes CodeNode objects sorted by descending composite score.
+        Up to max_nodes * 2 (score, CodeNode) tuples sorted by descending score,
+        for downstream MMR selection. Caller trims to max_nodes via mmr_diversify.
     """
     in_degrees = [G.nodes[n].get("in_degree", 0) for n in expanded_node_ids if n in G]
     max_in_degree = (max(in_degrees) if in_degrees else 0) or 1
@@ -170,7 +171,51 @@ def rerank_and_assemble(
         scored.append((score, node))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    return [node for _, node in scored[:max_nodes]]
+    return scored[:max_nodes]
+
+
+def mmr_diversify(
+    scored: list[tuple[float, CodeNode]],
+    max_nodes: int,
+    diversity_penalty: float = 0.35,
+) -> list[CodeNode]:
+    """Maximal Marginal Relevance reranking using file_path as a cluster proxy.
+
+    After score-based ranking, iteratively selects the next node that maximises
+    relevance minus a diversity penalty proportional to how many nodes from the
+    same file have already been selected. This prevents BFS graph clusters
+    (e.g. all methods of one class) from dominating the final result set.
+
+    diversity_penalty is subtracted once per already-selected node from the same
+    file. A value of 0.35 means the third node from the same file needs a score
+    advantage of 0.70 over a fresh-file node to be selected.
+
+    Args:
+        scored:           Pre-scored (score, CodeNode) list, sorted descending.
+        max_nodes:        Maximum number of nodes to return.
+        diversity_penalty: Per-duplicate penalty subtracted from score (default 0.35).
+
+    Returns:
+        Up to max_nodes CodeNode objects selected for both quality and diversity.
+    """
+    selected: list[CodeNode] = []
+    file_counts: dict[str, int] = {}
+    remaining = list(scored)  # mutable copy
+
+    while remaining and len(selected) < max_nodes:
+        best_idx, best_adjusted = 0, float("-inf")
+        for i, (score, node) in enumerate(remaining):
+            file_key = node.file_path or ""
+            adjusted = score - diversity_penalty * file_counts.get(file_key, 0)
+            if adjusted > best_adjusted:
+                best_adjusted, best_idx = adjusted, i
+
+        _, node = remaining.pop(best_idx)
+        selected.append(node)
+        file_key = node.file_path or ""
+        file_counts[file_key] = file_counts.get(file_key, 0) + 1
+
+    return selected
 
 
 _FTS_STOPWORDS: frozenset[str] = frozenset({
@@ -283,11 +328,14 @@ def graph_rag_retrieve(
     # Step 1a: semantic vector search
     seed_results = semantic_search(query, repo_path, top_k=max_nodes, db_path=db_path)
     seed_scores: dict[str, float] = {node_id: score for node_id, score in seed_results}
+    semantic_seed_ids = set(seed_scores.keys())
     semantic_count = len(seed_scores)
 
     # Step 1b: FTS keyword search — merge, keeping max score per node.
     # top_k is capped at 5: FTS is a precision supplement for exact symbol lookups,
     # not a broad recall mechanism. More than 5 FTS results dilutes seed quality.
+    # FTS seeds are NOT expanded via BFS — they carry query-independent graph
+    # neighbourhoods that add noise without improving answer relevance.
     fts_results = fts_search(query, repo_path, top_k=5, db_path=db_path)
     fts_new = 0
     for node_id, score in fts_results:
@@ -313,11 +361,16 @@ def graph_rag_retrieve(
     if _test_penalised:
         logger.debug("test-file penalty applied to %d seed nodes", _test_penalised)
 
-    # Step 2: BFS graph expansion from merged seed node IDs
-    expanded = expand_via_graph(list(seed_scores.keys()), G, hop_depth)
+    # Step 2: BFS graph expansion — semantic seeds only.
+    # FTS seeds are included in reranking but not expanded: their graph neighbours
+    # are symbol-adjacent rather than query-adjacent, adding irrelevant context.
+    expanded = expand_via_graph(list(semantic_seed_ids), G, hop_depth)
+    # Include FTS-only seeds in the candidate pool so they can be reranked
+    expanded.update(node_id for node_id in seed_scores if node_id not in semantic_seed_ids)
 
-    # Step 3: score-weighted reranking
-    nodes = rerank_and_assemble(expanded, seed_scores, G, max_nodes)
+    # Step 3: score-weighted reranking over 2× pool, then MMR diversity pass
+    scored = rerank_and_assemble(expanded, seed_scores, G, max_nodes * 2)
+    nodes = mmr_diversify(scored, max_nodes)
 
     stats = {
         "seed_count": len(seed_scores),

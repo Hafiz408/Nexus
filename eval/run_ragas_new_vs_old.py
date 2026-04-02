@@ -288,7 +288,8 @@ async def main(limit: int | None, judge: str, ollama_chat_model: str, ollama_emb
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--limit", type=int, default=None, help="Limit to first N questions")
+    parser.add_argument("--limit", type=int, default=10,
+                        help="Limit to first N questions (default: 10 for speed; use --limit 30 for full eval)")
     parser.add_argument("--judge", choices=["mistral", "ollama"], default="ollama",
                         help="LLM backend for RAGAS scoring (default: ollama)")
     parser.add_argument("--ollama-chat-model", default="qwen2.5:7b",
