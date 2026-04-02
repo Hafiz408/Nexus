@@ -40,3 +40,4 @@ test_output.py
 /backend/build
 /extension/bin
 /docs/guide
+/.claude
