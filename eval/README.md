@@ -18,14 +18,23 @@ golden_qa.json  (30 hand-labelled Q&A pairs)
 
 Both strategies feed the **same LLM** — score differences isolate retrieval quality, not model quality.
 
-## Results (Nexus codebase baseline)
+## Results — fastapi corpus, 30 questions, Ollama qwen2.5:7b judge
 
-| Strategy | Faithfulness | Relevance | Precision | Recall | **Composite** |
-|---|---|---|---|---|---|
-| Graph RAG | 0.92 | 0.88 | 0.85 | 0.81 | **0.87** |
-| Naive vector | 0.89 | 0.83 | 0.71 | 0.64 | **0.77** |
+Three retrieval strategies evaluated on the same 30 golden Q&A pairs:
 
-Graph-aware retrieval: **+13%** composite. Largest gains in precision (+0.14) and recall (+0.17) — BFS expansion surfaces structurally relevant nodes that semantic similarity alone misses.
+| Strategy | Faithfulness | Answer Relevancy | Context Precision |
+|---|---|---|---|
+| Naive vector (semantic only) | 0.5763 | 0.5607 | 0.0776 |
+| Graph RAG — FTS + BFS (pre-fix) | 0.5058 | 0.4287 | 0.0896 |
+| **Graph RAG — FTS no-BFS + MMR** | **0.5714** | **0.4410** | **0.1803** |
+
+**vs naive vector:** context_precision **+132%** — retrieved chunks are far more on-topic. Faithfulness nearly recovered (−0.8%). Answer relevancy gap (−21%) is the next target.
+
+**vs pre-fix graph RAG:** all three metrics improved. The two fixes applied:
+1. **FTS seeds skip BFS** — FTS matches are added directly to the candidate pool without expanding their graph neighbours, cutting noise from symbol-adjacent but query-irrelevant context.
+2. **MMR diversity pass** — after reranking, Maximal Marginal Relevance selects the final 15 nodes penalising repeated `file_path` clusters, preventing one file's methods from dominating the result set.
+
+Retrieval stats (avg per query): FTS seeds 4.8 · expanded nodes 51.4 (↓ from 57.2) · nodes returned 15.
 
 ## Run
 
