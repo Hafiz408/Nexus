@@ -2,6 +2,11 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.1.1] - 2026-04-02
+
+### Fixed
+- Re-release of 4.1.0 via CI pipeline to ensure correct binary-free VSIX is published to the Marketplace.
+
 ## [4.1.0] - 2026-04-02
 
 ### Changed
