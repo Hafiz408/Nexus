@@ -2,6 +2,23 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.2.0] - 2026-04-02
+
+### Added
+- **FTS5 dual-search pipeline** — retrieval now runs a BM25 keyword search over indexed symbol names in parallel with the semantic vector search. Results are merged (per-node score = max of the two sources). FTS5 scores are capped at 0.85 so perfect semantic matches (1.0) always rank above perfect keyword matches. This catches exact/prefix function-name queries that embedding similarity alone can miss.
+- **Backend unit tests in CI** — all 244 pytest tests now run as a required gate (`backend-unit-tests` job) before the binary build steps, alongside the smoke test and extension build check.
+
+### Changed
+- **Default context nodes raised to 15** — `nexus.maxNodes` default increased from 10 to 15, wired through all query paths (v1 streaming and v2 LangGraph). More context for the LLM with minimal latency impact on modern models.
+- **Test-file seed penalty** — seed nodes that come from test/spec files receive a 0.5× score multiplier so source implementation files consistently rank above test files that share vocabulary with the query.
+- **Robot-heart sidebar icon** — replaced the placeholder icon with a custom SVG silhouette in the Activity Bar.
+
+### Fixed
+- **Virtual document paths dropped cleanly** — VS Code output panel and untitled buffer URIs (e.g. `extension-output-publisher.name-#1-label`) passed as `selected_file` are now silently discarded rather than treated as real filesystem paths.
+- **Unsupported file types give a clear error** — selecting a `.rb`, `.go`, or other unindexed file type now returns an informative error message instead of silently answering "I'm not certain" from unrelated context.
+- **Empty index gives a clear error** — if the repository contains no indexed source files, the explain path raises a descriptive message rather than silently producing an empty answer.
+- **Rate-limit errors surface in chat** — `429` / rate-limit / capacity errors from the LLM provider were previously swallowed by the retrieval fallback. They now propagate to the SSE `error` event so the user sees the actual provider error.
+
 ## [4.1.2] - 2026-04-02
 
 ### Fixed

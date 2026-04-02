@@ -7,7 +7,7 @@ Sidebar chat interface for querying code, viewing results, and managing the inde
 ```
 Extension Host (Node.js)
   ├── extension.ts       activate, register commands, wire FileWatcher + ConfigManager
-  ├── SidecarManager     spawn/kill/poll bundled backend binary; dev-mode skip
+  ├── SidecarManager     spawn/kill/poll bundled backend binary; auto-restart on exit; dev-mode skip
   ├── ConfigManager      VS Code settings → POST /api/config; SecretStorage API keys
   ├── SidebarProvider    webview bridge — message dispatcher, SSE listener
   ├── BackendClient      HTTP: POST /index · GET /status · POST /query
@@ -30,9 +30,16 @@ Webview (React 18)
 **Startup:**
 ```
 Extension activates
-  → SidecarManager checks port 8000
-      → port free: spawn bundled binary, poll /api/health until ready
-      → port occupied: skip spawn (dev mode — Docker backend already running)
+  → SidecarManager.start()
+      → lockfile present + PID alive + health OK → reuse (no spawn)
+      → otherwise → download binary from GitHub Releases if not cached
+                  → spawn binary on a free port (detached)
+                  → write lockfile {pid, port, version}
+                  → proc.on('exit') → deleteLock() + onUnexpectedExit()
+  → sidecar.onUnexpectedExit = _restartBackend  (max 5 consecutive failures)
+  → keepalive setInterval(30s) → client.ping()
+      → alive: clear failure streak
+      → dead: _restartBackend()          (covers reuse-path windows)
   → ConfigManager.pushConfig() → POST /api/config (provider, model, API keys)
   → SidebarProvider.broadcastConfigStatus() → webview shows active config
 ```
@@ -92,7 +99,7 @@ npm run watch
 | `nexus.embeddingModel` | `mistral-embed` | Embedding model name |
 | `nexus.backendUrl` | `http://localhost:8000` | Backend URL |
 | `nexus.hopDepth` | `1` | Graph traversal hop depth |
-| `nexus.maxNodes` | `10` | Max context nodes for RAG |
+| `nexus.maxNodes` | `15` | Max context nodes for RAG |
 | `nexus.ollamaBaseUrl` | `http://localhost:11434` | Ollama base URL |
 
 ## API Key Management

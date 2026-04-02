@@ -10,6 +10,25 @@ permissions:
   contents: write
 
 jobs:
+  backend-unit-tests:
+    name: Backend unit tests (244 tests, no API keys)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: cd backend && pip install -r requirements.txt
+
+      - name: Run pytest
+        run: |
+          cd backend
+          python -m pytest tests/ -x --tb=short -q
+
   backend-smoke-test:
     name: Backend smoke test (health + index + chat)
     runs-on: ubuntu-latest
@@ -152,7 +171,7 @@ jobs:
   build-mac:
     name: Build backend (macOS)
     runs-on: macos-latest
-    needs: [backend-smoke-test, changelog-check, extension-build]
+    needs: [backend-unit-tests, backend-smoke-test, changelog-check, extension-build]
     steps:
       - uses: actions/checkout@v4
 
@@ -188,7 +207,7 @@ jobs:
   build-win:
     name: Build backend (Windows)
     runs-on: windows-latest
-    needs: [backend-smoke-test, changelog-check, extension-build]
+    needs: [backend-unit-tests, backend-smoke-test, changelog-check, extension-build]
     steps:
       - uses: actions/checkout@v4
 

@@ -85,7 +85,7 @@ Mix and match — use Anthropic for chat and Mistral for embeddings, for example
 | `nexus.embeddingProvider` | `mistral` | Embedding provider |
 | `nexus.embeddingModel` | `mistral-embed` | Embedding model name |
 | `nexus.hopDepth` | `1` | Graph traversal depth |
-| `nexus.maxNodes` | `10` | Max context nodes per query |
+| `nexus.maxNodes` | `15` | Max context nodes per query |
 | `nexus.ollamaBaseUrl` | `http://localhost:11434` | Ollama base URL |
 | `nexus.backendUrl` | `http://localhost:8000` | Backend URL (advanced — override if running backend manually) |
 
