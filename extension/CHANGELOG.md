@@ -2,6 +2,20 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.2.1] - 2026-04-03
+
+### Fixed
+- **Token-aware embedding batching** — replaced the fixed `EMBED_BATCH_SIZE=100` constant with a dynamic token-budget approach (`EMBED_TOKEN_BUDGET=12_000`, `MAX_EMBED_TEXT_CHARS=6_000`). Large-repo indexing runs that previously failed with `TypeError: fetch failed` due to oversized API payloads now batch correctly.
+- **Connection leaks in ingestion pipeline** — `sqlite_vec.load()` failures in the embedder and semantic search paths left DB connections open. All connection setup paths now use `try/finally` to guarantee close on error.
+- **`graph_store` / `meta_store` DDL failures** — `_get_conn` in both stores now wraps schema initialisation in `try/except` and closes the connection on failure, preventing leaked handles during first-run setup.
+- **`delete_index` blocking the event loop** — DB deletion calls are now dispatched via `asyncio.to_thread`; errors return HTTP 500 instead of crashing the route.
+- **Checkpoint connection not closed after v2 streaming** — `v2_event_generator` now closes the LangGraph checkpoint connection in a `finally` block.
+- **`post_review_to_pr` unhandled exceptions** — GitHub post calls are now wrapped in `try/except` to prevent unhandled errors surfacing as 500s.
+- **Corrupt config DB crash** — `config_router/set_config` guards `get_embedding_meta` against a corrupt or empty config database.
+
+### Changed
+- **Walker `SKIP_DIRS` expanded** — coverage increased from 9 to 30+ entries, now including Python venv directories, JS/TS caches (`node_modules`, `.next`, `.nuxt`), build outputs (`dist`, `build`, `out`), framework dirs, temp/log dirs, and all common VCS metadata directories. A `.dist-info` suffix guard was added alongside the existing `.egg-info` guard.
+
 ## [4.2.0] - 2026-04-02
 
 ### Added
