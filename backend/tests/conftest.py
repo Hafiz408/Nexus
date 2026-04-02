@@ -1,5 +1,18 @@
 import pytest
 from pathlib import Path
+from unittest.mock import patch
+
+
+# ---------------------------------------------------------------------------
+# Patch _check_sqlite_vec for all tests that spin up the FastAPI app via
+# TestClient.  The check guards production users against a broken Python
+# build; it must not prevent the test suite from running on a dev machine
+# whose Python was built without --enable-loadable-sqlite-extensions.
+# ---------------------------------------------------------------------------
+@pytest.fixture(autouse=True)
+def _skip_sqlite_vec_check():
+    with patch("app.main._check_sqlite_vec", return_value=None):
+        yield
 
 
 @pytest.fixture

@@ -562,6 +562,7 @@ export function App(): React.JSX.Element {
               },
             },
           ]);
+          setIsStreaming(false);
           break;
       }
     };
@@ -696,8 +697,8 @@ export function App(): React.JSX.Element {
             <div>Embed: <strong>{configStatus.embedding_provider}</strong> / {configStatus.embedding_model}</div>
           </div>
           <button
-            onClick={() => vscode.postMessage({ type: 'configureKeys' })}
-            title="Open Settings"
+            onClick={() => vscode.postMessage({ type: 'openSettings' })}
+            title="Open extension settings"
             style={{ fontSize: '10px', padding: '2px 6px', cursor: 'pointer', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)', border: 'none', borderRadius: '2px', flexShrink: 0 }}
           >
             ⚙ Settings

@@ -111,6 +111,12 @@ export async function streamQuery(
         }
       }
     }
+  } catch (err) {
+    // Stream interrupted (backend crash, network drop) — notify webview so isStreaming resets
+    void webview.postMessage({
+      type: 'error',
+      message: `Stream interrupted: ${err instanceof Error ? err.message : String(err)}`,
+    });
   } finally {
     reader.releaseLock();
   }

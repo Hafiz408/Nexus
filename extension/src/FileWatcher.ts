@@ -43,9 +43,16 @@ export class FileWatcher {
     // Clear BEFORE async call — prevents a second timer racing into a non-empty set
     this._pendingFiles.clear();
     if (files.length === 0) { return; }
-    this._onFlush?.(files);
-    // WATCH-03: send only the changed file paths for incremental re-index
-    await this._client.indexFiles(this._repoPath, files, this._dbPath);
+    try {
+      // WATCH-03: send only the changed file paths for incremental re-index
+      await this._client.indexFiles(this._repoPath, files, this._dbPath);
+      this._onFlush?.(files);  // log only after confirmed success
+    } catch (err) {
+      // Do not call _onFlush here — it logs a success-looking message.
+      // Errors are console-logged; surfacing them to the Activity panel
+      // requires a dedicated error callback which is not yet wired.
+      console.error(`[FileWatcher] Auto-reindex failed: ${String(err)}`);
+    }
   }
 
   dispose(): void {

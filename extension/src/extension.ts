@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { BackendClient } from './BackendClient';
 import { ConfigManager } from './ConfigManager';
@@ -16,7 +17,10 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
   // Uses a lockfile in globalStorageUri so multiple IDE windows share one process.
   // Developer override: if nexus.backendUrl is explicitly set, skip the sidecar entirely.
   const backendUrlOverride = config.get<string>('backendUrl', '');
-  const useOverride = backendUrlOverride && backendUrlOverride !== 'http://localhost:8000';
+  // The package.json default for backendUrl is "http://localhost:8000".
+  // config.get() returns that default even when the user has never touched the setting,
+  // so we must exclude it to avoid treating unset as "override".
+  const useOverride = !!backendUrlOverride && backendUrlOverride !== 'http://localhost:8000';
 
   const sidecar = new SidecarManager(context.extensionPath, context.globalStorageUri.fsPath);
   context.subscriptions.push(sidecar);
@@ -27,7 +31,7 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
 
   if (!useOverride && sidecar.didSpawn) {
     try {
-      await sidecar.waitForHealth();
+      await sidecar.waitForHealth(backendUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[Nexus] ${msg}`);
@@ -44,9 +48,75 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
   // Construct ONE shared BackendClient — both SidebarProvider and FileWatcher use it
   const client = new BackendClient(backendUrl);
 
-  // SIDECAR-02: Keepalive ping every 3 minutes so the backend idle watchdog (900s)
-  // does not fire while VS Code is open but the user is not actively querying.
-  const keepaliveInterval = setInterval(() => { void client.ping(); }, 3 * 60 * 1000);
+  // Restart state — prevents concurrent restarts, rapid crash loops, and infinite retry.
+  let _restartInProgress = false;
+  let _lastRestartTime = 0;
+  let _consecutiveRestartFailures = 0;
+  const RESTART_MIN_INTERVAL_MS = 10_000;
+  const MAX_CONSECUTIVE_RESTART_FAILURES = 5;
+
+  /**
+   * Restart the backend after an unexpected exit (idle watchdog SIGTERM, crash, etc.).
+   * Updates client.backendUrl so all in-flight and future calls use the new address.
+   * Guards against concurrent calls, rapid crash loops, and infinite restart cycles.
+   */
+  const _restartBackend = async (): Promise<void> => {
+    if (_restartInProgress) { return; }
+    if (Date.now() - _lastRestartTime < RESTART_MIN_INTERVAL_MS) { return; }
+    if (_consecutiveRestartFailures >= MAX_CONSECUTIVE_RESTART_FAILURES) { return; }
+    _restartInProgress = true;
+    _lastRestartTime = Date.now();
+    try {
+      const newUrl = await sidecar.start();
+      client.backendUrl = newUrl;
+      if (sidecar.didSpawn) {
+        await sidecar.waitForHealth(newUrl, 15_000).catch((err: unknown) => {
+          console.warn(`[Nexus] Backend restart health check failed: ${err instanceof Error ? err.message : String(err)}`);
+        });
+      }
+      _consecutiveRestartFailures = 0;  // reset on any successful start()
+    } catch (err: unknown) {
+      _consecutiveRestartFailures++;
+      console.warn(`[Nexus] Failed to restart backend (attempt ${_consecutiveRestartFailures}): ${err instanceof Error ? err.message : String(err)}`);
+      if (_consecutiveRestartFailures >= MAX_CONSECUTIVE_RESTART_FAILURES) {
+        void vscode.window.showErrorMessage(
+          'Nexus: Backend failed to restart after multiple attempts. Reload the window to retry.',
+          'Reload Window'
+        ).then(action => {
+          if (action === 'Reload Window') {
+            void vscode.commands.executeCommand('workbench.action.reloadWindow');
+          }
+        });
+      }
+    } finally {
+      _restartInProgress = false;
+    }
+  };
+
+  // SIDECAR-03: Restart immediately when the spawned process exits unexpectedly.
+  // This fires only in the window that originally launched the backend.
+  if (!useOverride) {
+    sidecar.onUnexpectedExit = _restartBackend;
+  }
+
+  // SIDECAR-02: Keepalive ping every 30s — resets the backend idle watchdog and
+  // triggers a restart if the backend has died (covers reuse-path windows too).
+  // The in-flight guard prevents pings piling up if the backend is slow to respond.
+  let _keepaliveInFlight = false;
+  const keepaliveInterval = setInterval(async () => {
+    if (_keepaliveInFlight) { return; }
+    _keepaliveInFlight = true;
+    try {
+      const alive = await client.ping();
+      if (alive) {
+        _consecutiveRestartFailures = 0;  // backend is healthy — clear failure streak
+      } else if (!useOverride) {
+        await _restartBackend();
+      }
+    } finally {
+      _keepaliveInFlight = false;
+    }
+  }, 30_000);
   context.subscriptions.push({ dispose: () => clearInterval(keepaliveInterval) });
 
   const provider = new SidebarProvider(context.extensionUri, client);
@@ -109,10 +179,9 @@ async function _activate(context: vscode.ExtensionContext): Promise<void> {
   let dbPath: string | undefined;
   if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
     const repoPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-    const pathMod = require('path') as typeof import('path');
-    dbPath = pathMod.join(repoPath, '.nexus', 'graph.db');
+    dbPath = path.join(repoPath, '.nexus', 'graph.db');
     const watcher = new FileWatcher(repoPath, client, dbPath, (files) => {
-      const names = files.map(f => pathMod.basename(f)).join(', ');
+      const names = files.map(f => path.basename(f)).join(', ');
       provider.postLog('info', `Auto-reindex: ${files.length} file(s) saved — ${names}`);
     });
     context.subscriptions.push(watcher);

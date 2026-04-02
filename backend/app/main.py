@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Idle watchdog — self-terminate after this many seconds with no requests.
 # Allows the detached sidecar to clean up when all IDE windows are closed.
 # ---------------------------------------------------------------------------
-_IDLE_TIMEOUT = 900  # 15 minutes — fallback for crashed/closed VS Code windows
+_IDLE_TIMEOUT = 7200  # 120 minutes — fallback for crashed/closed VS Code windows
 _last_request_time = time.monotonic()
 
 
@@ -39,8 +39,11 @@ def _start_idle_watchdog() -> None:
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
     stream=sys.stdout,
 )
+# Route warnings.warn() calls through the logging system so they get timestamps too
+logging.captureWarnings(True)
 
 
 def _check_sqlite_vec() -> None:

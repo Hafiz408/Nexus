@@ -31,6 +31,7 @@ export type WebviewToHostMessage =
   | { type: 'indexWorkspace' }
   | { type: 'clearIndex' }
   | { type: 'configureKeys' }
+  | { type: 'openSettings' }
   | {
       type: 'postReviewToPR';
       findings: Array<Record<string, unknown>>;

@@ -15,13 +15,35 @@ interface BackendLock {
 export class SidecarManager implements vscode.Disposable {
   private _process: cp.ChildProcess | undefined;
   private _didSpawn = false;
+  private _disposed = false;
   private readonly _channel: vscode.OutputChannel;
   private readonly _extensionPath: string;
   private readonly _lockfilePath: string;
   private _backendUrl = '';
 
+  /**
+   * Called when the spawned backend exits unexpectedly (any exit after a successful spawn).
+   * Set this before calling start() to enable auto-restart.
+   */
+  onUnexpectedExit: (() => Promise<void>) | undefined;
+
   /** True if this instance launched a new backend process (vs. reusing an existing one). */
   get didSpawn(): boolean { return this._didSpawn; }
+
+  private _log(message: string): void {
+    if (this._disposed) { return; }
+    const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    this._channel.appendLine(`${ts} ${message}`);
+  }
+
+  /** Pipe a child-process stream to the output channel, line by line. */
+  private _pipeOutput(stream: NodeJS.ReadableStream | null, label: string): void {
+    stream?.on('data', (data: Buffer) => {
+      for (const line of data.toString().split(/\r?\n/)) {
+        if (line.trim()) { this._log(`[${label}] ${line}`); }
+      }
+    });
+  }
 
   /** The backend URL resolved by start(). Empty string until start() is called. */
   get backendUrl(): string { return this._backendUrl; }
@@ -75,7 +97,6 @@ export class SidecarManager implements vscode.Disposable {
     } catch { return '0.0.0'; }
   }
 
-
   private _getFreePort(): Promise<number> {
     return new Promise((resolve, reject) => {
       const server = net.createServer();
@@ -114,7 +135,7 @@ export class SidecarManager implements vscode.Disposable {
    * SHA256 hash for the given archive name.
    */
   private async _fetchChecksum(baseUrl: string, archiveName: string): Promise<string> {
-    this._channel.appendLine(`[SidecarManager] Fetching checksum for ${archiveName}...`);
+    this._log(`[SidecarManager] Fetching checksum for ${archiveName}...`);
     const res = await fetch(`${baseUrl}/checksums.sha256`);
     if (!res.ok) {
       throw new Error(`Failed to fetch checksums: HTTP ${res.status}`);
@@ -180,7 +201,7 @@ export class SidecarManager implements vscode.Disposable {
     }
 
     fs.writeFileSync(destPath, Buffer.concat(chunks));
-    this._channel.appendLine(`[SidecarManager] Download complete: ${received} bytes, SHA256 verified.`);
+    this._log(`[SidecarManager] Download complete: ${received} bytes, SHA256 verified.`);
   }
 
   /**
@@ -216,7 +237,7 @@ export class SidecarManager implements vscode.Disposable {
     const cacheDir = path.join(path.dirname(this._lockfilePath), 'backend', version);
     const executablePath = path.join(cacheDir, executableName);
     if (fs.existsSync(executablePath)) {
-      this._channel.appendLine(`[SidecarManager] Using cached backend at ${executablePath}`);
+      this._log(`[SidecarManager] Using cached backend at ${executablePath}`);
       return executablePath;
     }
 
@@ -230,7 +251,7 @@ export class SidecarManager implements vscode.Disposable {
       expectedHash = await this._fetchChecksum(baseUrl, archiveName);
     } catch (err) {
       // Dev build / no-matching-release fallback: log warning + return undefined to use port 8000
-      this._channel.appendLine(`[SidecarManager] Checksum fetch failed: ${err instanceof Error ? err.message : String(err)}. No GitHub Release for v${version}?`);
+      this._log(`[SidecarManager] Checksum fetch failed: ${err instanceof Error ? err.message : String(err)}. No GitHub Release for v${version}?`);
       return undefined;
     }
 
@@ -250,7 +271,7 @@ export class SidecarManager implements vscode.Disposable {
     );
 
     // Extract to cache directory
-    this._channel.appendLine(`[SidecarManager] Extracting backend archive to ${cacheDir} ...`);
+    this._log(`[SidecarManager] Extracting backend archive to ${cacheDir} ...`);
     await new Promise<void>((resolve, reject) => {
       const tarArgs = ['-xzf', tmpPath, '-C', cacheDir];
       const tar = cp.execFile('tar', tarArgs);
@@ -263,7 +284,7 @@ export class SidecarManager implements vscode.Disposable {
 
     // Delete temp archive after successful extraction (CONTEXT.md: "Downloaded archive is deleted after successful extraction")
     fs.rmSync(tmpPath, { force: true });
-    this._channel.appendLine('[SidecarManager] Extraction complete.');
+    this._log('[SidecarManager] Extraction complete.');
 
     return executablePath;
   }
@@ -282,6 +303,7 @@ export class SidecarManager implements vscode.Disposable {
    * Check `didSpawn` after calling to decide whether to wait for health.
    */
   async start(): Promise<string> {
+    this._didSpawn = false;   // reset so callers can check didSpawn after restart
     const version = this._getVersion();
 
     // --- Reuse path ---
@@ -290,7 +312,7 @@ export class SidecarManager implements vscode.Disposable {
     if (lock && lock.version === version) {
       const url = `http://127.0.0.1:${lock.port}`;
       if (await this._checkHealth(url)) {
-        this._channel.appendLine(
+        this._log(
           `[SidecarManager] Reusing existing backend at ${url} (PID ${lock.pid}).`
         );
         this._backendUrl = url;
@@ -300,7 +322,7 @@ export class SidecarManager implements vscode.Disposable {
 
     // --- Spawn path ---
     if (!this._archiveName()) {
-      this._channel.appendLine(
+      this._log(
         `[SidecarManager] Unsupported platform: ${process.platform}. Skipping spawn.`
       );
       this._backendUrl = 'http://127.0.0.1:8000';
@@ -313,7 +335,7 @@ export class SidecarManager implements vscode.Disposable {
     } catch (err) {
       // Download or checksum failure on cold path — show error notification per CONTEXT.md
       const errMsg = err instanceof Error ? err.message : String(err);
-      this._channel.appendLine(`[SidecarManager] Download failed: ${errMsg}`);
+      this._log(`[SidecarManager] Download failed: ${errMsg}`);
       await this._showDownloadError(errMsg);
       this._backendUrl = 'http://127.0.0.1:8000';
       return this._backendUrl;
@@ -326,33 +348,28 @@ export class SidecarManager implements vscode.Disposable {
 
     const port = await this._getFreePort();
     const url = `http://127.0.0.1:${port}`;
-    this._channel.appendLine(`[SidecarManager] Spawning backend on port ${port}: ${binaryPath}`);
+    this._log(`[SidecarManager] Spawning backend on port ${port}: ${binaryPath}`);
 
     const proc = cp.execFile(binaryPath, ['--port', String(port)]);
     this._process = proc;
     this._didSpawn = true;
 
-    proc.stdout?.on('data', (data: Buffer) => {
-      for (const line of data.toString().split(/\r?\n/)) {
-        if (line.trim()) { this._channel.appendLine(`[stdout] ${line}`); }
-      }
-    });
-
-    proc.stderr?.on('data', (data: Buffer) => {
-      for (const line of data.toString().split(/\r?\n/)) {
-        if (line.trim()) { this._channel.appendLine(`[stderr] ${line}`); }
-      }
-    });
+    this._pipeOutput(proc.stdout, 'stdout');
+    this._pipeOutput(proc.stderr, 'stderr');
 
     proc.on('exit', (code, signal) => {
-      this._channel.appendLine(
+      this._log(
         `[SidecarManager] Backend process exited — code: ${code}, signal: ${signal}`
       );
+      if (proc.pid !== undefined) {
+        this._deleteLock(proc.pid);
+      }
       this._process = undefined;
+      void this.onUnexpectedExit?.();
     });
 
     proc.on('error', (err) => {
-      this._channel.appendLine(`[SidecarManager] Failed to start backend: ${err.message}`);
+      this._log(`[SidecarManager] Failed to start backend: ${err.message}`);
       this._process = undefined;
     });
 
@@ -365,15 +382,15 @@ export class SidecarManager implements vscode.Disposable {
   }
 
   /** Poll GET /api/health until HTTP 200 or timeout. Only call this after a fresh spawn. */
-  async waitForHealth(timeoutMs = 30_000): Promise<void> {
-    const healthUrl = `${this._backendUrl}/api/health`;
+  async waitForHealth(url = this._backendUrl, timeoutMs = 30_000): Promise<void> {
+    const healthUrl = `${url}/api/health`;
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
       try {
         const res = await fetch(healthUrl);
         if (res.status === 200) {
-          this._channel.appendLine('[SidecarManager] Backend health check passed.');
+          this._log('[SidecarManager] Backend health check passed.');
           return;
         }
       } catch {
@@ -397,6 +414,8 @@ export class SidecarManager implements vscode.Disposable {
    * idle watchdog once all clients stop sending requests.
    */
   dispose(): void {
+    this._disposed = true;
+    this.onUnexpectedExit = undefined;
     this._channel.dispose();
   }
 }

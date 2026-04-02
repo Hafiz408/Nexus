@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { BackendClient } from './BackendClient';
 import { HighlightService } from './HighlightService';
@@ -25,7 +26,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private _missingProviders: string[] = [];
 
   private get _dbPath(): string {
-    const path = require('path') as typeof import('path');
     return path.join(this._repoPath ?? '', '.nexus', 'graph.db');
   }
 
@@ -33,7 +33,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     private readonly _extensionUri: vscode.Uri,
     client: BackendClient
   ) {
-    this._client = client;  // use the passed-in client instead of constructing internally
+    this._client = client;
     this._highlight = new HighlightService();
     // Use the first workspace folder as the repo path
     this._repoPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -58,7 +58,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     // The backend restores _status from SQLite on startup, so this round-trip
     // is all that's needed to recover the UI state after a restart.
     if (this._repoPath) {
-      this._client.getStatus(this._repoPath, this._dbPath).then((status) => {
+      this._client.getStatus(this._repoPath).then((status) => {
         if (status.status !== 'not_indexed') {
           void this._postStatus(status);
         }
@@ -68,9 +68,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       }).catch(() => { /* backend not yet up — UI stays at not_indexed */ });
     }
 
-    // Send initial reindex state and config status to webview
+    // Send initial reindex state, config status, and key status to webview
     this._broadcastReindexState();
     this.broadcastConfigStatus();
+    this.broadcastKeyStatus(this._missingProviders);
 
     // SSE-03: handle messages from webview
     webviewView.webview.onDidReceiveMessage(async (msg: WebviewToHostMessage) => {
@@ -151,6 +152,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
         case 'configureKeys':
           void vscode.commands.executeCommand('nexus.setApiKey');
+          break;
+
+        case 'openSettings':
+          void vscode.commands.executeCommand('nexus.openSettings');
           break;
 
         case 'postReviewToPR': {

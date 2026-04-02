@@ -2,10 +2,30 @@
 
 All notable changes to Nexus AI are documented here.
 
-## [4.1.1] - 2026-04-02
+## [4.1.2] - 2026-04-02
 
 ### Fixed
-- Re-release of 4.1.0 via CI pipeline to ensure correct binary-free VSIX is published to the Marketplace.
+- **Backend stays alive while VS Code is open** — the sidecar now auto-restarts immediately when the backend exits unexpectedly (SIGTERM from idle watchdog, crash, etc.). The spawning window restarts via an `onUnexpectedExit` callback; secondary windows (which reuse the backend) recover within one 30-second keepalive cycle.
+- **Stale lockfile after backend exit** — the lockfile is now deleted when the backend process exits, preventing a second VS Code window from reading a dead PID/port and logging "Reusing existing backend" before all API calls fail.
+- **"fetch failed" after SIGTERM** — `BackendClient.backendUrl` was `readonly` and frozen at the original port forever. It is now updated to the new port after each restart, so index and chat calls recover without a window reload.
+- **Keepalive could not detect a dead backend** — `ping()` previously returned `void` and silently swallowed errors. It now returns `Promise<boolean>`, allowing the keepalive to trigger a restart when the backend is unreachable.
+- **`_log()` throw after dispose** — calling `_log()` on a disposed VS Code `OutputChannel` (when the process exits after the extension deactivates) now returns silently instead of throwing.
+- **Infinite restart loop** — consecutive restart failures are now counted; after 5 failures the extension stops retrying and shows a "Reload Window" notification instead of restarting every 30 seconds indefinitely.
+- **Overlapping keepalive pings** — an in-flight guard prevents keepalive ticks from piling up when the backend is slow to respond.
+- **`waitForHealth` race during restart** — the health-check URL is now snapshotted at call time rather than read from the mutable `_backendUrl` field, preventing it from polling the wrong address during a concurrent restart.
+- **`isStreaming` stuck after stream error** — if the SSE stream was interrupted mid-response (backend crash, network drop), the UI chat input remained locked. The webview now receives an error event on stream interruption and resets the streaming state.
+- **Settings button opened API key prompt instead of settings panel** — the gear icon in the status bar now opens the VS Code extension settings page (`nexus.openSettings`) as labelled.
+- **Key status not shown on sidebar load** — `broadcastKeyStatus` is now called during `resolveWebviewView` so the setup guide renders correctly on first load without waiting for an async round-trip.
+
+### Changed
+- **Idle watchdog timeout** raised from 15 minutes to 120 minutes — the backend now stays running for 2 hours of inactivity before self-terminating.
+- **Keepalive interval** reduced from 3 minutes to 30 seconds — faster dead-backend detection and recovery for reuse-path windows.
+- **Timestamps added to all log output** — every line in the "Nexus Backend" output channel now includes a `YYYY-MM-DD HH:MM:SS` prefix. Python `warnings.warn()` output (graph builder unresolvable-edge warnings) is routed through the logging system and timestamped as well.
+
+### Internal
+- `pollUntilComplete` gained an in-flight guard and a 10-minute timeout cap to prevent zombie polling intervals.
+- Citation file tabs now open as preview tabs (not pinned) to avoid filling the tab bar.
+- Test suite: patched `_check_sqlite_vec` and `init_vec_table` in `conftest.py` so all 235 tests pass on Python builds without `--enable-loadable-sqlite-extensions`.
 
 ## [4.1.0] - 2026-04-02
 

@@ -77,17 +77,21 @@ def mock_pipeline_stages(tmp_path):
                                 with patch(
                                     "app.ingestion.pipeline.set_embedding_meta",
                                 ) as mock_set_meta:
-                                    yield {
-                                        "walk_repo": mock_walk,
-                                        "parse_file": mock_parse,
-                                        "build_graph": mock_build,
-                                        "save_graph": mock_save,
-                                        "delete_embeddings_for_repo": mock_del_repo,
-                                        "embed_and_store": mock_embed,
-                                        "get_embedding_client": mock_get_embedder,
-                                        "set_embedding_meta": mock_set_meta,
-                                        "graph": G,
-                                    }
+                                    with patch(
+                                        "app.ingestion.pipeline.init_vec_table",
+                                    ) as mock_init_vec:
+                                        yield {
+                                            "walk_repo": mock_walk,
+                                            "parse_file": mock_parse,
+                                            "build_graph": mock_build,
+                                            "save_graph": mock_save,
+                                            "delete_embeddings_for_repo": mock_del_repo,
+                                            "embed_and_store": mock_embed,
+                                            "get_embedding_client": mock_get_embedder,
+                                            "set_embedding_meta": mock_set_meta,
+                                            "init_vec_table": mock_init_vec,
+                                            "graph": G,
+                                        }
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +202,8 @@ def test_parse_failure_is_partial_not_fatal(tmp_path):
                         ):
                             with patch("app.ingestion.pipeline.set_embedding_meta"):
                                 with patch("app.ingestion.pipeline.get_embedding_client"):
-                                    result = asyncio.run(run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db"))
+                                    with patch("app.ingestion.pipeline.init_vec_table"):
+                                        result = asyncio.run(run_ingestion(str(tmp_path), ["python"], "/tmp/.nexus/graph.db"))
 
     # One file failed but the pipeline completes — not fatal
     assert result.status == "complete"

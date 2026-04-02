@@ -1,7 +1,7 @@
 import { IndexStatus } from './types';
 
 export class BackendClient {
-  constructor(readonly backendUrl: string) {}
+  constructor(public backendUrl: string) {}
 
   async startIndex(repoPath: string, dbPath: string): Promise<void> {
     const res = await fetch(`${this.backendUrl}/index`, {
@@ -24,7 +24,7 @@ export class BackendClient {
     }
   }
 
-  async getStatus(repoPath: string, dbPath?: string): Promise<IndexStatus> {
+  async getStatus(repoPath: string): Promise<IndexStatus> {
     // status endpoint currently reads from in-memory dict, db_path not required
     const res = await fetch(
       `${this.backendUrl}/index/status?repo_path=${encodeURIComponent(repoPath)}`
@@ -59,22 +59,34 @@ export class BackendClient {
     return resp.json() as Promise<{ reindex_required: boolean }>;
   }
 
-  /** Keepalive — resets the backend idle watchdog. Fire-and-forget; errors are silently swallowed. */
-  async ping(): Promise<void> {
+  /** Keepalive — resets the backend idle watchdog. Returns true if backend responded OK. */
+  async ping(): Promise<boolean> {
     try {
-      await fetch(`${this.backendUrl}/api/health`);
+      const res = await fetch(`${this.backendUrl}/api/health`);
+      return res.ok;
     } catch {
-      // Backend may be temporarily unreachable — not actionable here
+      return false;
     }
   }
 
   // SSE-01: poll every 2 seconds until complete or failed
   pollUntilComplete(
     repoPath: string,
-    onProgress: (status: IndexStatus) => void
+    onProgress: (status: IndexStatus) => void,
+    timeoutMs = 10 * 60 * 1000,  // 10-minute cap — prevents zombie interval if backend hangs
   ): Promise<IndexStatus> {
     return new Promise((resolve, reject) => {
+      const start = Date.now();
+      let inFlight = false;
+
       const interval = setInterval(async () => {
+        if (inFlight) { return; }  // skip tick if previous getStatus call is still in flight
+        if (Date.now() - start > timeoutMs) {
+          clearInterval(interval);
+          reject(new Error('Indexing timed out — backend did not complete within the expected time.'));
+          return;
+        }
+        inFlight = true;
         try {
           const status = await this.getStatus(repoPath);
           onProgress(status);
@@ -85,6 +97,8 @@ export class BackendClient {
         } catch (err) {
           clearInterval(interval);
           reject(err);
+        } finally {
+          inFlight = false;
         }
       }, 2000);
     });

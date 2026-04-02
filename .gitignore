@@ -41,3 +41,4 @@ test_output.py
 /extension/bin
 /docs/guide
 /.claude
+extension/test-v4.1.mjs

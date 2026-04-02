@@ -33,7 +33,7 @@ export class HighlightService {
         const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
         const editor = await vscode.window.showTextDocument(doc, {
           preserveFocus: true,
-          preview: false,
+          preview: true,  // avoid pinning — let VS Code reuse the preview tab
         });
 
         // line_start/line_end are 1-indexed; VS Code Position is 0-indexed
