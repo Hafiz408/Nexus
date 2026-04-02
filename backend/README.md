@@ -29,10 +29,10 @@ backend/
 │   ├── ingestion/            # → AST parsing, graph, sqlite-vec indexing
 │   ├── retrieval/            # → Graph RAG pipeline
 │   ├── agent/                # → Multi-agent orchestration (LangGraph)
-│   ├── mcp/                  # → GitHub PR + file-write tools
+│   ├── mcp/                  # → Side-effect tools (GitHub PR posting, test file writer)
 │   └── models/               # Pydantic schemas (CodeNode, QueryRequest…)
 ├── build.py                  # PyInstaller build script (outputs extension/bin/)
-├── tests/                    # 244 tests — all offline, no live API calls
+├── tests/                    # 273 tests — all offline, no live API calls
 └── requirements.txt
 ```
 
@@ -69,7 +69,7 @@ In production use the extension auto-spawns the bundled binary — no manual sta
 ## Tests
 
 ```bash
-python -m pytest backend/tests/ -v    # 244 tests, no API keys required
+cd backend && python -m pytest tests/ -v    # 273 tests, no API keys required
 ```
 
 ## Module Docs
@@ -80,4 +80,4 @@ python -m pytest backend/tests/ -v    # 244 tests, no API keys required
 | Retrieval | [app/retrieval/README.md](app/retrieval/README.md) |
 | Agents | [app/agent/README.md](app/agent/README.md) |
 | API | [app/api/README.md](app/api/README.md) |
-| MCP Tools | [app/mcp/README.md](app/mcp/README.md) |
+| Agent Tools | [app/mcp/README.md](app/mcp/README.md) |

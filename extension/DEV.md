@@ -7,7 +7,7 @@ Sidebar chat interface for querying code, viewing results, and managing the inde
 ```
 Extension Host (Node.js)
   ├── extension.ts       activate, register commands, wire FileWatcher + ConfigManager
-  ├── SidecarManager     spawn/kill/poll bundled backend binary; auto-restart on exit; dev-mode skip
+  ├── SidecarManager     download (first use) + spawn/kill/poll backend binary; auto-restart on exit; dev-mode skip
   ├── ConfigManager      VS Code settings → POST /api/config; SecretStorage API keys
   ├── SidebarProvider    webview bridge — message dispatcher, SSE listener
   ├── BackendClient      HTTP: POST /index · GET /status · POST /query
@@ -22,7 +22,7 @@ Webview (React 18)
           │
           │  HTTP + SSE
           ▼
-  FastAPI Backend (localhost:8000)
+  FastAPI Backend (dynamically allocated port — managed by SidecarManager)
 ```
 
 ## Key Flows
@@ -67,7 +67,6 @@ File saved → FileWatcher (debounce 2s)
 
 | Pill | Result panel |
 |---|---|
-| Auto | Routes automatically |
 | Explain | Streaming answer + clickable citations |
 | Debug | Suspect list with anomaly scores + diagnosis |
 | Review | Findings with severity badges + "Post to PR" button |
@@ -111,4 +110,4 @@ Cmd+Shift+P → "Nexus: Set API Key"   → pick provider → enter key
 Cmd+Shift+P → "Nexus: Clear API Key" → pick provider → removes key
 ```
 
-On activation and on settings change, the extension pushes provider + key config to `POST /api/config`. The `.env` file provides fallback defaults if no key has been set via the extension.
+On activation and on settings change, the extension pushes provider + key config to `POST /api/config`. In local dev mode (Option B), the `.env` file provides fallback defaults if no key has been set via the extension.

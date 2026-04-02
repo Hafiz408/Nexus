@@ -12,7 +12,6 @@ AI-powered code assistant that understands your codebase through a **call graph 
 | **Debug** | BFS call-graph traversal, anomaly scoring, ranked suspect list with diagnosis |
 | **Review** | Structured findings (severity · category · suggestion), postable to GitHub PRs |
 | **Test** | Framework-aware test generation written directly to your repo |
-| **Auto** | LLM classifies intent and routes to the right specialist automatically |
 
 ## Architecture
 
@@ -31,7 +30,7 @@ AI-powered code assistant that understands your codebase through a **call graph 
 │                     │                │
 │  Query ──► Retrieval ──► Agents      │
 │                     │                │
-│            MCP Tools (PR · files)    │
+│            Tools (PR post · file I/O)│
 └──────────┬───────────────────────────┘
            │
   ┌────────┴──────────────────────┐
@@ -43,7 +42,7 @@ AI-powered code assistant that understands your codebase through a **call graph 
 
 The backend is **stateless compute** — it receives a `db_path` with every request pointing to the workspace SQLite file. No shared database, no server to manage.
 
-The extension **automatically spawns** the bundled backend binary on activate and shuts it down on deactivate. No Python installation required.
+The extension **automatically downloads** (on first use) and **spawns** the backend binary on activate, and shuts it down on deactivate. No Python installation required.
 
 ## Query Flow
 
@@ -70,9 +69,11 @@ Question
 
 Search **Nexus AI** in the VS Code Extensions panel, or install directly:
 
-**[Install from Marketplace →](https://marketplace.visualstudio.com/items?itemName=Hafiz408.nexus-ai)**
+**[Install from VS Code Marketplace →](https://marketplace.visualstudio.com/items?itemName=Hafiz408.nexus-ai)**
 
-The extension auto-starts the bundled backend — no Python or terminal required.
+**[Install from Open VSX Registry →](https://open-vsx.org/extension/Hafiz408/nexus-ai)** (VSCodium and other open editors)
+
+On first activation the extension downloads the backend binary for your platform from GitHub Releases, verifies its SHA256 checksum, and caches it permanently. Subsequent activations start from the local cache — no Python or terminal required.
 
 ---
 
@@ -132,7 +133,7 @@ Inside the Extension Development Host window:
 ```bash
 cd Nexus/backend
 pip install -r requirements.txt pyinstaller
-python build.py          # → extension/bin/nexus-backend-mac (or nexus-backend-win.exe)
+python build.py          # → extension/bin/nexus-backend-mac.tar.gz (or nexus-backend-win.tar.gz)
 
 cd ../extension
 npm install && npm run build
@@ -140,6 +141,8 @@ npm install -g @vscode/vsce
 vsce package --out nexus.vsix
 # Install: VS Code → Extensions → ··· → Install from VSIX…
 ```
+
+> The locally built VSIX will use the binary at `extension/bin/` rather than downloading from GitHub Releases.
 
 ## Configuration
 
@@ -163,13 +166,19 @@ The extension pushes provider/model/key config to the backend at startup and on 
 
 Every push to a `v*` tag triggers **GitHub Actions** (`.github/workflows/build.yml`):
 
-| Job | Runner | Output |
+| Job | Runner | Purpose |
 |---|---|---|
-| `build-mac` | `macos-latest` | `nexus-backend-mac` binary via PyInstaller |
-| `build-win` | `windows-latest` | `nexus-backend-win.exe` binary via PyInstaller |
-| `package` | `ubuntu-latest` | `nexus.vsix` bundling both binaries |
+| `backend-unit-tests` | `ubuntu-latest` | 273 unit tests — no API keys required |
+| `backend-smoke-test` | `ubuntu-latest` | Live index + chat stream against Mistral |
+| `changelog-check` | `ubuntu-latest` | Verifies tag, `package.json`, and `CHANGELOG.md` all match |
+| `extension-build` | `ubuntu-latest` | TypeScript compile check |
+| `build-mac` | `macos-latest` | PyInstaller binary → `nexus-backend-mac.tar.gz` |
+| `build-win` | `windows-latest` | PyInstaller binary → `nexus-backend-win.tar.gz` |
+| `github-release` | `ubuntu-latest` | Uploads binaries + `checksums.sha256` as permanent GitHub Release assets |
+| `package` | `ubuntu-latest` | Lightweight `.vsix` (~1.5 MB, no binaries) |
+| `publish` | `ubuntu-latest` | Publishes to VS Code Marketplace and Open VSX Registry |
 
-The final `.vsix` works on Mac and Windows with no Python installation required.
+The VSIX contains no native binaries — on first activation the extension downloads the correct platform binary from the GitHub Release, verifies its SHA256 checksum, and caches it in VS Code's global storage.
 
 ## Structure
 
@@ -180,12 +189,12 @@ nexus/
 │   └── app/
 │       ├── api/       → HTTP endpoints + SSE routing
 │       ├── ingestion/ → AST parsing, graph, sqlite-vec index
-│       ├── retrieval/ → 3-step Graph RAG pipeline
-│       ├── agent/     → Multi-agent orchestration
+│       ├── retrieval/ → Graph RAG pipeline (semantic + FTS5 dual search)
+│       ├── agent/     → Multi-agent orchestration (LangGraph)
 │       ├── core/      → Provider-agnostic model factory
-│       └── mcp/       → GitHub PR + file-write tools
+│       └── mcp/       → Side-effect tools (GitHub PR posting, test file writer)
 ├── extension/         → VS Code extension (TypeScript + React)
-│   └── bin/           → Bundled backend binaries (mac + win)
+│   └── bin/           → Local dev binaries (not bundled in published VSIX)
 ├── eval/              → RAGAS evaluation suite
 └── .github/workflows/ → CI build pipeline
 ```
@@ -199,6 +208,6 @@ nexus/
 | Retrieval | [backend/app/retrieval/README.md](backend/app/retrieval/README.md) |
 | Agents | [backend/app/agent/README.md](backend/app/agent/README.md) |
 | API | [backend/app/api/README.md](backend/app/api/README.md) |
-| MCP Tools | [backend/app/mcp/README.md](backend/app/mcp/README.md) |
+| Agent Tools | [backend/app/mcp/README.md](backend/app/mcp/README.md) |
 | Extension | [extension/README.md](extension/README.md) |
 | Evaluation | [eval/README.md](eval/README.md) |

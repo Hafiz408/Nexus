@@ -1,6 +1,6 @@
-# MCP Tools
+# Agent Tools
 
-Optional side-effect tools for the agent pipeline. Failures are **non-fatal** — the core result still reaches the extension even if a tool fails.
+Side-effect utilities used by the multi-agent pipeline. Failures are **non-fatal** — the core result still reaches the extension even if a tool fails.
 
 ## Tools
 
@@ -32,7 +32,7 @@ The extension shows or hides the "Post to PR" button based on the `has_github_to
 ## Degradation
 
 ```
-MCP tool fails?
+Tool fails?
   → log warning
   → file_written = false  (test: fallback to copy-to-clipboard)
   → has_github_token = false  (review: hide PR button)
