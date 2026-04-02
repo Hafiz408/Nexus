@@ -4,18 +4,6 @@ AI-powered code assistant that understands your codebase through a **call graph 
 
 > **Local-first & privacy-preserving.** No database server required. The graph and vector index live in `.nexus/graph.db` inside your workspace — your code never leaves your machine.
 
-## Retrieval Quality — RAGAS Evaluation
-
-Measured on 30 hand-labelled FastAPI Q&A pairs, Ollama qwen2.5:7b judge:
-
-| Strategy | Faithfulness | Answer Relevancy | Context Precision |
-|---|---|---|---|
-| Naive vector (semantic only) | 0.5763 | 0.5607 | 0.0776 |
-| Graph RAG + FTS (pre-fix) | 0.5058 | 0.4287 | 0.0896 |
-| **Graph RAG + FTS + MMR** *(current)* | **0.5714** | **0.4410** | **0.1803** |
-
-Context precision **+132%** vs naive vector — retrieved chunks are more on-topic. Faithfulness back in line with naive (−0.8%). MMR diversity pass + FTS-only candidates skipping BFS expansion are the two changes driving the gain. → [Full eval breakdown](eval/README.md)
-
 ## Features
 
 | Mode | What it does |
