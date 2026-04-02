@@ -3,12 +3,19 @@ import { Citation } from './types';
 
 const QUERY_TIMEOUT_MS = 30_000;
 
-/** Build an AbortSignal that fires on the earliest of: user cancel or 30 s timeout. */
+/** Build an AbortSignal that fires on the earliest of: user cancel or 30 s timeout.
+ *
+ * AbortSignal.any() requires Node 20 / Electron 31 (VS Code ≥ 1.90). On older
+ * hosts the user-cancel signal is returned as-is (no timeout), which is safe —
+ * the stream will still be cancelled on new queries and sidebar close.
+ */
 function makeFetchSignal(userSignal?: AbortSignal): AbortSignal {
   const timeout = AbortSignal.timeout(QUERY_TIMEOUT_MS);
   if (!userSignal) { return timeout; }
-  // AbortSignal.any is Node 20+ / Electron 31+ — both ship with current VS Code.
-  return AbortSignal.any([userSignal, timeout]);
+  if (typeof AbortSignal.any === 'function') {
+    return AbortSignal.any([userSignal, timeout]);
+  }
+  return userSignal;  // graceful degradation: cancel works, timeout does not
 }
 
 export async function streamQuery(

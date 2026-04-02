@@ -122,10 +122,12 @@ def delete_graph_for_repo(repo_path: str, db_path: str) -> None:
         db_path: Path to the SQLite database file.
     """
     conn = _get_conn(db_path)
-    conn.execute("DELETE FROM graph_nodes WHERE repo_path = ?", (repo_path,))
-    conn.execute("DELETE FROM graph_edges WHERE repo_path = ?", (repo_path,))
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("DELETE FROM graph_nodes WHERE repo_path = ?", (repo_path,))
+        conn.execute("DELETE FROM graph_edges WHERE repo_path = ?", (repo_path,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def load_graph(repo_path: str, db_path: str) -> nx.DiGraph:
@@ -141,20 +143,20 @@ def load_graph(repo_path: str, db_path: str) -> nx.DiGraph:
     """
     conn = _get_conn(db_path)
     G = nx.DiGraph()
+    try:
+        for row in conn.execute(
+            "SELECT node_id, attrs_json FROM graph_nodes WHERE repo_path = ?",
+            (repo_path,),
+        ):
+            G.add_node(row["node_id"], **json.loads(row["attrs_json"]))
 
-    for row in conn.execute(
-        "SELECT node_id, attrs_json FROM graph_nodes WHERE repo_path = ?",
-        (repo_path,),
-    ):
-        G.add_node(row["node_id"], **json.loads(row["attrs_json"]))
-
-    for row in conn.execute(
-        "SELECT source, target, attrs_json FROM graph_edges WHERE repo_path = ?",
-        (repo_path,),
-    ):
-        G.add_edge(row["source"], row["target"], **json.loads(row["attrs_json"]))
-
-    conn.close()
+        for row in conn.execute(
+            "SELECT source, target, attrs_json FROM graph_edges WHERE repo_path = ?",
+            (repo_path,),
+        ):
+            G.add_edge(row["source"], row["target"], **json.loads(row["attrs_json"]))
+    finally:
+        conn.close()
     return G
 
 

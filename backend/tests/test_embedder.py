@@ -118,6 +118,7 @@ def mock_mistral_client():
     client = MagicMock()
     client.embed.side_effect = lambda texts: [np.random.rand(1024).tolist() for _ in texts]
     client.dimensions = 1024
+    client.max_tokens = 16_384  # matches MistralEmbeddingClient; keeps token_budget = 12_288
     return client
 
 
