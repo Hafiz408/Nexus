@@ -34,6 +34,12 @@ class EmbeddingClient(ABC):
         """Dimensionality of the embedding vectors this client produces."""
         ...
 
+    @property
+    @abstractmethod
+    def max_tokens(self) -> int:
+        """Maximum total tokens allowed per API request for this provider/model."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Concrete implementations
@@ -54,6 +60,10 @@ class MistralEmbeddingClient(EmbeddingClient):
     def dimensions(self) -> int:
         return 1024
 
+    @property
+    def max_tokens(self) -> int:
+        return 16_384  # mistral-embed hard cap
+
 
 class OpenAIEmbeddingClient(EmbeddingClient):
     """OpenAI — text-embedding-3-small (1536 dimensions)."""
@@ -71,6 +81,10 @@ class OpenAIEmbeddingClient(EmbeddingClient):
     @property
     def dimensions(self) -> int:
         return 1536
+
+    @property
+    def max_tokens(self) -> int:
+        return 8_191  # text-embedding-3-small context length
 
 
 class OllamaEmbeddingClient(EmbeddingClient):

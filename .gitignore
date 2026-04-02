@@ -42,3 +42,5 @@ test_output.py
 /docs/guide
 /.claude
 extension/test-v4.1.mjs
+/eval/results
+/venv_eval
