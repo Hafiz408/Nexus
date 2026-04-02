@@ -2,6 +2,16 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.1.0] - 2026-04-02
+
+### Changed
+- **Backend binary no longer bundled in VSIX** — the PyInstaller binary has been removed from the extension package. The VSIX now downloads to ~200 KB (down from ~62 MB). On first activation, the extension downloads the backend binary for your platform from GitHub Releases, verifies its SHA256 checksum, and caches it permanently in VS Code's global storage. Subsequent activations start from the local cache with no network call.
+
+### Added
+- **Download progress notification** — a VS Code progress notification ("Downloading Nexus backend...") appears during the first-time binary download, with percentage tracking via the file's `Content-Length`.
+- **Download failure handling** — if the download fails (network error, 404, or checksum mismatch), a clear error notification is shown with an "Open GitHub Releases" button linking to the manual download page.
+- **GitHub Release assets** — each tagged release now publishes `nexus-backend-mac.tar.gz`, `nexus-backend-win.tar.gz`, and `checksums.sha256` as permanent Release assets via CI.
+
 ## [4.0.10] - 2026-04-01
 
 ### Fixed
