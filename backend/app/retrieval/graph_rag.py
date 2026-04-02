@@ -124,7 +124,7 @@ def rerank_and_assemble(
     seed_scores: dict[str, float],
     G: nx.DiGraph,
     max_nodes: int,
-) -> list[CodeNode]:
+) -> list[tuple[float, CodeNode]]:
     """Score each expanded node and return top max_nodes as CodeNode objects.
 
     Dual-score formula:

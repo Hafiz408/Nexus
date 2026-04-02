@@ -9,10 +9,19 @@ Run 3 new-pipeline pre-fix (same run, FTS+BFS before fixes):
 This script evaluates only graph_rag_retrieve (with current fixes applied) and
 prints a delta table against both Run 3 baselines so we can see net improvement.
 
+Parallelisation levers
+----------------------
+--answer-concurrency N  Run N answer-gen calls concurrently via asyncio.gather
+                        (default 4; Mistral handles this comfortably without 429s)
+--workers N             RAGAS scoring parallelism via RunConfig(max_workers=N)
+                        (default 1 for Ollama; set OLLAMA_NUM_PARALLEL=N to match)
+
 Usage:
+    # Fast dev run — 10 questions, defaults
     python eval/run_ragas_new_only.py
-    python eval/run_ragas_new_only.py --limit 10   # first 10 questions (default, ~25 min)
-    python eval/run_ragas_new_only.py --limit 30   # full eval (~2.5h)
+
+    # Full eval, parallel answer-gen + 2 Ollama scoring workers (~45 min)
+    OLLAMA_NUM_PARALLEL=2 python eval/run_ragas_new_only.py --limit 30 --workers 2
 """
 from __future__ import annotations
 
@@ -60,7 +69,6 @@ MAX_NODES = 15
 
 
 async def get_answer(nodes: list[CodeNode], question: str) -> str:
-    import time
     for attempt in range(6):
         try:
             tokens: list[str] = []
@@ -71,10 +79,53 @@ async def get_answer(nodes: list[CodeNode], question: str) -> str:
             if "429" in str(e) or "rate" in str(e).lower() or "capacity" in str(e).lower():
                 wait = 60 * (attempt + 1)
                 print(f"    [answer gen rate limited, retry {attempt+1}/6, waiting {wait}s...]")
-                time.sleep(wait)
+                await asyncio.sleep(wait)
             else:
                 raise
     return ""
+
+
+async def _retrieve_and_answer(
+    sem: asyncio.Semaphore,
+    i: int,
+    total: int,
+    entry: dict,
+    G,
+) -> tuple[dict, list[CodeNode], dict]:
+    """Retrieve context for one question and generate an answer under the semaphore."""
+    q, ref = entry["question"], entry["ground_truth"]
+    qid = entry.get("id", f"Q{i:02d}")
+
+    # Retrieval is CPU-bound and fast — run outside the semaphore so all
+    # questions retrieve in parallel without waiting on answer-gen slots.
+    for attempt in range(5):
+        try:
+            nodes, stats = graph_rag_retrieve(q, REPO_PATH, G, DB_PATH, max_nodes=MAX_NODES, hop_depth=1)
+            break
+        except Exception as e:
+            if "429" in str(e) or "capacity" in str(e).lower():
+                print(f"    [{qid}] retrieval rate limited, retry {attempt+1}/5, waiting 60s...")
+                await asyncio.sleep(60)
+            else:
+                raise
+
+    # Answer generation is I/O-bound — gate on the semaphore to cap concurrency.
+    async with sem:
+        print(f"[{i}/{total}] {qid}: {q[:65]}...")
+        answer = await get_answer(nodes, q)
+
+    sample = SingleTurnSample(
+        user_input=q, retrieved_contexts=build_contexts(nodes), response=answer, reference=ref
+    )
+    retrieval_stat = {
+        "qid": qid,
+        "nodes_returned": len(nodes),
+        "seed_count": stats.get("seed_count", 0),
+        "semantic_seeds": stats.get("semantic_seeds", 0),
+        "fts_seeds": stats.get("fts_seeds", 0),
+        "expanded_count": stats.get("expanded_count", 0),
+    }
+    return sample, retrieval_stat
 
 
 def build_contexts(nodes: list[CodeNode]) -> list[str]:
@@ -84,7 +135,14 @@ def build_contexts(nodes: list[CodeNode]) -> list[str]:
     ]
 
 
-async def main(limit: int | None, judge: str, ollama_chat_model: str, ollama_embed_model: str) -> None:
+async def main(
+    limit: int | None,
+    judge: str,
+    ollama_chat_model: str,
+    ollama_embed_model: str,
+    answer_concurrency: int,
+    workers: int,
+) -> None:
     print(f"\nNexus RAGAS — New pipeline only (vs Run 3 baseline)")
     print(f"  repo:    {REPO_PATH}")
     print(f"  db:      {DB_PATH}")
@@ -104,7 +162,7 @@ async def main(limit: int | None, judge: str, ollama_chat_model: str, ollama_emb
         llm = LangchainLLMWrapper(ChatOllama(model=ollama_chat_model, temperature=0, base_url=ollama_base))
         emb = LangchainEmbeddingsWrapper(OllamaEmbeddings(model=ollama_embed_model, base_url=ollama_base))
         print(f"  judge:   ollama  chat={ollama_chat_model}  embed={ollama_embed_model}  base={ollama_base}")
-        run_config = RunConfig(timeout=180, max_retries=1, max_workers=1)
+        run_config = RunConfig(timeout=180, max_retries=1, max_workers=workers)
     else:
         from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
         mistral_key = (
@@ -117,7 +175,7 @@ async def main(limit: int | None, judge: str, ollama_chat_model: str, ollama_emb
         llm = LangchainLLMWrapper(ChatMistralAI(model="mistral-large-latest", temperature=0, api_key=mistral_key))
         emb = LangchainEmbeddingsWrapper(MistralAIEmbeddings(model="mistral-embed", api_key=mistral_key))
         print(f"  judge:   mistral (mistral-large-latest)")
-        run_config = RunConfig(timeout=120, max_retries=3)
+        run_config = RunConfig(timeout=120, max_retries=3, max_workers=workers)
 
     metrics = [
         Faithfulness(llm=llm),
@@ -125,43 +183,19 @@ async def main(limit: int | None, judge: str, ollama_chat_model: str, ollama_emb
         ContextPrecision(llm=llm),
     ]
 
-    samples: list[SingleTurnSample] = []
-    retrieval_stats: list[dict] = []
+    print(f"  answer concurrency: {answer_concurrency}  |  ragas workers: {workers}\n")
 
-    import time
+    # Phase 1 + 2: retrieve context and generate answers in parallel.
+    # A semaphore caps the number of concurrent LLM answer-gen calls.
+    sem = asyncio.Semaphore(answer_concurrency)
+    results = await asyncio.gather(*[
+        _retrieve_and_answer(sem, i, len(golden), entry, G)
+        for i, entry in enumerate(golden, 1)
+    ])
 
-    for i, entry in enumerate(golden, 1):
-        q, ref = entry["question"], entry["ground_truth"]
-        qid = entry.get("id", f"Q{i:02d}")
-        print(f"[{i}/{len(golden)}] {qid}: {q[:65]}...")
-
-        if i > 1 and judge != "ollama":
-            time.sleep(15)
-
-        for attempt in range(5):
-            try:
-                nodes, stats = graph_rag_retrieve(q, REPO_PATH, G, DB_PATH, max_nodes=MAX_NODES, hop_depth=1)
-                break
-            except Exception as e:
-                if "429" in str(e) or "capacity" in str(e).lower():
-                    print(f"    [rate limited, retry {attempt+1}/5, waiting 60s...]")
-                    time.sleep(60)
-                else:
-                    raise
-
-        answer = await get_answer(nodes, q)
-
-        samples.append(SingleTurnSample(
-            user_input=q, retrieved_contexts=build_contexts(nodes), response=answer, reference=ref
-        ))
-        retrieval_stats.append({
-            "qid": qid,
-            "nodes_returned": len(nodes),
-            "seed_count": stats.get("seed_count", 0),
-            "semantic_seeds": stats.get("semantic_seeds", 0),
-            "fts_seeds": stats.get("fts_seeds", 0),
-            "expanded_count": stats.get("expanded_count", 0),
-        })
+    # Preserve question order (gather returns results in submission order)
+    samples: list[SingleTurnSample] = [r[0] for r in results]
+    retrieval_stats: list[dict] = [r[1] for r in results]
 
     print(f"\nEvaluating {len(samples)} samples...")
     dataset = EvaluationDataset(samples=samples)
@@ -237,9 +271,16 @@ async def main(limit: int | None, judge: str, ollama_chat_model: str, ollama_emb
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=10,
-                        help="Limit to first N questions (default: 10 for speed; use --limit 30 for full eval)")
+                        help="Limit to first N questions (default: 10; use --limit 30 for full eval)")
     parser.add_argument("--judge", choices=["mistral", "ollama"], default="ollama")
     parser.add_argument("--ollama-chat-model", default="qwen2.5:7b")
     parser.add_argument("--ollama-embed-model", default="nomic-embed-text")
+    parser.add_argument("--answer-concurrency", type=int, default=4,
+                        help="Concurrent answer-gen LLM calls via asyncio.gather (default: 4)")
+    parser.add_argument("--workers", type=int, default=1,
+                        help="RAGAS scoring parallelism — set OLLAMA_NUM_PARALLEL=N to match (default: 1)")
     args = parser.parse_args()
-    asyncio.run(main(args.limit, args.judge, args.ollama_chat_model, args.ollama_embed_model))
+    asyncio.run(main(
+        args.limit, args.judge, args.ollama_chat_model, args.ollama_embed_model,
+        args.answer_concurrency, args.workers,
+    ))

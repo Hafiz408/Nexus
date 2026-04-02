@@ -113,11 +113,11 @@ def test_rerank_respects_max_nodes(sample_graph):
 
 
 def test_rerank_returns_code_nodes(sample_graph):
-    """All items returned by rerank_and_assemble must be CodeNode instances."""
+    """rerank_and_assemble returns (float, CodeNode) tuples for downstream MMR."""
     all_nodes = {"a.py::func_a", "b.py::func_b"}
     seed_scores = {"b.py::func_b": 0.9}
     result = rerank_and_assemble(all_nodes, seed_scores, sample_graph, max_nodes=5)
-    assert all(isinstance(node, CodeNode) for node in result)
+    assert all(isinstance(score, float) and isinstance(node, CodeNode) for score, node in result)
 
 
 def test_rerank_sorted_descending(sample_graph):
@@ -131,7 +131,7 @@ def test_rerank_sorted_descending(sample_graph):
 
     assert len(result) >= 2
     # b must come before a (higher semantic score dominates)
-    node_ids = [n.node_id for n in result]
+    node_ids = [node.node_id for _, node in result]
     assert node_ids.index("b.py::func_b") < node_ids.index("a.py::func_a")
 
 
@@ -142,7 +142,7 @@ def test_rerank_zero_in_degree_no_error(sample_graph):
         {"e.py::func_e"}, seed_scores={}, G=sample_graph, max_nodes=5
     )
     assert len(result) == 1
-    assert isinstance(result[0], CodeNode)
+    assert isinstance(result[0][1], CodeNode)
 
 
 # ---------------------------------------------------------------------------
