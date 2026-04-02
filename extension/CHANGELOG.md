@@ -125,3 +125,60 @@ All notable changes to Nexus AI are documented here.
 
 ### Fixed
 - SQLite extension loading crash on certain macOS Python builds.
+
+---
+
+## [4.0.0] - 2026-03-26
+
+*Milestone: Model & Provider Agnostic + Zero-Setup Distribution*
+
+### Added
+- **Dynamic provider/model configuration** — `POST /api/config` replaces the static `.env` singleton. Supports OpenAI, Mistral, Anthropic, Ollama, and Gemini; hot-swappable at runtime without a server restart.
+- **SidecarManager** — the extension automatically spawns the bundled PyInstaller backend binary on activate and shuts it down on deactivate. Uses a lockfile for multi-window reuse so only one backend process runs across all VS Code windows.
+- **SecretStorage API key management** — provider API keys are stored in VS Code's `SecretStorage` and never written to disk or `settings.json`.
+- **Embedding model mismatch detection** — the backend detects when the active embedding model differs from the one used to build the current index and blocks chat until the index is rebuilt.
+- **GitHub Actions build pipeline** — parallel Mac and Windows PyInstaller jobs produce platform-specific backend binaries and package them into a single `.vsix`.
+
+---
+
+## [3.0.0] - 2026-03-25
+
+*Milestone: Local-First Privacy*
+
+### Changed
+- **Workspace-local storage** — all graph data now lives in `.nexus/graph.db` (sqlite-vec + SQLite) inside the open workspace. PostgreSQL and Docker are no longer required.
+- **Stateless backend** — the backend is compute-only; it holds no persistent state between requests. `db_path` is threaded through all API endpoints and `BackendClient` methods.
+
+### Fixed
+- `target_node_id` wired correctly from extension to backend; reviewer and tester end-to-end flows now resolve the correct node.
+
+---
+
+## [2.0.0] - 2026-03-22
+
+*Milestone: Multi-Agent Team*
+
+### Added
+- **LangGraph orchestrator** — a `StateGraph` with `SqliteSaver` checkpointing routes queries through specialist agents: Router → specialist → Critic → MCP/done (Phases 22, 24).
+- **Router agent** — intent classifier with 100% accuracy on 12 labelled queries; supports an `intent_hint` bypass path for direct routing.
+- **Debugger agent** — BFS call-graph traversal with 5-factor anomaly scoring and top-5 suspect ranking with impact radius.
+- **Reviewer agent** — 1-hop caller/callee context assembly with structured `Finding` schema and groundedness post-filter.
+- **Tester agent** — marker-file framework detection, `CALLS`-edge mock target resolution, and deterministic test-file path derivation.
+- **Critic agent** — quality scoring (0.40× groundedness + 0.35× relevance + 0.25× actionability) with a 2-loop hard cap.
+- **MCP integrations** — GitHub MCP (tenacity retry, 422-skip) and Filesystem MCP (path traversal guard, extension allowlist).
+- **Intent selector UI** — 5-pill intent selector in the sidebar; `DebugPanel`, `ReviewPanel`, and `TestPanel` render structured agent results.
+
+---
+
+## [1.0.0] - 2026-03-21
+
+*Milestone: MVP*
+
+### Added
+- **Graph RAG retrieval pipeline** — 3-step retrieval: semantic vector search → BFS graph expansion → score reranking.
+- **Streaming explorer agent** — LangChain LCEL agent with LangSmith tracing; streams responses over SSE via `POST /query`.
+- **VS Code extension** — esbuild dual-bundle (extension host + webview), `fetch` + `ReadableStream` SSE consumer, React 18 webview panel.
+- **Citation highlighting** — `TextEditorDecorationType` decorates cited symbol ranges in the active editor.
+- **Incremental re-index** — file watcher triggers a partial re-index on save without a full rebuild.
+- **RAGAS evaluation harness** — 30-entry golden dataset with an 80% baseline (8/10 questions answered correctly).
+- **Extension UI** — auto-grow textarea, citation chips with expand/collapse, indeterminate progress bar.

@@ -138,7 +138,11 @@ async def main(limit: int | None, judge: str, ollama_chat_model: str, ollama_emb
         ResponseRelevancy(llm=llm, embeddings=emb),
         ContextPrecision(llm=llm),
     ]
-    run_config = RunConfig(timeout=180, max_retries=2)
+    # Ollama serves one request at a time — force sequential scoring to avoid timeout pile-up
+    if judge == "ollama":
+        run_config = RunConfig(timeout=180, max_retries=1, max_workers=1)
+    else:
+        run_config = RunConfig(timeout=120, max_retries=3)
 
     new_samples: list[SingleTurnSample] = []
     old_samples: list[SingleTurnSample] = []
