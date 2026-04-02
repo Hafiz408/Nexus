@@ -119,12 +119,13 @@ HEDGE_PHRASES = [
 
 
 # ── SSE query helper ──────────────────────────────────────────────────────────
-def query(question: str, repo_path: str, base_url: str, timeout: int = 45) -> dict:
+def query(question: str, repo_path: str, base_url: str, timeout: int = 45, db_path: str = "") -> dict:
     """Send a /query request and collect the full SSE response."""
     payload = json.dumps({
         "question": question,
         "repo_path": repo_path,
-        "max_nodes": 10,
+        "db_path": db_path or f"{repo_path}/.nexus/graph.db",
+        "max_nodes": 15,
         "hop_depth": 1,
     }).encode()
 
@@ -216,6 +217,7 @@ def main():
     parser.add_argument("--repo", required=True, help="Indexed repo path")
     parser.add_argument("--url", default="http://localhost:8000", help="Backend base URL")
     parser.add_argument("--timeout", type=int, default=45, help="Per-query timeout (s)")
+    parser.add_argument("--db-path", default="", dest="db_path", help="Path to .nexus/graph.db (default: <repo>/.nexus/graph.db)")
     args = parser.parse_args()
 
     print(f"\n{BOLD}{CYAN}Nexus RAG Evaluation{RESET}")
@@ -230,7 +232,7 @@ def main():
         print(f"  {i:2d}/{len(QUESTIONS)} {CYAN}{cat_label}{RESET} {q['question'][:60]}", end=" ", flush=True)
 
         t0 = time.time()
-        raw = query(q["question"], args.repo, args.url, args.timeout)
+        raw = query(q["question"], args.repo, args.url, args.timeout, getattr(args, "db_path", ""))
         latency = time.time() - t0
 
         r = Result(

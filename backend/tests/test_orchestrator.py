@@ -66,6 +66,8 @@ def base_state(sample_graph) -> NexusState:
         "repo_path": "/repo",
         "db_path": "/repo/.nexus/graph.db",
         "intent_hint": "explain",
+        "max_nodes": 10,
+        "hop_depth": 1,
         "target_node_id": "a.py::func_a",
         "selected_file": None,
         "selected_range": None,

@@ -76,6 +76,23 @@ def test_expand_includes_seed(sample_graph):
     assert "c.py::func_c" in result
 
 
+def test_expand_edge_type_filter(sample_graph):
+    """expand_via_graph with edge_types=['CALLS'] must only follow CALLS edges.
+
+    sample_graph has only CALLS edges, so the result should be identical to
+    the unfiltered case. Passing an empty edge_types list should yield only
+    the seed node (no matching edges to traverse).
+    """
+    # With CALLS filter — same as unfiltered for this graph
+    result_filtered = expand_via_graph(["b.py::func_b"], sample_graph, hop_depth=1, edge_types=["CALLS"])
+    result_unfiltered = expand_via_graph(["b.py::func_b"], sample_graph, hop_depth=1)
+    assert result_filtered == result_unfiltered
+
+    # With IMPORTS filter — no IMPORTS edges in sample_graph, so only seed survives
+    result_imports = expand_via_graph(["b.py::func_b"], sample_graph, hop_depth=1, edge_types=["IMPORTS"])
+    assert result_imports == {"b.py::func_b"}
+
+
 # ---------------------------------------------------------------------------
 # rerank_and_assemble tests
 # ---------------------------------------------------------------------------

@@ -94,6 +94,8 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                     "repo_path": request_body.repo_path,
                     "db_path": request_body.db_path,
                     "intent_hint": request_body.intent_hint,
+                    "max_nodes": request_body.max_nodes,
+                    "hop_depth": request_body.hop_depth,
                     "target_node_id": request_body.target_node_id,
                     "selected_file": request_body.selected_file,
                     "selected_range": request_body.selected_range,
@@ -186,6 +188,8 @@ async def query(request_body: QueryRequest, request: Request) -> StreamingRespon
                 request_body.db_path,
                 request_body.selected_file,
                 request_body.selected_range,
+                request_body.max_nodes,
+                request_body.hop_depth,
             )
 
             async for token in explore_stream(nodes, anchored_question):

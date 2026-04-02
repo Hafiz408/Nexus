@@ -48,7 +48,7 @@ class IndexRequest(BaseModel):
 class QueryRequest(BaseModel):
     question: str
     repo_path: str
-    max_nodes: int = 10
+    max_nodes: int = 15
     hop_depth: int = 1
     intent_hint: Optional[str] = None
     target_node_id: Optional[str] = None

@@ -66,6 +66,8 @@ class NexusState(TypedDict):
     repo_path: str
     db_path: str                      # path to .nexus/graph.db — required by graph_rag_retrieve
     intent_hint: Optional[str]        # forwarded to route(); None or "auto" → LLM path
+    max_nodes: int                    # forwarded to graph_rag_retrieve (user-configurable)
+    hop_depth: int                    # forwarded to graph_rag_retrieve (user-configurable)
 
     # Context fields (no G here — see _G_CACHE above)
     target_node_id: Optional[str]     # required by review_node and test_node
@@ -218,6 +220,8 @@ def build_explain_context(
     db_path: str,
     selected_file: str | None,
     selected_range: list | None,
+    max_nodes: int = 10,
+    hop_depth: int = 1,
 ) -> tuple[list, dict, str]:
     """Synchronous context-builder for the explain streaming path.
 
@@ -273,7 +277,7 @@ def build_explain_context(
     stats: dict = {}
     logger.info("[explain] starting retrieval: file=%r range=%r", selected_file, selected_range)
     try:
-        nodes, stats = graph_rag_retrieve(question, repo_path, G, db_path)
+        nodes, stats = graph_rag_retrieve(question, repo_path, G, db_path, max_nodes=max_nodes, hop_depth=hop_depth)
         logger.info("[explain] graph-rag retrieved %d nodes", len(nodes))
     except Exception as _exc:  # noqa: BLE001
         exc_str = str(_exc)
@@ -369,6 +373,8 @@ def _explain_node(state: NexusState) -> dict:
         state["db_path"],
         state.get("selected_file"),
         state.get("selected_range"),
+        max_nodes=state.get("max_nodes", 10),
+        hop_depth=state.get("hop_depth", 1),
     )
 
     llm = get_llm()

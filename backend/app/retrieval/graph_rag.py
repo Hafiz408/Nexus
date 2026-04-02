@@ -175,9 +175,11 @@ def fts_search(query: str, repo_path: str, top_k: int, db_path: str) -> list[tup
     """FTS5 keyword search over indexed symbol names for the given repo.
 
     Tokenises the query into identifier-like words and runs a BM25 search
-    over the code_fts table (indexed column: name). Complements semantic
-    search by catching exact/prefix matches that vector similarity may miss
-    (e.g. the user types a precise function name).
+    over the code_fts table (indexed columns: name, embedding_text). Complements
+    semantic search by catching exact/prefix matches that vector similarity may miss
+    (e.g. the user types a precise function name). Because embedding_text contains
+    signature + docstring + body_preview, the BM25 search covers richer content than
+    name alone.
 
     Results are scored in [0, 0.85] so that perfect FTS matches rank below
     perfect semantic matches (score 1.0) when the two are merged.
@@ -270,6 +272,19 @@ def graph_rag_retrieve(
         "retrieval seeds: semantic=%d fts=%d (fts_new=%d) total=%d",
         semantic_count, len(fts_results), fts_new, len(seed_scores),
     )
+
+    # Apply test-file penalty: test files tend to describe source symbols using
+    # nearly identical vocabulary, causing them to crowd out source files in both
+    # semantic and FTS results.  Reduce their scores so source files rank higher.
+    _TEST_PENALTY = 0.5
+    _test_penalised = 0
+    for node_id in list(seed_scores):
+        file_part = node_id.split("::")[0].lower()
+        if "test" in file_part or "spec" in file_part:
+            seed_scores[node_id] *= _TEST_PENALTY
+            _test_penalised += 1
+    if _test_penalised:
+        logger.debug("test-file penalty applied to %d seed nodes", _test_penalised)
 
     # Step 2: BFS graph expansion from merged seed node IDs
     expanded = expand_via_graph(list(seed_scores.keys()), G, hop_depth)
