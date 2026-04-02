@@ -22,20 +22,16 @@ logger = logging.getLogger(__name__)
 # (Gemini: ~2 K tokens, OpenAI: ~8 K, Mistral/Ollama: ~16 K).
 MAX_EMBED_TEXT_CHARS = 6_000  # ≈ 1 500 tokens @ 4 chars/token
 
-# Conservative token budget per API request (total across all texts in one call).
-# Mistral mistral-embed hard-caps at 16 384 — we target 12 000 to leave headroom.
-EMBED_TOKEN_BUDGET = 12_000
-
 # Absolute ceiling on items per batch regardless of token estimate.
 EMBED_BATCH_SIZE_MAX = 64
 
 
-def _build_batches(nodes: list) -> list[list]:
+def _build_batches(nodes: list, token_budget: int) -> list[list]:
     """Build variable-size batches that stay within the per-request token budget.
 
     Each text is first capped at MAX_EMBED_TEXT_CHARS to respect per-input limits.
     Batches are then accumulated until the estimated token count would exceed
-    EMBED_TOKEN_BUDGET or the item cap EMBED_BATCH_SIZE_MAX, whichever is hit first.
+    token_budget or the item cap EMBED_BATCH_SIZE_MAX, whichever is hit first.
 
     Token count is estimated as len(text) // 4 (4 chars ≈ 1 token).
     This avoids importing a tokeniser while being conservative enough in practice.
@@ -51,7 +47,7 @@ def _build_batches(nodes: list) -> list[list]:
         flush = (
             current
             and (
-                current_tokens + est > EMBED_TOKEN_BUDGET
+                current_tokens + est > token_budget
                 or len(current) >= EMBED_BATCH_SIZE_MAX
             )
         )
@@ -172,9 +168,10 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
     are absent (e.g. during test collection).
 
     Batches are built dynamically by _build_batches() to stay within the
-    per-request token budget (EMBED_TOKEN_BUDGET) rather than using a fixed
-    item count. This prevents large-repo failures where many long functions
-    would overflow the embedding API's token limit.
+    per-request token budget (75 % of the provider's max_tokens, resolved at
+    runtime) rather than using a fixed item count. This prevents large-repo
+    failures where many long functions would overflow the embedding API's token
+    limit.
 
     Each text is additionally capped at MAX_EMBED_TEXT_CHARS before being sent
     to the API (the full embedding_text is still written to FTS5 for LLM context).
@@ -195,6 +192,10 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
     """
     embedder = get_embedding_client()
 
+    # Derive the per-request token budget from the provider's declared limit.
+    # Using 75 % leaves headroom for estimation imprecision (4 chars ≈ 1 token).
+    token_budget = int(embedder.max_tokens * 0.75)
+
     init_vec_table(db_path)
     _init_fts_table(db_path)
 
@@ -204,10 +205,10 @@ def embed_and_store(nodes: list[CodeNode], repo_path: str, db_path: str) -> int:
         seen[n.node_id] = n
     deduped = list(seen.values())
 
-    batches = _build_batches(deduped)
+    batches = _build_batches(deduped, token_budget)
     logger.debug(
-        "embed_and_store: %d nodes → %d batches (token-aware)",
-        len(deduped), len(batches),
+        "embed_and_store: %d nodes → %d batches (token_budget=%d)",
+        len(deduped), len(batches), token_budget,
     )
 
     total_stored = 0

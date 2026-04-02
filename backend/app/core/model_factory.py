@@ -90,10 +90,57 @@ class OpenAIEmbeddingClient(EmbeddingClient):
 class OllamaEmbeddingClient(EmbeddingClient):
     """Ollama — local embeddings via langchain-ollama."""
 
+    _DEFAULT_MAX_TOKENS = 4_096
+
     def __init__(self, model: str, base_url: str) -> None:
+        import logging
         from langchain_ollama import OllamaEmbeddings
         self._client = OllamaEmbeddings(model=model, base_url=base_url)
         self._model = model
+        self._base_url = base_url
+        self._max_tokens = self._fetch_context_length()
+        logging.getLogger(__name__).debug(
+            "OllamaEmbeddingClient: model=%s max_tokens=%d (token_budget=%.0f)",
+            model, self._max_tokens, self._max_tokens * 0.75,
+        )
+
+    def _fetch_context_length(self) -> int:
+        """Query /api/show at startup to discover the model's context length.
+
+        Falls back to _DEFAULT_MAX_TOKENS if the server is unreachable or the
+        response does not contain a recognisable context-length field.
+        """
+        import logging
+        try:
+            import httpx
+            resp = httpx.post(
+                f"{self._base_url}/api/show",
+                json={"name": self._model},
+                timeout=5.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            # model_info keys are architecture-prefixed, e.g. "llama.context_length"
+            # or "bert.context_length" — look for any key containing "context_length".
+            for key, val in data.get("model_info", {}).items():
+                if "context_length" in key and isinstance(val, int) and val > 0:
+                    return val
+
+            # Fallback: scan the parameters string for "num_ctx <n>"
+            for line in data.get("parameters", "").splitlines():
+                parts = line.split()
+                if len(parts) >= 2 and parts[0] == "num_ctx":
+                    return int(parts[1])
+
+        except Exception as exc:
+            logging.getLogger(__name__).debug(
+                "OllamaEmbeddingClient: could not fetch context length for %s (%s); "
+                "using default %d",
+                self._model, exc, self._DEFAULT_MAX_TOKENS,
+            )
+
+        return self._DEFAULT_MAX_TOKENS
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         return self._client.embed_documents(texts)
@@ -102,6 +149,10 @@ class OllamaEmbeddingClient(EmbeddingClient):
     def dimensions(self) -> int:
         # Ollama embedding dimensions vary per model; nomic-embed-text=768
         return 768
+
+    @property
+    def max_tokens(self) -> int:
+        return self._max_tokens
 
 
 class GeminiEmbeddingClient(EmbeddingClient):
@@ -118,6 +169,10 @@ class GeminiEmbeddingClient(EmbeddingClient):
     def dimensions(self) -> int:
         # models/text-embedding-004 = 768
         return 768
+
+    @property
+    def max_tokens(self) -> int:
+        return 2_048  # text-embedding-004 input token limit
 
 
 # Registry — add new providers here

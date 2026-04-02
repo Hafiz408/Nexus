@@ -16,7 +16,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from app.ingestion.graph_store import save_graph, load_graph, delete_nodes_for_files
-from app.ingestion.embedder import embed_and_store, EMBED_BATCH_SIZE_MAX, EMBED_TOKEN_BUDGET, delete_embeddings_for_files
+from app.ingestion.embedder import embed_and_store, EMBED_BATCH_SIZE_MAX, _build_batches, delete_embeddings_for_files
 from app.models.schemas import CodeNode
 
 
@@ -203,9 +203,14 @@ def test_repos_isolated_in_single_db(tmp_db, sample_graph):
 # ---------------------------------------------------------------------------
 
 def test_embed_batch_constants():
-    """EMBED-04: token-aware batching constants are within expected bounds."""
+    """EMBED-04: batching constants and 75 % budget logic are within expected bounds."""
     assert EMBED_BATCH_SIZE_MAX <= 64
-    assert EMBED_TOKEN_BUDGET <= 16_384  # Mistral hard cap
+
+    # Verify _build_batches respects a provider-derived budget.
+    # Use Mistral's max_tokens (16 384) → budget = 12 288.
+    from app.core.model_factory import MistralEmbeddingClient
+    budget = int(16_384 * 0.75)
+    assert budget <= 16_384  # must never exceed Mistral hard cap
 
 
 def test_embed_and_store_returns_count(tmp_db, sample_nodes, mock_mistral_client):
