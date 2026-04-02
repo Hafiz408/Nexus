@@ -42,6 +42,7 @@ python run_ragas.py --repo-path /path/to/repo
 | `--backend-url` | `http://localhost:8000` | Backend |
 | `--n` | 30 | Q&A pairs to evaluate (subset for speed) |
 | `--output` | `results/results_<ts>.json` | Output path |
+| `--db-path` | `<repo>/.nexus/graph.db` | Explicit path to graph DB (useful when DB lives outside the repo root) |
 
 ## Files
 

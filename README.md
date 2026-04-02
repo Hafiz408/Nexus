@@ -50,8 +50,11 @@ The extension **automatically spawns** the bundled backend binary on activate an
 ```
 Question
   │
-  ├─ Embed → sqlite-vec cosine search (top-k seeds)
-  ├─ BFS expand via call graph (callers + callees)
+  ├─ Dual search:
+  │   ├─ Embed → sqlite-vec cosine search (semantic seeds)
+  │   └─ FTS5 BM25 on name + embedding_text (keyword seeds)
+  │   Merge: per-node score = max(semantic, fts)
+  ├─ BFS expand via call graph (callers + callees, configurable hop depth)
   ├─ Rerank: semantic + 0.2×PageRank + 0.1×in-degree
   │
   └─ intent = explain?  → stream tokens → file citations
