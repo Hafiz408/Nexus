@@ -1,11 +1,14 @@
-"""Graph RAG retrieval module for Phase 8.
+"""Graph RAG retrieval module.
 
-Implements a three-step pipeline:
-  1. semantic_search  — embed query, cosine similarity via sqlite-vec (RAG-01)
-  2. expand_via_graph — BFS expansion in both directions via ego_graph (RAG-02)
-  3. rerank_and_assemble — score-weighted reranking using exact RAG-03 formula
+Implements a five-step pipeline:
+  1. semantic_search      — embed query, cosine NN via sqlite-vec
+  2. fts_search           — BM25 keyword search, stopword-filtered, cap=5
+  3. rrf_merge            — rank-fusion of semantic + FTS into unified scores
+  4. expand_calls_neighbors — depth-1 CALLS expansion from semantic seeds only,
+                              propagated score = parent_rrf_score × 0.6 decay
+  5. mmr_diversify        — MMR final selection over unified + neighbor pool
 
-graph_rag_retrieve orchestrates all three steps and returns (list[CodeNode], stats_dict).
+graph_rag_retrieve orchestrates all steps and returns (list[CodeNode], stats_dict).
 """
 
 from __future__ import annotations
@@ -71,107 +74,66 @@ def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> lis
     return [(row[0], float(1.0 - row[1])) for row in rows]
 
 
-def expand_via_graph(
-    seed_node_ids: list[str],
-    G: nx.DiGraph,
-    hop_depth: int,
-    edge_types: list[str] | None = None,
-) -> set[str]:
-    """BFS expansion from seed nodes in both in- and out-edge directions.
-
-    Uses nx.ego_graph(undirected=True) which calls G.to_undirected() internally
-    before BFS — this covers both predecessors (callers) and successors (callees)
-    in one call, up to hop_depth hops.
-
-    If edge_types is provided, a zero-copy subgraph view is created first via
-    nx.subgraph_view to restrict traversal to only those edge types.
-
-    Args:
-        seed_node_ids: List of node IDs to start BFS from.
-        G:             The code call/import DiGraph.
-        hop_depth:     Number of hops to traverse in each direction.
-        edge_types:    Optional list of edge type strings to restrict traversal.
-                       None means traverse all edge types.
-
-    Returns:
-        Deduplicated set of node IDs reachable from any seed within hop_depth.
-    """
-    if edge_types is not None:
-        # Zero-copy filtered view — avoids copying the full graph
-        G_work = nx.subgraph_view(
-            G,
-            filter_edge=lambda u, v: G[u][v].get("type") in edge_types,
-        )
-    else:
-        G_work = G
-
-    expanded: set[str] = set()
-    for node_id in seed_node_ids:
-        if node_id not in G_work:
-            logger.warning("seed node %s not in graph, skipping", node_id)
-            continue
-        # ego_graph with undirected=True treats all edges as bidirectional,
-        # correctly including both callers (predecessors) and callees (successors).
-        # DO NOT use nx.bfs_tree — it only follows outgoing edges on a DiGraph.
-        subgraph = nx.ego_graph(G_work, node_id, radius=hop_depth, undirected=True)
-        expanded.update(subgraph.nodes())
-
-    return expanded
-
-
-def rerank_and_assemble(
-    expanded_node_ids: set[str],
+def expand_calls_neighbors(
+    seed_ids: list[str],
     seed_scores: dict[str, float],
     G: nx.DiGraph,
-    max_nodes: int,
-) -> list[tuple[float, CodeNode]]:
-    """Score each expanded node and return top max_nodes as CodeNode objects.
+    callers_cap: int = 5,
+    callees_cap: int = 5,
+    decay: float = 0.6,
+) -> dict[str, float]:
+    """Depth-1 CALLS expansion from semantic seeds with propagated scoring.
 
-    Dual-score formula:
-        graph_score   = 0.2 × pagerank + 0.1 × in_degree_norm
-        final_score   = 0.7 × semantic_score + 0.3 × graph_score
+    For each seed, fetches its direct callers (predecessors) and callees
+    (successors) connected by CALLS edges only — IMPORTS edges are excluded
+    to prevent cross-file pollution. Neighbors are capped by pagerank to
+    prefer structurally central nodes over peripheral ones.
 
-    semantic_score is the cosine similarity from the seed dict, or 0.0 for
-    BFS-expanded non-seed nodes. This means:
-      - Seed nodes can score up to 1.0 (driven by query relevance).
-      - Expanded non-seed nodes can score at most 0.3 (graph topology only).
-    The old flat 0.3 fallback gave identical base scores to all expanded nodes
-    regardless of which seed — or how relevant a seed — brought them in.
+    Propagated score formula:
+        propagated_score = max(parent_rrf_score for parents that brought in node) × decay
 
-    in_degree_norm = node in_degree / max in_degree across all expanded nodes.
-    Zero-division guard: max_in_degree defaults to 1 when all nodes have in_degree 0.
+    A node brought in by multiple parents takes the best parent's score.
+    This means neighbors of strong semantic seeds compete fairly against
+    mid-tier seeds, while neighbors of weak seeds stay appropriately subordinate.
 
     Args:
-        expanded_node_ids: Set of node IDs from expand_via_graph.
-        seed_scores:       Dict mapping seed node_id -> cosine similarity score.
-        G:                 The code DiGraph with full node attribute dicts.
-        max_nodes:         Maximum number of CodeNode objects to return.
+        seed_ids:    List of semantic seed node IDs to expand from.
+        seed_scores: RRF-unified scores for each seed (used as parent scores).
+        G:           The code DiGraph with node attributes including pagerank.
+        callers_cap: Max callers (predecessors) to add per seed, ordered by pagerank desc.
+        callees_cap: Max callees (successors) to add per seed, ordered by pagerank desc.
+        decay:       Score decay factor applied to parent score (default 0.6).
 
     Returns:
-        Up to max_nodes * 2 (score, CodeNode) tuples sorted by descending score,
-        for downstream MMR selection. Caller trims to max_nodes via mmr_diversify.
+        Dict mapping neighbor node_id -> propagated_score. Seeds themselves
+        are not included — the caller merges this with unified_scores.
     """
-    in_degrees = [G.nodes[n].get("in_degree", 0) for n in expanded_node_ids if n in G]
-    max_in_degree = (max(in_degrees) if in_degrees else 0) or 1
+    neighbors: dict[str, float] = {}
 
-    scored: list[tuple[float, CodeNode]] = []
-    for node_id in expanded_node_ids:
-        if node_id not in G:
+    for seed_id in seed_ids:
+        if seed_id not in G:
+            logger.warning("seed node %s not in graph, skipping", seed_id)
             continue
-        attrs = G.nodes[node_id]
+        parent_score = seed_scores.get(seed_id, 0.0)
+        propagated = parent_score * decay
 
-        semantic = seed_scores.get(node_id, 0.0)  # 0.0 for non-seed expanded nodes
-        pagerank = attrs.get("pagerank", 0.0)
-        in_degree_norm = attrs.get("in_degree", 0) / max_in_degree
-        graph_score = 0.2 * pagerank + 0.1 * in_degree_norm
-        score = 0.7 * semantic + 0.3 * graph_score
+        callees = [
+            n for n in G.successors(seed_id)
+            if G[seed_id][n].get("type") == "CALLS"
+        ]
+        callees.sort(key=lambda n: G.nodes[n].get("pagerank", 0.0) if n in G else 0.0, reverse=True)
+        for n in callees[:callees_cap]:
+            neighbors[n] = max(neighbors.get(n, 0.0), propagated)
 
-        # Reconstruct CodeNode from graph attributes (complete model_dump stored there)
-        node = CodeNode(**{k: v for k, v in attrs.items() if k in CodeNode.model_fields})
-        scored.append((score, node))
+        callers = [
+            n for n in G.predecessors(seed_id)
+            if G[n][seed_id].get("type") == "CALLS"
+        ]
+        callers.sort(key=lambda n: G.nodes[n].get("pagerank", 0.0) if n in G else 0.0, reverse=True)
+        for n in callers[:callers_cap]:
+            neighbors[n] = max(neighbors.get(n, 0.0), propagated)
 
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return scored[:max_nodes]
+    return neighbors
 
 
 def mmr_diversify(
@@ -330,14 +292,20 @@ def graph_rag_retrieve(
     max_nodes: int = 10,
     hop_depth: int = 1,
 ) -> tuple[list[CodeNode], dict]:
-    """Orchestrate the full 3-step Graph RAG retrieval pipeline.
+    """Orchestrate the Graph RAG retrieval pipeline.
 
-    Step 1 — dual search: embed query (semantic) + FTS5 keyword search.
-              FTS uses stopword-filtered tokens, capped at 5 results.
-              Results are merged; per-node score = max(semantic, fts).
-    Step 2 — expand_via_graph: BFS expand seed node set by hop_depth hops.
-    Step 3 — rerank_and_assemble: dual-score reranking (0.7×semantic + 0.3×graph),
-              return top max_nodes.
+    Step 1 — semantic_search: embed query, cosine NN top-max_nodes.
+    Step 2 — fts_search: BM25 keyword search, stopword-filtered, cap=5.
+    Step 3 — rrf_merge: rank-fusion of semantic + FTS into unified scores.
+    Step 4 — expand_calls_neighbors: depth-1 CALLS-only expansion from
+              semantic seeds; each neighbor scored by parent_rrf × 0.6.
+              IMPORTS edges excluded to prevent cross-file pollution.
+    Step 5 — combine candidate pool: seeds take RRF score, neighbors take
+              propagated score (seeds win on overlap).
+    Step 6 — mmr_diversify: diversity-aware final selection.
+
+    hop_depth is retained in the signature for call-site compatibility but
+    is ignored internally — expansion is always depth-1 CALLS only.
 
     Args:
         query:     Natural language query string.
@@ -345,67 +313,74 @@ def graph_rag_retrieve(
         G:         The code call/import DiGraph with full node attributes.
         db_path:   Path to the SQLite database file.
         max_nodes: Maximum number of CodeNode objects to return (default 10).
-        hop_depth: BFS depth for graph expansion (default 1).
+        hop_depth: Ignored. Retained for call-site compatibility.
 
     Returns:
         Tuple of:
           - list[CodeNode]: Top max_nodes reranked CodeNode objects.
-          - dict: Stats with seed_count, expanded_count, returned_count, hop_depth,
-                  semantic_seeds, fts_seeds.
+          - dict: Stats dict per spec (seed_count, semantic_seeds, fts_seeds,
+                  fts_new, neighbor_count, candidate_pool, returned_count).
     """
-    # Step 1a: semantic vector search
-    seed_results = semantic_search(query, repo_path, top_k=max_nodes, db_path=db_path)
-    seed_scores: dict[str, float] = {node_id: score for node_id, score in seed_results}
-    semantic_seed_ids = set(seed_scores.keys())
-    semantic_count = len(seed_scores)
+    # Step 1: semantic vector search
+    semantic_results = semantic_search(query, repo_path, top_k=max_nodes, db_path=db_path)
+    semantic_seed_ids = [node_id for node_id, _ in semantic_results]
+    semantic_count = len(semantic_results)
 
-    # Step 1b: FTS keyword search — merge, keeping max score per node.
-    # top_k is capped at 5: FTS is a precision supplement for exact symbol lookups,
-    # not a broad recall mechanism. More than 5 FTS results dilutes seed quality.
-    # FTS seeds are NOT expanded via BFS — they carry query-independent graph
-    # neighbourhoods that add noise without improving answer relevance.
+    # Step 2: FTS keyword search (no BFS expansion)
     fts_results = fts_search(query, repo_path, top_k=5, db_path=db_path)
-    fts_new = 0
-    for node_id, score in fts_results:
-        if node_id not in seed_scores:
-            fts_new += 1
-        if node_id not in seed_scores or score > seed_scores[node_id]:
-            seed_scores[node_id] = score
+    fts_count = len(fts_results)
+
+    # Step 3: RRF merge — immune to scale differences between cosine and BM25
+    unified_scores = rrf_merge([semantic_results, fts_results])
+    semantic_set = set(semantic_seed_ids)
+    fts_new = sum(1 for nid, _ in fts_results if nid not in semantic_set)
+
     logger.info(
         "retrieval seeds: semantic=%d fts=%d (fts_new=%d) total=%d",
-        semantic_count, len(fts_results), fts_new, len(seed_scores),
+        semantic_count, fts_count, fts_new, len(unified_scores),
     )
 
-    # Apply test-file penalty: test files tend to describe source symbols using
-    # nearly identical vocabulary, causing them to crowd out source files in both
-    # semantic and FTS results.  Reduce their scores so source files rank higher.
+    # Step 4: CALLS depth-1 expansion from semantic seeds only
+    expanded_neighbors = expand_calls_neighbors(semantic_seed_ids, unified_scores, G)
+
+    # Step 5: combine candidate pool — seeds overwrite neighbors on overlap
+    candidate_pool: dict[str, float] = dict(expanded_neighbors)
+    candidate_pool.update(unified_scores)  # RRF scores are higher than propagated
+
+    # Test-file penalty applied after merge so it affects both seeds and neighbors
     _TEST_PENALTY = 0.5
-    _test_penalised = 0
-    for node_id in list(seed_scores):
+    _penalised = 0
+    for node_id in list(candidate_pool):
         file_part = node_id.split("::")[0].lower()
         if "test" in file_part or "spec" in file_part:
-            seed_scores[node_id] *= _TEST_PENALTY
-            _test_penalised += 1
-    if _test_penalised:
-        logger.debug("test-file penalty applied to %d seed nodes", _test_penalised)
+            candidate_pool[node_id] *= _TEST_PENALTY
+            _penalised += 1
+    if _penalised:
+        logger.debug("test-file penalty applied to %d nodes", _penalised)
 
-    # Step 2: BFS graph expansion — semantic seeds only.
-    # FTS seeds are included in reranking but not expanded: their graph neighbours
-    # are symbol-adjacent rather than query-adjacent, adding irrelevant context.
-    expanded = expand_via_graph(list(semantic_seed_ids), G, hop_depth)
-    # Include FTS-only seeds in the candidate pool so they can be reranked
-    expanded.update(node_id for node_id in seed_scores if node_id not in semantic_seed_ids)
+    # Hydrate CodeNode objects from graph attributes
+    scored: list[tuple[float, CodeNode]] = []
+    for node_id, score in candidate_pool.items():
+        if node_id not in G:
+            continue
+        attrs = G.nodes[node_id]
+        try:
+            node = CodeNode(**{k: v for k, v in attrs.items() if k in CodeNode.model_fields})
+            scored.append((score, node))
+        except Exception:
+            continue
+    scored.sort(key=lambda x: x[0], reverse=True)
 
-    # Step 3: score-weighted reranking over 2× pool, then MMR diversity pass
-    scored = rerank_and_assemble(expanded, seed_scores, G, max_nodes * 2)
+    # Step 6: MMR diversity selection
     nodes = mmr_diversify(scored, max_nodes)
 
     stats = {
-        "seed_count": len(seed_scores),
+        "seed_count": len(unified_scores),
         "semantic_seeds": semantic_count,
-        "fts_seeds": len(fts_results),
-        "expanded_count": len(expanded),
+        "fts_seeds": fts_count,
+        "fts_new": fts_new,
+        "neighbor_count": len(expanded_neighbors),
+        "candidate_pool": len(candidate_pool),
         "returned_count": len(nodes),
-        "hop_depth": hop_depth,
     }
     return nodes, stats

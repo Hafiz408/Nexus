@@ -6,7 +6,7 @@ from app.ingestion.meta_store import get_embedding_meta
 
 router = APIRouter()
 
-NEXUS_VERSION = "4.2.0"
+NEXUS_VERSION = "4.2.2"
 
 
 class ConfigRequest(BaseModel):

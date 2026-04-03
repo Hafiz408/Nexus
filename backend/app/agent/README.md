@@ -57,7 +57,7 @@ Key fields in `NexusState` relevant to retrieval:
 | Field | Type | Notes |
 |---|---|---|
 | `max_nodes` | `int` | Forwarded to `graph_rag_retrieve`; controls result cap |
-| `hop_depth` | `int` | Forwarded to `graph_rag_retrieve`; controls BFS radius |
+| `hop_depth` | `int` | Forwarded to `graph_rag_retrieve`; accepted for compatibility but ignored internally — expansion is always CALLS depth-1 |
 | `db_path` | `str` | Path to `.nexus/graph.db` — required by all retrieval calls |
 | `intent_hint` | `str \| None` | `None` or `"auto"` → streaming path; `"explain"` → `_explain_node`; others → specialist |
 

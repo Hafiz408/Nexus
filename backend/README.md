@@ -8,8 +8,8 @@ FastAPI service with three independent concerns: **ingest** code into a graph + 
 Ingestion          Retrieval            Agents
 ─────────          ─────────            ──────
 Parse code    →    Semantic search  →   Route intent
-Build graph        BFS expand           Run specialist
-Embed nodes        Rerank               Critic gate
+Build graph        Graph expand         Run specialist
+Embed nodes        MMR select           Critic gate
                                         MCP side-effects
 ```
 

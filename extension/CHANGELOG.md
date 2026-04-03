@@ -2,6 +2,29 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.2.2] - 2026-04-03
+
+### Changed
+- **Graph RAG v2 retrieval pipeline** — complete rewrite of `graph_rag_retrieve` replacing the v1 BFS+PageRank pipeline with a five-step design:
+  1. **RRF merge** — Reciprocal Rank Fusion replaces `max(semantic, fts)` score merging. Rank-based and immune to scale differences between cosine similarity and BM25, so nodes appearing highly in both lists score higher than those topping only one.
+  2. **CALLS-depth-1 expansion** — BFS over undirected `ego_graph` replaced with direct CALLS-edge traversal from semantic seeds only. IMPORTS edges excluded to prevent cross-file pollution (e.g. querying about `Depends()` no longer expands into `logging` and `typing` modules).
+  3. **Propagated scoring** — BFS-expanded non-seed nodes previously received a flat `0.3` fallback score independent of query relevance. Neighbors now score `parent_rrf_score × 0.6`, keeping their competitiveness anchored to how relevant their parent seed was.
+  4. **Per-seed neighbor cap** — 5 callers + 5 callees per seed (ordered by pagerank), preventing BFS cluster overlap from a single high-centrality node.
+  5. **MMR diversity selection** — iterative Maximal Marginal Relevance replaces score-rank cutoff; subtracts `0.35 × same-file-count` at each selection step so one class's methods cannot monopolise the result set.
+- **`improved_rag.py` and `query_expansion.py` removed** — superseded by the v2 pipeline and no longer referenced anywhere in the codebase.
+
+### Eval results (RAGAS, 30Q, qwen2.5:7b, fastapi corpus)
+| Metric | Naive baseline | Graph RAG v2 | Δ |
+|---|---|---|---|
+| Faithfulness | 0.364 | 0.539 | **+48%** |
+| Answer Relevancy | 0.250 | 0.412 | **+65%** |
+| Context Precision | 0.118 | 0.253 | **+115%** |
+
+### Added
+- **`eval/run_ragas_redesign.py`** — RAGAS evaluation script for the v2 pipeline; loads the naive baseline from the most recent three-way run rather than re-running it.
+- **`eval/test_e2e_smoke.py`** — fast retrieval smoke test (no LLM, no API keys); verifies `graph_rag_retrieve` returns nodes and correct stats keys against the fastapi corpus.
+- **`eval/test_e2e_http.py`** — full integration test; starts the backend, pushes config, and fires all four intents (explain / debug / review / test) via real HTTP + SSE with live LLM calls.
+
 ## [4.2.1] - 2026-04-03
 
 ### Fixed

@@ -55,7 +55,7 @@ Key fields forwarded from the extension on every `/query` call:
 | Field | Notes |
 |---|---|
 | `max_nodes` | Maximum retrieval nodes — forwarded to `graph_rag_retrieve` and into LangGraph state |
-| `hop_depth` | BFS expansion depth — forwarded to `graph_rag_retrieve` and into LangGraph state |
+| `hop_depth` | Accepted for call-site compatibility; forwarded to `graph_rag_retrieve` and into LangGraph state. Internally ignored — expansion is always CALLS depth-1. |
 | `db_path` | Path to `.nexus/graph.db` in the workspace |
 | `intent_hint` | Routing hint (`explain`, `debug`, `review`, `test`, `auto`, or `null`) |
 | `selected_file` | Active editor file (for selection-aware explain) |

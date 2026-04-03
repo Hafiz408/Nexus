@@ -51,10 +51,12 @@ Question
   │
   ├─ Dual search:
   │   ├─ Embed → sqlite-vec cosine search (semantic seeds)
-  │   └─ FTS5 BM25 on name + embedding_text (keyword seeds)
-  │   Merge: per-node score = max(semantic, fts)
-  ├─ BFS expand via call graph (callers + callees, configurable hop depth)
-  ├─ Rerank: semantic + 0.2×PageRank + 0.1×in-degree
+  │   └─ FTS5 BM25 on name + embedding_text (keyword seeds, stopword-filtered)
+  ├─ RRF merge: rank-fusion of semantic + FTS → unified scores
+  ├─ CALLS depth-1 expand from semantic seeds
+  │   (callers + callees; IMPORTS edges excluded; propagated score = parent × 0.6)
+  ├─ Combine pool: seeds overwrite neighbors + test-file ×0.5 penalty
+  ├─ MMR selection: score − 0.35×same-file-count → top max_nodes
   │
   └─ intent = explain?  → stream tokens → file citations
      intent = debug/review/test?

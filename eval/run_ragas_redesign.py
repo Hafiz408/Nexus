@@ -1,25 +1,29 @@
-"""Three-way RAGAS evaluation: naive | graph_rag | improved (archived).
-
-NOTE: improved_rag and query_expansion were removed in the 2026-04-03 redesign.
-      This script is kept for historical reference only.
-      Use eval/run_ragas_redesign.py for current evaluations.
+"""RAGAS evaluation: redesigned graph_rag_retrieve only.
 
 Evaluates against eval/golden_qa_v2.json (30 code-navigation questions).
+Naive baseline is loaded from the most recent ragas_three_way_*.json — no
+re-running needed since the corpus and golden set are unchanged.
 
-Pipelines:
-  naive    — semantic_search only, top-15, no FTS, no BFS, no reranking
-  graph    — graph_rag_retrieve (redesigned: RRF + CALLS-depth-1 + propagated score + MMR)
-  improved — REMOVED (was HyDE + RRF + BFS-threshold + cross-encoder; deleted 2026-04-03)
+Pipeline:
+  new_rag — redesigned graph_rag_retrieve (RRF + CALLS-depth-1 + propagated score + MMR)
+
+Comparison columns in output:
+  Prev Naive   — naive scores from last three-way run
+  Prev Graph   — graph_rag scores from last three-way run
+  Prev Improved— improved scores from last three-way run
+  New RAG      — this run
+  Δ vs Naive   — new_rag vs prev naive
+  Δ vs Graph   — new_rag vs prev graph_rag
 
 Usage:
     # Quick sanity check — 5 questions
-    python eval/run_ragas_three_way.py --limit 5
+    python eval/run_ragas_redesign.py --limit 5
 
-    # Full 30-question eval, 2 Ollama workers (~3-4 hours)
-    OLLAMA_NUM_PARALLEL=2 python eval/run_ragas_three_way.py --limit 30 --workers 2
+    # Full 30-question eval, 2 Ollama workers (~1-1.5 hours, new_rag only)
+    OLLAMA_NUM_PARALLEL=2 python eval/run_ragas_redesign.py --limit 30 --workers 2
 
     # Mistral judge (faster scoring, requires MISTRAL_API_KEY)
-    python eval/run_ragas_three_way.py --limit 30 --judge mistral
+    python eval/run_ragas_redesign.py --limit 30 --judge mistral
 """
 from __future__ import annotations
 
@@ -54,16 +58,8 @@ from ragas.metrics import ContextPrecision, Faithfulness, ResponseRelevancy
 
 from app.ingestion.graph_store import load_graph
 from app.models.schemas import CodeNode
-from app.retrieval.graph_rag import semantic_search, graph_rag_retrieve
+from app.retrieval.graph_rag import graph_rag_retrieve
 from app.agent.explorer import explore_stream
-
-# improved_graph_rag_retrieve was removed in the 2026-04-03 redesign.
-# The "improved" pipeline below now re-runs graph_rag_retrieve as a placeholder
-# so historical result files remain structurally compatible.
-async def improved_graph_rag_retrieve(query, repo_path, G, db_path, max_nodes=10, hop_depth=1):
-    nodes, stats = graph_rag_retrieve(query, repo_path, G, db_path, max_nodes=max_nodes)
-    stats["pipeline"] = "improved_placeholder"
-    return nodes, stats
 
 REPO_PATH = "/Users/mohammedhafiz/Desktop/Personal/fastapi"
 DB_PATH = REPO_PATH + "/.nexus/graph.db"
@@ -71,31 +67,7 @@ GOLDEN_PATH = Path(__file__).parent / "golden_qa_v2.json"
 MAX_NODES = 15
 
 
-# ─── Retrieval helpers ────────────────────────────────────────────────────────
-
-def naive_retrieve(
-    query: str,
-    G,
-    max_nodes: int = MAX_NODES,
-) -> tuple[list[CodeNode], dict]:
-    """Semantic-only retrieval: cosine NN, no FTS, no BFS, no reranking.
-
-    Hydrates CodeNode objects from the graph (same source as graph_rag_retrieve)
-    so the context format is identical across all three pipelines.
-    """
-    results = semantic_search(query, REPO_PATH, top_k=max_nodes, db_path=DB_PATH)
-    nodes: list[CodeNode] = []
-    for node_id, _ in results:
-        if node_id not in G:
-            continue
-        attrs = G.nodes[node_id]
-        try:
-            node = CodeNode(**{k: v for k, v in attrs.items() if k in CodeNode.model_fields})
-            nodes.append(node)
-        except Exception:
-            pass
-    return nodes, {"returned_count": len(nodes), "pipeline": "naive"}
-
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def build_contexts(nodes: list[CodeNode]) -> list[str]:
     return [
@@ -104,8 +76,6 @@ def build_contexts(nodes: list[CodeNode]) -> list[str]:
         for n in nodes
     ]
 
-
-# ─── Answer generation ────────────────────────────────────────────────────────
 
 async def get_answer(nodes: list[CodeNode], question: str) -> str:
     for attempt in range(6):
@@ -119,11 +89,11 @@ async def get_answer(nodes: list[CodeNode], question: str) -> str:
                 await asyncio.sleep(wait)
             else:
                 raise
-    print(f"    [WARNING] get_answer exhausted all retries — returning empty string for question")
+    print("    [WARNING] get_answer exhausted all retries — returning empty string")
     return ""
 
 
-# ─── Per-question evaluation ─────────────────────────────────────────────────
+# ─── Per-question evaluation ──────────────────────────────────────────────────
 
 async def run_question(
     sem: asyncio.Semaphore,
@@ -132,23 +102,13 @@ async def run_question(
     entry: dict,
     G,
 ) -> tuple:
-    """Retrieve + answer for all three pipelines on one question.
-
-    Returns (naive_sample, graph_sample, improved_sample,
-             naive_stat, graph_stat, improved_stat).
-    """
     q, ref = entry["question"], entry["ground_truth"]
     qid = entry.get("id", f"Q{i:02d}")
 
-    # Retrieval (fast, outside semaphore)
-    naive_nodes = naive_stat = graph_nodes = graph_stat = improved_nodes = improved_stat = None
+    new_nodes = new_stat = None
     for attempt in range(5):
         try:
-            naive_nodes, naive_stat = naive_retrieve(q, G)
-            graph_nodes, graph_stat = graph_rag_retrieve(
-                q, REPO_PATH, G, DB_PATH, max_nodes=MAX_NODES, hop_depth=1
-            )
-            improved_nodes, improved_stat = await improved_graph_rag_retrieve(
+            new_nodes, new_stat = graph_rag_retrieve(
                 q, REPO_PATH, G, DB_PATH, max_nodes=MAX_NODES, hop_depth=1
             )
             break
@@ -162,37 +122,24 @@ async def run_question(
     else:
         raise RuntimeError(f"[{qid}] retrieval failed after 5 retries — aborting")
 
-    # Answer generation (gated by semaphore to avoid LLM overload)
     async with sem:
-        print(f"[{i}/{total}] {qid}: {q[:65]}...")
-        naive_ans, graph_ans, improved_ans = await asyncio.gather(
-            get_answer(naive_nodes, q),
-            get_answer(graph_nodes, q),
-            get_answer(improved_nodes, q),
-        )
+        print(f"[{i}/{total}] {qid}: {q[:70]}...")
+        answer = await get_answer(new_nodes, q)
 
-    def _sample(nodes, ans):
-        return SingleTurnSample(
-            user_input=q, retrieved_contexts=build_contexts(nodes),
-            response=ans, reference=ref,
-        )
-
-    naive_stat.update({"qid": qid})
-    graph_stat.update({"qid": qid})
-    improved_stat.update({"qid": qid})
-
-    return (
-        _sample(naive_nodes, naive_ans),
-        _sample(graph_nodes, graph_ans),
-        _sample(improved_nodes, improved_ans),
-        naive_stat, graph_stat, improved_stat,
+    new_stat.update({"qid": qid})
+    sample = SingleTurnSample(
+        user_input=q,
+        retrieved_contexts=build_contexts(new_nodes),
+        response=answer,
+        reference=ref,
     )
+    return sample, new_stat
 
 
 # ─── Scoring ──────────────────────────────────────────────────────────────────
 
-def score_pipeline(samples, metrics, run_config, name):
-    print(f"\nScoring {name} ({len(samples)} samples)...")
+def score_pipeline(samples, metrics, run_config):
+    print(f"\nScoring new_rag ({len(samples)} samples)...")
     ds = EvaluationDataset(samples=samples)
     res = evaluate(dataset=ds, metrics=metrics, run_config=run_config,
                    show_progress=True, raise_exceptions=False)
@@ -205,18 +152,32 @@ def score_pipeline(samples, metrics, run_config, name):
         s = df[col].dropna()
         return float(s.mean()) if not s.empty else None
 
-    agg = {
+    return {
         "faithfulness": _mean("faithfulness"),
-        "answer_relevancy": (lambda x: x if x is not None else _mean("response_relevancy"))(_mean("answer_relevancy")),
+        "answer_relevancy": (
+            (lambda x: x if x is not None else _mean("response_relevancy"))(_mean("answer_relevancy"))
+        ),
         "context_precision": _mean("context_precision"),
-    }
-    return agg, df
+    }, df
+
+
+# ─── Load previous baseline ───────────────────────────────────────────────────
+
+def load_previous_baseline() -> dict | None:
+    results_dir = Path(__file__).parent / "results"
+    candidates = sorted(results_dir.glob("ragas_three_way_*.json"), reverse=True)
+    if not candidates:
+        print("  [warn] no previous three-way baseline found — comparison columns will be empty")
+        return None
+    data = json.loads(candidates[0].read_text())
+    print(f"  baseline: {candidates[0].name}  ({data.get('questions', '?')}Q)")
+    return data
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, workers):
-    print(f"\nNexus RAGAS — Three-Way Evaluation")
+    print(f"\nNexus RAGAS — Redesign Evaluation (new_rag only)")
     print(f"  corpus : {REPO_PATH}")
     print(f"  golden : {GOLDEN_PATH.name}")
 
@@ -228,6 +189,8 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
     if limit:
         golden = golden[:limit]
     print(f"  {len(golden)} questions\n")
+
+    baseline = load_previous_baseline()
 
     if judge == "ollama":
         from langchain_ollama import ChatOllama, OllamaEmbeddings
@@ -246,8 +209,7 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
         print(f"  judge  : mistral (mistral-large-latest)")
         run_cfg = RunConfig(timeout=120, max_retries=3, max_workers=workers)
 
-    def _metrics():
-        return [Faithfulness(llm=llm), ResponseRelevancy(llm=llm, embeddings=emb), ContextPrecision(llm=llm)]
+    metrics = [Faithfulness(llm=llm), ResponseRelevancy(llm=llm, embeddings=emb), ContextPrecision(llm=llm)]
 
     sem = asyncio.Semaphore(answer_concurrency)
     all_results = await asyncio.gather(*[
@@ -255,16 +217,10 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
         for i, entry in enumerate(golden, 1)
     ])
 
-    naive_samples  = [r[0] for r in all_results]
-    graph_samples  = [r[1] for r in all_results]
-    imprv_samples  = [r[2] for r in all_results]
-    naive_stats    = [r[3] for r in all_results]
-    graph_stats    = [r[4] for r in all_results]
-    imprv_stats    = [r[5] for r in all_results]
+    samples  = [r[0] for r in all_results]
+    new_stats = [r[1] for r in all_results]
 
-    naive_agg, naive_df = score_pipeline(naive_samples,  _metrics(), run_cfg, "naive")
-    graph_agg, graph_df = score_pipeline(graph_samples,  _metrics(), run_cfg, "graph_rag")
-    imprv_agg, imprv_df = score_pipeline(imprv_samples,  _metrics(), run_cfg, "improved")
+    new_agg, new_df = score_pipeline(samples, metrics, run_cfg)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out = {
@@ -272,37 +228,46 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
         "repo_path": REPO_PATH,
         "golden_qa": "golden_qa_v2.json",
         "questions": len(golden),
-        "naive": naive_agg,
-        "graph_rag": graph_agg,
-        "improved": imprv_agg,
-        "retrieval_stats": {
-            "naive": naive_stats, "graph": graph_stats, "improved": imprv_stats,
-        },
-        "per_question": {
-            "naive": naive_df.to_dict(orient="records"),
-            "graph": graph_df.to_dict(orient="records"),
-            "improved": imprv_df.to_dict(orient="records"),
-        },
+        "new_rag": new_agg,
+        "baseline_file": str(sorted(
+            (Path(__file__).parent / "results").glob("ragas_three_way_*.json"), reverse=True
+        )[0].name) if baseline else None,
+        "retrieval_stats": {"new_rag": new_stats},
+        "per_question": {"new_rag": new_df.to_dict(orient="records")},
     }
-    out_path = Path(__file__).parent / "results" / f"ragas_three_way_{timestamp}.json"
+    out_path = Path(__file__).parent / "results" / f"ragas_redesign_{timestamp}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(out, indent=2, default=str))
 
-    # ── Print comparison table ────────────────────────────────────────────────
-    W = 90
+    # ── Comparison table ──────────────────────────────────────────────────────
+    W = 96
+    f4  = lambda x: f"{x:.4f}" if x is not None else "  N/A "
+    pct = lambda a, b: f"{(b - a) / a * 100:+.1f}%" if (a and b and a != 0) else "  N/A"
+
     print("\n" + "=" * W)
-    print("  RAGAS THREE-WAY COMPARISON  —  golden_qa_v2.json")
+    print("  RAGAS REDESIGN  —  golden_qa_v2.json")
     print("=" * W)
-    header = f"  {'Metric':<26} {'Naive':>10} {'Graph RAG':>11} {'Improved':>11} {'Δ N→I':>9} {'Δ G→I':>9}"
-    print(header)
-    print("-" * W)
+
+    if baseline:
+        b_naive = baseline.get("naive", {})
+        b_graph = baseline.get("graph_rag", {})
+        b_imprv = baseline.get("improved", {})
+        b_ts    = baseline.get("timestamp", "?")
+        print(f"\n  Previous three-way baseline  ({b_ts}, {baseline.get('questions','?')}Q)")
+        print(f"  {'Metric':<26} {'Naive':>10} {'Graph RAG':>10} {'Improved':>10}")
+        print("  " + "-" * (W - 2))
+        for m in ("faithfulness", "answer_relevancy", "context_precision"):
+            print(f"  {m:<26} {f4(b_naive.get(m)):>10} {f4(b_graph.get(m)):>10} {f4(b_imprv.get(m)):>10}")
+
+    print(f"\n  This run  ({timestamp}, {len(golden)}Q)")
+    print(f"  {'Metric':<26} {'New RAG':>10} {'Δ vs Naive':>12} {'Δ vs Graph':>12}")
+    print("  " + "-" * (W - 2))
     for m in ("faithfulness", "answer_relevancy", "context_precision"):
-        n = naive_agg.get(m)
-        g = graph_agg.get(m)
-        v = imprv_agg.get(m)
-        f = lambda x: f"{x:.4f}" if x is not None else "  N/A"
-        pct = lambda a, b: f"{(b-a)/a*100:+.1f}%" if (a is not None and b is not None and a != 0) else "  N/A"
-        print(f"  {m:<26} {f(n):>10} {f(g):>11} {f(v):>11} {pct(n,v):>9} {pct(g,v):>9}")
+        v      = new_agg.get(m)
+        b_n    = baseline.get("naive", {}).get(m) if baseline else None
+        b_g    = baseline.get("graph_rag", {}).get(m) if baseline else None
+        print(f"  {m:<26} {f4(v):>10} {pct(b_n, v):>12} {pct(b_g, v):>12}")
+
     print("=" * W)
     print(f"\n  Results → {out_path}")
     print("=" * W)

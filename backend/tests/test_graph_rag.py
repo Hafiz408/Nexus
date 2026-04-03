@@ -1,14 +1,16 @@
-"""Tests for the Graph RAG retrieval pipeline (Phase 8 Plan 02).
+"""Tests for the Graph RAG retrieval pipeline (Graph RAG v2).
 
 Tests use in-memory NetworkX fixtures exclusively — zero DB connections or API
-keys required. OpenAI is patched via the mock_embedder fixture. get_db_connection
-is patched inline in tests that exercise semantic_search.
+keys required. OpenAI is patched via the mock_embedder fixture. sqlite3.connect
+is patched inline in tests that exercise semantic_search / fts_search.
 
 Coverage:
-  - expand_via_graph: hop depth 1, hop depth 2, missing seed, seed inclusion
-  - rerank_and_assemble: max_nodes limit, CodeNode return type, sort order, zero in_degree
+  - expand_calls_neighbors: callees, callers, propagated score, decay, multi-seed,
+                             IMPORTS edges ignored, missing seed, cap enforcement
   - semantic_search: return type (list of (str, float) tuples)
-  - graph_rag_retrieve: stats dict keys and hop_depth value
+  - fts_search: score normalisation, OperationalError guard, stopword filtering
+  - graph_rag_retrieve: stats dict keys, node cap, FTS-only seed included,
+                        dual-search merge behaviour
 """
 
 import sqlite3
@@ -17,132 +19,128 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.retrieval.graph_rag import (
-    expand_via_graph,
+    expand_calls_neighbors,
     fts_search,
     graph_rag_retrieve,
-    rerank_and_assemble,
     semantic_search,
 )
 from app.models.schemas import CodeNode
 
 
 # ---------------------------------------------------------------------------
-# expand_via_graph tests
+# expand_calls_neighbors tests
+# sample_graph topology (all CALLS edges):
+#   a.py::func_a -> b.py::func_b
+#   b.py::func_b -> c.py::func_c
+#   d.py::func_d -> b.py::func_b
+#   e.py::func_e  (isolated)
 # ---------------------------------------------------------------------------
 
 
-def test_expand_hop_depth_1(sample_graph):
-    """From b.py::func_b at depth 1, all direct neighbors are returned.
-
-    Topology: a->b, b->c, d->b
-    Bidirectional BFS at depth 1 from b should reach a, b, c, d.
-    e is isolated and must NOT be in the result.
-    """
-    result = expand_via_graph(["b.py::func_b"], sample_graph, hop_depth=1)
-
-    assert "a.py::func_a" in result
+def test_expand_calls_callees(sample_graph):
+    """Callees (successors with CALLS edge) of func_a are returned."""
+    scores = {"a.py::func_a": 0.016}
+    result = expand_calls_neighbors(["a.py::func_a"], scores, sample_graph)
     assert "b.py::func_b" in result
-    assert "c.py::func_c" in result
-    assert "d.py::func_d" in result
-    assert "e.py::func_e" not in result
 
 
-def test_expand_hop_depth_2_from_a(sample_graph):
-    """From a.py::func_a at depth 2, reaches c (2 hops: a->b->c) and d (2 hops via b).
-
-    Topology: a->b, b->c, d->b
-    At depth 2 from a:
-      hop 1: b (direct successor)
-      hop 2 from b: c (successor), d (predecessor of b)
-    """
-    result = expand_via_graph(["a.py::func_a"], sample_graph, hop_depth=2)
-
+def test_expand_calls_callers(sample_graph):
+    """Callers (predecessors with CALLS edge) of func_b are returned."""
+    scores = {"b.py::func_b": 0.016}
+    result = expand_calls_neighbors(["b.py::func_b"], scores, sample_graph)
     assert "a.py::func_a" in result
-    assert "b.py::func_b" in result
-    assert "c.py::func_c" in result
     assert "d.py::func_d" in result
 
 
-def test_expand_missing_seed(sample_graph):
-    """expand_via_graph with a nonexistent seed must return empty set without error."""
-    result = expand_via_graph(["nonexistent::node"], sample_graph, hop_depth=1)
-    assert isinstance(result, set)
+def test_expand_calls_propagated_score(sample_graph):
+    """Propagated score = parent_rrf_score × decay (default 0.6)."""
+    parent_score = 0.020
+    scores = {"a.py::func_a": parent_score}
+    result = expand_calls_neighbors(["a.py::func_a"], scores, sample_graph)
+    assert "b.py::func_b" in result
+    assert abs(result["b.py::func_b"] - parent_score * 0.6) < 1e-9
+
+
+def test_expand_calls_best_parent_wins(sample_graph):
+    """When two seeds both bring in the same neighbor, the higher propagated score wins."""
+    # Both a and d call b; a has higher score so b should get a's propagated score
+    scores = {"a.py::func_a": 0.020, "d.py::func_d": 0.010}
+    result = expand_calls_neighbors(["a.py::func_a", "d.py::func_d"], scores, sample_graph)
+    assert "b.py::func_b" in result
+    assert abs(result["b.py::func_b"] - 0.020 * 0.6) < 1e-9
+
+
+def test_expand_calls_custom_decay(sample_graph):
+    """Custom decay factor is applied correctly."""
+    scores = {"a.py::func_a": 0.020}
+    result = expand_calls_neighbors(["a.py::func_a"], scores, sample_graph, decay=0.5)
+    assert abs(result["b.py::func_b"] - 0.020 * 0.5) < 1e-9
+
+
+def test_expand_calls_isolated_node_returns_empty(sample_graph):
+    """A seed with no CALLS edges produces no neighbors."""
+    scores = {"e.py::func_e": 0.016}
+    result = expand_calls_neighbors(["e.py::func_e"], scores, sample_graph)
+    assert result == {}
+
+
+def test_expand_calls_missing_seed_no_error(sample_graph):
+    """A nonexistent seed is silently skipped — no KeyError raised."""
+    scores = {"nonexistent::node": 0.016}
+    result = expand_calls_neighbors(["nonexistent::node"], scores, sample_graph)
+    assert isinstance(result, dict)
     assert len(result) == 0
 
 
-def test_expand_includes_seed(sample_graph):
-    """The seed node itself must always be present in the expanded set."""
-    result = expand_via_graph(["c.py::func_c"], sample_graph, hop_depth=1)
-    assert "c.py::func_c" in result
+def test_expand_calls_seeds_not_in_result(sample_graph):
+    """Seed nodes themselves are never included in the returned neighbors dict."""
+    scores = {"b.py::func_b": 0.020}
+    result = expand_calls_neighbors(["b.py::func_b"], scores, sample_graph)
+    assert "b.py::func_b" not in result
 
 
-def test_expand_edge_type_filter(sample_graph):
-    """expand_via_graph with edge_types=['CALLS'] must only follow CALLS edges.
+def test_expand_calls_ignores_imports_edges(sample_graph):
+    """IMPORTS edges are not followed — only CALLS edges count.
 
-    sample_graph has only CALLS edges, so the result should be identical to
-    the unfiltered case. Passing an empty edge_types list should yield only
-    the seed node (no matching edges to traverse).
+    Add an IMPORTS edge from b to e and verify e does NOT appear in neighbors.
     """
-    # With CALLS filter — same as unfiltered for this graph
-    result_filtered = expand_via_graph(["b.py::func_b"], sample_graph, hop_depth=1, edge_types=["CALLS"])
-    result_unfiltered = expand_via_graph(["b.py::func_b"], sample_graph, hop_depth=1)
-    assert result_filtered == result_unfiltered
-
-    # With IMPORTS filter — no IMPORTS edges in sample_graph, so only seed survives
-    result_imports = expand_via_graph(["b.py::func_b"], sample_graph, hop_depth=1, edge_types=["IMPORTS"])
-    assert result_imports == {"b.py::func_b"}
+    sample_graph.add_edge("b.py::func_b", "e.py::func_e", type="IMPORTS")
+    scores = {"b.py::func_b": 0.020}
+    result = expand_calls_neighbors(["b.py::func_b"], scores, sample_graph)
+    assert "e.py::func_e" not in result
+    # Clean up so other tests are not affected
+    sample_graph.remove_edge("b.py::func_b", "e.py::func_e")
 
 
-# ---------------------------------------------------------------------------
-# rerank_and_assemble tests
-# ---------------------------------------------------------------------------
+def test_expand_calls_callers_cap_enforced(sample_graph):
+    """callers_cap limits the number of callers returned per seed."""
+    # b has 2 callers (a, d); cap=1 should return exactly 1
+    scores = {"b.py::func_b": 0.020}
+    result = expand_calls_neighbors(["b.py::func_b"], scores, sample_graph, callers_cap=1)
+    callers_in_result = {"a.py::func_a", "d.py::func_d"} & set(result.keys())
+    assert len(callers_in_result) == 1
 
 
-def test_rerank_respects_max_nodes(sample_graph):
-    """rerank_and_assemble with 5 nodes and max_nodes=2 returns exactly 2 results."""
-    all_nodes = {
-        "a.py::func_a",
-        "b.py::func_b",
-        "c.py::func_c",
-        "d.py::func_d",
-        "e.py::func_e",
-    }
-    seed_scores = {"b.py::func_b": 0.9}
-    result = rerank_and_assemble(all_nodes, seed_scores, sample_graph, max_nodes=2)
-    assert len(result) == 2
+def test_expand_calls_callees_cap_enforced():
+    """callees_cap limits the number of callees returned per seed."""
+    import networkx as nx
+    G = nx.DiGraph()
+    for i in range(10):
+        nid = f"callee_{i}::f"
+        G.add_node(nid, node_id=nid, name=f"f{i}", type="function",
+                   file_path=f"/{i}.py", line_start=1, line_end=1,
+                   signature="", docstring=None, body_preview="",
+                   complexity=0, embedding_text="", pagerank=float(i), in_degree=0)
+        G.add_edge("seed::f", nid, type="CALLS")
+    G.add_node("seed::f", node_id="seed::f", name="f", type="function",
+               file_path="/seed.py", line_start=1, line_end=1,
+               signature="", docstring=None, body_preview="",
+               complexity=0, embedding_text="", pagerank=0.5, in_degree=0)
 
-
-def test_rerank_returns_code_nodes(sample_graph):
-    """rerank_and_assemble returns (float, CodeNode) tuples for downstream MMR."""
-    all_nodes = {"a.py::func_a", "b.py::func_b"}
-    seed_scores = {"b.py::func_b": 0.9}
-    result = rerank_and_assemble(all_nodes, seed_scores, sample_graph, max_nodes=5)
-    assert all(isinstance(score, float) and isinstance(node, CodeNode) for score, node in result)
-
-
-def test_rerank_sorted_descending(sample_graph):
-    """With known seed_scores the first result must have a higher composite score.
-
-    b.py::func_b has semantic=0.9 vs a.py::func_a fallback=0.3 — b must rank first.
-    """
-    nodes = {"a.py::func_a", "b.py::func_b"}
-    seed_scores = {"b.py::func_b": 0.9}
-    result = rerank_and_assemble(nodes, seed_scores, sample_graph, max_nodes=5)
-
-    assert len(result) >= 2
-    # b must come before a (higher semantic score dominates)
-    node_ids = [node.node_id for _, node in result]
-    assert node_ids.index("b.py::func_b") < node_ids.index("a.py::func_a")
-
-
-def test_rerank_zero_in_degree_no_error(sample_graph):
-    """Passing only e.py::func_e (in_degree=0) with seed_scores={} must not raise
-    ZeroDivisionError and must return exactly 1 CodeNode."""
-    result = rerank_and_assemble(
-        {"e.py::func_e"}, seed_scores={}, G=sample_graph, max_nodes=5
-    )
-    assert len(result) == 1
-    assert isinstance(result[0][1], CodeNode)
+    scores = {"seed::f": 0.020}
+    result = expand_calls_neighbors(["seed::f"], scores, G, callees_cap=3)
+    # Only 3 callees should be returned (top-3 by pagerank)
+    assert len(result) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +149,6 @@ def test_rerank_zero_in_degree_no_error(sample_graph):
 
 
 def _make_mock_sqlite_conn(rows):
-    """Helper that builds a mock sqlite3 connection returning given rows on execute."""
     mock_conn = MagicMock()
     mock_conn.execute.return_value.fetchall.return_value = rows
     mock_conn.__enter__ = lambda s: mock_conn
@@ -160,8 +157,7 @@ def _make_mock_sqlite_conn(rows):
 
 
 def test_semantic_search_returns_pairs(sample_graph, mock_embedder, monkeypatch):
-    """semantic_search must return list of (str, float) tuples of the correct length."""
-    # Rows: (node_id, distance) — distance is cosine distance, converted to 1-distance score
+    """semantic_search returns list of (str, float) tuples."""
     raw_rows = [("b.py::func_b", 0.05), ("a.py::func_a", 0.20)]
     mock_conn = _make_mock_sqlite_conn(raw_rows)
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
@@ -173,38 +169,8 @@ def test_semantic_search_returns_pairs(sample_graph, mock_embedder, monkeypatch)
     assert isinstance(result, list)
     assert len(result) == 2
     for item in result:
-        assert isinstance(item, tuple)
-        assert len(item) == 2
-        assert isinstance(item[0], str)
-        assert isinstance(item[1], float)
-
-
-# ---------------------------------------------------------------------------
-# graph_rag_retrieve integration test
-# ---------------------------------------------------------------------------
-
-
-def test_graph_rag_retrieve_stats(sample_graph, mock_embedder, monkeypatch):
-    """graph_rag_retrieve must return (nodes, stats) with all required keys including
-    the new semantic_seeds and fts_seeds added with the dual-search update."""
-    raw_rows = [("b.py::func_b", 0.1)]
-    mock_conn = _make_mock_sqlite_conn(raw_rows)
-    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
-    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
-    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
-
-    result = graph_rag_retrieve(
-        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=3, hop_depth=1
-    )
-    nodes, stats = result
-
-    assert "seed_count" in stats
-    assert "semantic_seeds" in stats
-    assert "fts_seeds" in stats
-    assert "expanded_count" in stats
-    assert "returned_count" in stats
-    assert stats["hop_depth"] == 1
-    assert len(nodes) <= 3
+        assert isinstance(item, tuple) and len(item) == 2
+        assert isinstance(item[0], str) and isinstance(item[1], float)
 
 
 # ---------------------------------------------------------------------------
@@ -213,14 +179,13 @@ def test_graph_rag_retrieve_stats(sample_graph, mock_embedder, monkeypatch):
 
 
 def _make_fts_conn(rows):
-    """Build a mock sqlite3 connection for FTS5 queries (no vec extension needed)."""
     mock_conn = MagicMock()
     mock_conn.execute.return_value.fetchall.return_value = rows
     return mock_conn
 
 
 def test_fts_search_returns_pairs(monkeypatch):
-    """fts_search must return list of (str, float) tuples."""
+    """fts_search returns list of (str, float) tuples in [0, 0.85]."""
     rows = [("b.py::func_b", -2.5), ("a.py::func_a", -1.0)]
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=_make_fts_conn(rows)))
 
@@ -229,13 +194,12 @@ def test_fts_search_returns_pairs(monkeypatch):
     assert isinstance(result, list)
     assert len(result) == 2
     for node_id, score in result:
-        assert isinstance(node_id, str)
-        assert isinstance(score, float)
+        assert isinstance(node_id, str) and isinstance(score, float)
         assert 0.0 <= score <= 0.85
 
 
 def test_fts_search_best_result_scores_highest(monkeypatch):
-    """The row with the most-negative BM25 rank (best match) must get score 0.85."""
+    """The row with the most-negative BM25 rank must get score 0.85."""
     rows = [("b.py::func_b", -5.0), ("a.py::func_a", -2.5)]
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=_make_fts_conn(rows)))
 
@@ -247,7 +211,7 @@ def test_fts_search_best_result_scores_highest(monkeypatch):
 
 
 def test_fts_search_empty_on_operational_error(monkeypatch):
-    """FTS5 OperationalError (e.g. malformed MATCH query) must return [] not raise."""
+    """FTS5 OperationalError must return [] not raise."""
     mock_conn = MagicMock()
     mock_conn.execute.side_effect = sqlite3.OperationalError("fts syntax error")
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
@@ -257,30 +221,65 @@ def test_fts_search_empty_on_operational_error(monkeypatch):
 
 
 def test_fts_search_empty_on_short_words(monkeypatch):
-    """Queries consisting only of ≤2-char tokens produce no FTS search (returns [])."""
-    # Ensure no DB call is made — if it were, this would fail without a mock
+    """Queries with only ≤2-char tokens return [] without a DB call."""
     result = fts_search("is an or", "/repo", top_k=5, db_path=":memory:")
     assert result == []
 
 
 def test_fts_search_empty_when_no_rows(monkeypatch):
-    """fts_search on a query that matches nothing must return []."""
+    """fts_search on a no-match query returns []."""
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect",
                         MagicMock(return_value=_make_fts_conn([])))
-
     result = fts_search("xyzzy_nonexistent_token", "/repo", top_k=5, db_path=":memory:")
     assert result == []
 
 
 # ---------------------------------------------------------------------------
-# Dual-search merge behaviour in graph_rag_retrieve
+# graph_rag_retrieve integration tests
 # ---------------------------------------------------------------------------
 
 
-def test_fts_only_node_included_in_seeds(sample_graph, mock_embedder, monkeypatch):
-    """A node found by FTS but NOT by semantic search must appear in the final results
-    when it exists in the graph — the merge keeps the union of both seed sets."""
-    # semantic_search returns b; fts_search returns c (different node)
+def test_graph_rag_retrieve_stats(sample_graph, mock_embedder, monkeypatch):
+    """graph_rag_retrieve returns (nodes, stats) with all v2 stats keys."""
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    nodes, stats = graph_rag_retrieve(
+        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=3, hop_depth=1
+    )
+
+    for key in ("seed_count", "semantic_seeds", "fts_seeds", "fts_new",
+                "neighbor_count", "candidate_pool", "returned_count"):
+        assert key in stats, f"missing stats key: {key}"
+    assert len(nodes) <= 3
+
+
+def test_graph_rag_retrieve_includes_calls_neighbors(sample_graph, mock_embedder, monkeypatch):
+    """Nodes reachable via CALLS edges from a seed appear in the candidate pool.
+
+    seed = a.py::func_a — its CALLS callee is b.py::func_b.
+    b should appear in returned nodes even when max_nodes is large enough.
+    """
+    raw_rows = [("a.py::func_a", 0.05)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    nodes, stats = graph_rag_retrieve(
+        "func_a", "/repo", sample_graph, db_path=":memory:", max_nodes=10
+    )
+
+    node_ids = {n.node_id for n in nodes}
+    assert "a.py::func_a" in node_ids   # seed must be present
+    assert stats["neighbor_count"] > 0  # expansion added neighbors
+
+
+def test_graph_rag_retrieve_fts_node_included(sample_graph, mock_embedder, monkeypatch):
+    """A node found by FTS but NOT by semantic search is included via RRF merge."""
     sem_conn = _make_mock_sqlite_conn([("b.py::func_b", 0.1)])
     fts_conn = _make_fts_conn([("c.py::func_c", -3.0)])
 
@@ -288,7 +287,6 @@ def test_fts_only_node_included_in_seeds(sample_graph, mock_embedder, monkeypatc
 
     def connect_side_effect(db_path):
         call_count["n"] += 1
-        # First call: semantic (uses sqlite_vec), second: fts (plain sqlite)
         return sem_conn if call_count["n"] == 1 else fts_conn
 
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", connect_side_effect)
@@ -296,36 +294,9 @@ def test_fts_only_node_included_in_seeds(sample_graph, mock_embedder, monkeypatc
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
 
     _nodes, stats = graph_rag_retrieve(
-        "find func_b or func_c", "/repo", sample_graph, db_path=":memory:", max_nodes=5, hop_depth=0
+        "find func_b or func_c", "/repo", sample_graph, db_path=":memory:", max_nodes=5
     )
 
-    # fts contributed at least one node not found by semantic
     assert stats["fts_seeds"] >= 1
     assert stats["seed_count"] >= stats["semantic_seeds"]
-
-
-def test_higher_score_wins_on_overlap(sample_graph, mock_embedder, monkeypatch):
-    """When the same node appears in both semantic and FTS results, the higher score
-    is kept — FTS score (0.85 max) should not overwrite a high semantic score (0.95)."""
-    # semantic returns b with distance 0.05 → score 0.95
-    # fts returns b with rank -1.0 → score 0.85
-    sem_conn = _make_mock_sqlite_conn([("b.py::func_b", 0.05)])
-    fts_conn = _make_fts_conn([("b.py::func_b", -1.0)])
-
-    call_count = {"n": 0}
-
-    def connect_side_effect(db_path):
-        call_count["n"] += 1
-        return sem_conn if call_count["n"] == 1 else fts_conn
-
-    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", connect_side_effect)
-    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
-    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
-
-    nodes, stats = graph_rag_retrieve(
-        "func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=5, hop_depth=0
-    )
-
-    # b should be first (highest score: semantic 0.95 beats fts 0.85)
-    assert len(nodes) > 0
-    assert nodes[0].node_id == "b.py::func_b"
+    assert stats["fts_new"] >= 1

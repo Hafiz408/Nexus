@@ -2,7 +2,7 @@
 
 **Ask questions about your codebase in plain English. Get grounded, citation-backed answers — streamed live, right inside VS Code.**
 
-Nexus AI builds a **call graph + vector index** of your codebase and uses it to answer questions with full structural awareness. It doesn't just search for keywords — it understands how your code is connected through a [dual-search retrieval pipeline](https://github.com/Hafiz408/Nexus/blob/main/backend/app/retrieval/README.md) combining semantic vector search with FTS5 keyword search and BFS graph traversal.
+Nexus AI builds a **call graph + vector index** of your codebase and uses it to answer questions with full structural awareness. It doesn't just search for keywords — it understands how your code is connected through a [Graph RAG pipeline](https://github.com/Hafiz408/Nexus/blob/main/backend/app/retrieval/README.md) combining semantic vector search, FTS5 keyword search, RRF rank fusion, CALLS-depth-1 graph expansion, and MMR diversity selection.
 
 > **100% local & private.** Your code never leaves your machine. The index lives in `.nexus/graph.db` inside your workspace. No cloud database, no telemetry, no server to manage.
 
@@ -21,9 +21,9 @@ Nexus AI builds a **call graph + vector index** of your codebase and uses it to 
 
 ## Features
 
-- **Graph-aware retrieval** — BFS call-graph traversal surfaces callers and callees of your seed nodes, exposing structurally connected code that pure vector search misses (+13% composite RAGAS score vs vector-only)
-- **Dual-search pipeline** — semantic vector search and FTS5 BM25 keyword search run in parallel; scores merged per-node by max. Catches exact symbol-name queries that embedding similarity alone misses
-- **Score-boosted ranking** — final score = semantic similarity + 0.2×PageRank centrality + 0.1×in-degree; test files penalised 0.5× so source implementation consistently ranks above test files
+- **Graph-aware retrieval** — CALLS-depth-1 expansion surfaces direct callers and callees of your seed nodes with propagated scoring (parent score × 0.6 decay). IMPORTS edges excluded to prevent cross-file noise (+115% context precision vs vector-only, RAGAS eval on fastapi corpus)
+- **Dual-search + RRF pipeline** — semantic vector search and FTS5 BM25 keyword search run in parallel; scores fused via Reciprocal Rank Fusion (rank-based, immune to cosine vs BM25 scale differences). Catches exact symbol-name queries that embedding similarity alone misses
+- **MMR diversity selection** — final selection penalises duplicate-file nodes (−0.35 per same-file node already chosen) so one highly-central class can't monopolise the result set; test files penalised 0.5× so source implementation consistently ranks above test files
 - **Live streaming answers** — tokens stream into the chat panel as the LLM generates them
 - **Clickable citations** — every answer links to the exact file and line number in your editor
 - **Incremental re-index** — file saves trigger automatic background re-indexing with a 2s debounce; index stays current without manual intervention
