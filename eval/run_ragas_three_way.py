@@ -101,9 +101,10 @@ async def get_answer(nodes: list[CodeNode], question: str) -> str:
         try:
             return "".join([t async for t in explore_stream(nodes, question)])
         except Exception as e:
-            if "429" in str(e) or "rate" in str(e).lower() or "capacity" in str(e).lower():
-                wait = 60 * (attempt + 1)
-                print(f"    [rate limited, retry {attempt+1}/6, wait {wait}s]")
+            s = str(e).lower()
+            if "429" in str(e) or "rate" in s or "capacity" in s or "timeout" in s or "connect" in s:
+                wait = 15 * (attempt + 1)
+                print(f"    [llm error, retry {attempt+1}/6, wait {wait}s]: {type(e).__name__}")
                 await asyncio.sleep(wait)
             else:
                 raise
@@ -141,9 +142,10 @@ async def run_question(
             )
             break
         except Exception as e:
-            if "429" in str(e) or "capacity" in str(e).lower():
-                print(f"  [{qid}] retrieval rate limited, retry {attempt+1}/5")
-                await asyncio.sleep(60)
+            s = str(e).lower()
+            if "429" in str(e) or "capacity" in s or "timeout" in s or "connect" in s:
+                print(f"  [{qid}] retrieval error, retry {attempt+1}/5: {type(e).__name__}")
+                await asyncio.sleep(30)
             else:
                 raise
     else:
