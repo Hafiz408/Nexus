@@ -25,18 +25,9 @@ _reranker = None
 
 
 def _get_reranker():
-    """Lazy-load the CrossEncoder model; cached after first call.
-
-    The cache is invalidated when CrossEncoder has been replaced (e.g. during
-    tests where the fixture patches the module-level name with a mock).
-    """
+    """Lazy-load the CrossEncoder model; cached after first call."""
     global _reranker
-    try:
-        already_loaded = _reranker is not None and isinstance(_reranker, CrossEncoder)
-    except TypeError:
-        # CrossEncoder is currently a mock (not a real type); always recreate.
-        already_loaded = False
-    if not already_loaded:
+    if _reranker is None:
         logger.info("Loading cross-encoder model %s (first call)", _MODEL_NAME)
         _reranker = CrossEncoder(_MODEL_NAME)
     return _reranker

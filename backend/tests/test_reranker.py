@@ -16,10 +16,13 @@ def _make_node(name: str, file_path: str = "/repo/a.py") -> CodeNode:
 @pytest.fixture(autouse=True)
 def patch_cross_encoder():
     """Prevent real model download during tests."""
+    import app.retrieval.reranker as mod
+    mod._reranker = None
     with patch("app.retrieval.reranker.CrossEncoder") as MockCE:
         instance = MagicMock()
         MockCE.return_value = instance
         yield instance
+    mod._reranker = None
 
 
 def test_returns_top_n(patch_cross_encoder):
