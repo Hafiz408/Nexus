@@ -1,0 +1,212 @@
+[
+  {
+    "id": "Q01",
+    "topic": "navigation",
+    "question": "In which file and class is the `Path()` function defined in the FastAPI source code?",
+    "ground_truth": "The `Path` class is defined in `fastapi/params.py` as a subclass of `Param`. Its `__init__` method begins with `assert default is ..., 'Path parameters cannot have a default value'`, enforcing that path parameters are always required. It accepts validation kwargs including `gt`, `ge`, `lt`, `le`, `min_length`, `max_length`, and `pattern` that are forwarded to Pydantic's `FieldInfo`.",
+    "notes": "Navigation — retrieves params.py Path class"
+  },
+  {
+    "id": "Q02",
+    "topic": "navigation",
+    "question": "What class does `FastAPI` inherit from, and in which file is this inheritance declared?",
+    "ground_truth": "In `fastapi/applications.py`, `class FastAPI(Starlette)` inherits from `starlette.applications.Starlette`. This gives FastAPI all of Starlette's ASGI application wiring, middleware stack, exception handler registration, and lifecycle event hooks on top of which FastAPI adds API routing, OpenAPI generation, and response model validation.",
+    "notes": "Navigation — retrieves applications.py"
+  },
+  {
+    "id": "Q03",
+    "topic": "navigation",
+    "question": "Where is the `Depends` callable defined in the FastAPI source, and what object does it return?",
+    "ground_truth": "`Depends` is defined in `fastapi/params.py`. It is a function that creates and returns a `Depends` dataclass instance holding two fields: `dependency` (the callable to resolve) and `use_cache` (bool, default True). FastAPI's dependency injection machinery recognises this sentinel during route signature inspection to know it should call the callable and inject its result.",
+    "notes": "Navigation — retrieves params.py Depends"
+  },
+  {
+    "id": "Q04",
+    "topic": "navigation",
+    "question": "In which file is `OAuth2PasswordBearer` defined in FastAPI and what does its `__call__` method do?",
+    "ground_truth": "`OAuth2PasswordBearer` is defined in `fastapi/security/oauth2.py`, inheriting from `OAuth2`. Its `__call__` method reads the `Authorization` header, verifies it starts with `'Bearer '`, and returns the token string. If the header is absent or malformed and `auto_error=True`, it raises `HTTPException(status_code=401, headers={'WWW-Authenticate': 'Bearer'})`.",
+    "notes": "Navigation + implementation — security/oauth2.py"
+  },
+  {
+    "id": "Q05",
+    "topic": "navigation",
+    "question": "Where is `APIKeyHeader` defined in the FastAPI source tree, and what method extracts the key?",
+    "ground_truth": "`APIKeyHeader` is defined in `fastapi/security/api_key.py`. Its `__call__` method calls `request.headers.get(self.model.name)` where `self.model.name` is the header name passed at construction (e.g. `'X-API-Key'`). If the value is `None` and `auto_error=True`, it raises `HTTPException(status_code=403)`.",
+    "notes": "Navigation — security/api_key.py"
+  },
+  {
+    "id": "Q06",
+    "topic": "navigation",
+    "question": "Where is the `HTTPBasic` security class defined in FastAPI and what does it return on a successful request?",
+    "ground_truth": "`HTTPBasic` is defined in `fastapi/security/http.py`. Its `__call__` method parses the `Authorization: Basic <base64>` header and returns an `HTTPBasicCredentials` instance with `username` and `password` string fields. If the header is absent or not in Basic format and `auto_error=True`, it raises HTTP 401 with `WWW-Authenticate: Basic`.",
+    "notes": "Navigation — security/http.py"
+  },
+  {
+    "id": "Q07",
+    "topic": "navigation",
+    "question": "Where is the `Security` function defined relative to `Depends`, and how does it differ?",
+    "ground_truth": "Both `Security` and `Depends` are defined in `fastapi/params.py`. `Security` additionally accepts a `scopes` parameter (list of OAuth2 scope strings). This lets FastAPI populate `SecurityScopes.scopes` during dependency resolution and surface the required scopes in the OpenAPI security schema — something `Depends` does not do.",
+    "notes": "Navigation + comparison — params.py"
+  },
+  {
+    "id": "Q08",
+    "topic": "navigation",
+    "question": "What is the class hierarchy of `Query`, `Path`, `Header`, and `Cookie` in `params.py`?",
+    "ground_truth": "In `fastapi/params.py`, `Query`, `Path`, `Header`, and `Cookie` all inherit from `Param`. `Param` inherits from Pydantic's `FieldInfo`. Each subclass sets a class-level `in_` attribute to the corresponding `ParamTypes` enum member (`query`, `path`, `header`, `cookie`), which FastAPI uses to determine which part of the HTTP request to read the value from.",
+    "notes": "Structural — full Param hierarchy in params.py"
+  },
+  {
+    "id": "Q09",
+    "topic": "navigation",
+    "question": "In which file is `CORSMiddleware` implemented that FastAPI uses?",
+    "ground_truth": "`CORSMiddleware` is implemented in `starlette/middleware/cors.py`. FastAPI does not reimplement it — applications import it as `from starlette.middleware.cors import CORSMiddleware` and register it via `app.add_middleware(CORSMiddleware, allow_origins=[...])`. FastAPI inherits the `add_middleware()` method from Starlette.",
+    "notes": "Navigation — starlette middleware cors"
+  },
+  {
+    "id": "Q10",
+    "topic": "navigation",
+    "question": "Where is `BaseHTTPMiddleware` defined and what method must a subclass override?",
+    "ground_truth": "`BaseHTTPMiddleware` is defined in `starlette/middleware/base.py`. A subclass must override the `dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response` coroutine. Code before `await call_next(request)` processes the incoming request; code after processes the outgoing response. This is the Starlette class FastAPI recommends for custom middleware.",
+    "notes": "Navigation + implementation — starlette middleware base"
+  },
+  {
+    "id": "Q11",
+    "topic": "implementation",
+    "question": "How does `Path.__init__` in `params.py` prevent path parameters from having a default value?",
+    "ground_truth": "In `fastapi/params.py`, `Path.__init__` starts with `assert default is ..., 'Path parameters cannot have a default value'`. The `...` (Ellipsis) is Python's sentinel for a required Pydantic field. This assertion runs at route-definition time when `@app.get()` executes, not per-request — so misconfigured routes fail immediately at application startup.",
+    "notes": "Implementation detail — params.py Path class"
+  },
+  {
+    "id": "Q12",
+    "topic": "implementation",
+    "question": "What validation constraints does `Query.__init__` accept and how does it forward them to Pydantic?",
+    "ground_truth": "In `fastapi/params.py`, `Query.__init__` accepts `gt`, `ge`, `lt`, `le` (numeric bounds), `min_length`, `max_length`, `pattern` (string constraints), `strict`, `multiple_of`, `allow_inf_nan`, `max_digits`, `decimal_places`, and `alias`/`validation_alias`/`serialization_alias`. All are forwarded via `super().__init__(...)` to `Param`, which calls Pydantic's `FieldInfo.__init__`. Pydantic evaluates these constraints when FastAPI calls `model_validate` on the parsed request data.",
+    "notes": "Implementation — Query class constraints in params.py"
+  },
+  {
+    "id": "Q13",
+    "topic": "implementation",
+    "question": "What does the `alias` parameter in `Query()` do at the HTTP request level?",
+    "ground_truth": "In `fastapi/params.py`, `alias` lets you map a differently-named URL query key to the Python function parameter. For example, `q: str = Query(alias='item-query')` makes FastAPI read `?item-query=foo` from the URL but expose it as `q` in the handler. The `alias_priority` field controls whether the alias takes precedence over `validation_alias`. This is passed to Pydantic's `FieldInfo.alias` via `super().__init__()`.",
+    "notes": "Implementation — alias parameter in Query"
+  },
+  {
+    "id": "Q14",
+    "topic": "implementation",
+    "question": "How does `FastAPI.middleware('http')` register a function-based middleware?",
+    "ground_truth": "In `fastapi/applications.py`, `FastAPI.middleware(middleware_type)` returns a decorator. When applied to a coroutine `async def my_mw(request, call_next)`, it calls `self.add_middleware(BaseHTTPMiddleware, dispatch=func)`. This wraps the function in a `BaseHTTPMiddleware` instance and prepends it to Starlette's ASGI middleware stack, identical in effect to the class-based `app.add_middleware()` form.",
+    "notes": "Implementation — applications.py middleware() method"
+  },
+  {
+    "id": "Q15",
+    "topic": "implementation",
+    "question": "What assertion or validation does the `test_invalid_dict` test in `test_invalid_sequence_param.py` verify about query parameter types?",
+    "ground_truth": "In `tests/test_invalid_sequence_param.py`, `test_invalid_dict` uses `pytest.raises(AssertionError, match=\"Query parameter 'q' must be one of the supported types\")` to verify that FastAPI raises at route-definition time — not per-request — when a `dict[str, Item]` type is used as a `Query` parameter. FastAPI validates parameter types when the `@app.get()` decorator executes.",
+    "notes": "Test-implementation — test_invalid_sequence_param.py"
+  },
+  {
+    "id": "Q16",
+    "topic": "implementation",
+    "question": "What does the `test_multiple_path` function in `test_annotated.py` test?",
+    "ground_truth": "`test_multiple_path` in `tests/test_annotated.py` creates a FastAPI app with two `@app.get` decorators on the same async handler — one for `/test1` and one for `/test2`. The handler uses `Annotated[str, Query()]` with a default. The test verifies both paths return 200 with the default value and that passing an explicit query value overrides the default on both paths.",
+    "notes": "Test-navigation — test_annotated.py"
+  },
+  {
+    "id": "Q17",
+    "topic": "implementation",
+    "question": "How does `get_path_param_min_length` in `tests/main.py` declare a path parameter with minimum length?",
+    "ground_truth": "In `tests/main.py`, the function is declared as `def get_path_param_min_length(item_id: str = Path(min_length=3))`. `Path(min_length=3)` creates a `Path` instance with the `min_length` constraint forwarded to Pydantic. FastAPI enforces this at request parse time — a path segment shorter than 3 characters returns HTTP 422.",
+    "notes": "Implementation — tests/main.py Path constraint"
+  },
+  {
+    "id": "Q18",
+    "topic": "implementation",
+    "question": "What does `get_path_param_gt_int` in `tests/main.py` demonstrate about numeric path parameter constraints?",
+    "ground_truth": "In `tests/main.py`, `def get_path_param_gt_int(item_id: int = Path(gt=3))` uses the `gt` (greater-than) constraint on a typed integer path parameter. The `int` type annotation causes FastAPI to coerce and validate the path segment as an integer, and `Path(gt=3)` adds the additional constraint that it must be greater than 3. Both are enforced by Pydantic on each request.",
+    "notes": "Implementation — tests/main.py numeric constraint"
+  },
+  {
+    "id": "Q19",
+    "topic": "implementation",
+    "question": "How does `test_optional_validation_alias_schema` in `test_request_params/test_query/test_optional_str.py` verify OpenAPI schema generation?",
+    "ground_truth": "In `tests/test_request_params/test_query/test_optional_str.py`, the test calls `app.openapi()['paths'][path]['get']['parameters']` and asserts it matches a snapshot containing `'required': False`, `'schema': {'anyOf': [{'type': 'string'}, {'type': 'null'}]}`, and the aliased parameter name in the `'name'` field. This verifies FastAPI correctly reflects optional parameters with validation aliases in the generated OpenAPI schema.",
+    "notes": "Implementation — test_request_params optional alias schema"
+  },
+  {
+    "id": "Q20",
+    "topic": "implementation",
+    "question": "What does `test_redirect_slashes_enabled` in `test_router_redirect_slashes.py` verify about trailing slash handling?",
+    "ground_truth": "In `tests/test_router_redirect_slashes.py`, the test registers `/hello/` on an `APIRouter` and checks that a request to `/hello/` (with slash) returns 200, while `/hello` (without slash) returns 307 Temporary Redirect. This verifies Starlette's redirect-slashes behaviour which FastAPI inherits — trailing slash normalisation via HTTP redirect rather than a 404.",
+    "notes": "Implementation — router redirect slash behavior"
+  },
+  {
+    "id": "Q21",
+    "topic": "relationship",
+    "question": "Trace how `@app.get('/items')` ultimately stores a route entry — which objects are created across which files?",
+    "ground_truth": "`@app.get('/items')` calls `FastAPI.get()` in `fastapi/applications.py`, which delegates to `self.router.add_api_route('/items', endpoint, methods=['GET'], ...)`. `self.router` is an `APIRouter` instance (in `fastapi/routing.py`). `APIRouter.add_api_route` creates an `APIRoute` object storing the endpoint callable, path pattern, HTTP methods, and response model, then appends it to `self.routes`.",
+    "notes": "Multi-hop — applications.py → routing.py APIRoute"
+  },
+  {
+    "id": "Q22",
+    "topic": "relationship",
+    "question": "How does `app.include_router(router)` work internally — what is the complete call chain?",
+    "ground_truth": "`app.include_router(router, prefix, tags, ...)` in `fastapi/applications.py` immediately delegates to `self.router.include_router(router, prefix, tags, ...)`. `self.router` is an `APIRouter`. `APIRouter.include_router` (in `fastapi/routing.py`) iterates over the nested router's routes, prepends the prefix to each path, and re-registers them via `self.add_api_route()`. Tags and dependencies are merged.",
+    "notes": "Multi-hop — applications.py → routing.py include_router"
+  },
+  {
+    "id": "Q23",
+    "topic": "relationship",
+    "question": "What happens in the ASGI middleware stack when two middlewares are added with `app.add_middleware(A)` then `app.add_middleware(B)`?",
+    "ground_truth": "Starlette builds the ASGI stack by wrapping each new middleware around the existing app. `add_middleware` prepends to the stack, so the last-added middleware runs first. With `add_middleware(A)` then `add_middleware(B)`: incoming requests hit B first, then A, then the route handler. Responses travel in reverse order: handler → A → B. This LIFO execution is opposite to the order of registration calls.",
+    "notes": "Multi-hop — Starlette middleware LIFO order"
+  },
+  {
+    "id": "Q24",
+    "topic": "relationship",
+    "question": "How does FastAPI resolve sub-dependencies when a `Depends()` callable itself declares `Depends()` parameters?",
+    "ground_truth": "FastAPI builds a dependency graph during route analysis (in `fastapi/dependencies/utils.py`). It recursively inspects each dependency callable's parameters for `Depends()` instances and resolves them depth-first. Results are cached per-request in a `dependency_cache` dict keyed by the callable when `use_cache=True`, so a dependency appearing multiple times in the tree is called only once per request.",
+    "notes": "Multi-hop — dependencies/utils.py recursive resolution"
+  },
+  {
+    "id": "Q25",
+    "topic": "relationship",
+    "question": "How does `app.dependency_overrides` work at the code level to replace dependencies in tests?",
+    "ground_truth": "`app.dependency_overrides` is a plain dict on the `FastAPI` instance (propagated from its `APIRouter`). During dependency resolution in `fastapi/dependencies/utils.py`, before calling any dependency callable the resolver checks `request.app.dependency_overrides.get(dependency)`. If a replacement callable is found, it is used instead of the original — without modifying any application code.",
+    "notes": "Implementation + relationship — dependency_overrides mechanism"
+  },
+  {
+    "id": "Q26",
+    "topic": "relationship",
+    "question": "How does `response_model` declared on a path operation interact with the handler's return value?",
+    "ground_truth": "After the path handler returns, FastAPI's `serialize_response` function (in `fastapi/routing.py`) calls `jsonable_encoder` on the return value, filtering to only fields declared in the `response_model`. It then runs `response_model.model_validate()` for Pydantic validation, strips fields not in the model, and serialises to JSON. A validation failure at this stage raises HTTP 500 (server error) rather than 422.",
+    "notes": "Multi-hop — routing.py serialize_response"
+  },
+  {
+    "id": "Q27",
+    "topic": "relationship",
+    "question": "How does FastAPI's `Form()` differ from `Query()` at the parsing level, and what extra package is required?",
+    "ground_truth": "`Form` is defined in `fastapi/params.py` with `in_ = ParamTypes.body` (via `Body`). Unlike `Query` which reads from the URL query string, `Form` reads from `application/x-www-form-urlencoded` or `multipart/form-data` request bodies. The `python-multipart` package must be installed for form body parsing — FastAPI raises a `RuntimeError` at request time if it is missing. `Form` and JSON body parameters cannot coexist on the same endpoint.",
+    "notes": "Comparison — Form vs Query, python-multipart dependency"
+  },
+  {
+    "id": "Q28",
+    "topic": "relationship",
+    "question": "What is the class hierarchy of `OAuth2PasswordBearer` through to `SecurityBase` in the FastAPI security module?",
+    "ground_truth": "`OAuth2PasswordBearer` (in `fastapi/security/oauth2.py`) inherits from `OAuth2`, also in that file. `OAuth2` inherits from `SecurityBase` (in `fastapi/security/base.py`). `OAuth2.__init__` stores an `OAuthFlows` Pydantic model for OpenAPI documentation. `OAuth2PasswordBearer` pre-configures `flows` as a password flow with the given `tokenUrl`.",
+    "notes": "Structural — full OAuth2PasswordBearer hierarchy"
+  },
+  {
+    "id": "Q29",
+    "topic": "relationship",
+    "question": "How does `UploadFile` reach the handler function — what is the path from HTTP multipart request to the `UploadFile` object?",
+    "ground_truth": "When a route declares `file: UploadFile = File()`, FastAPI uses `python-multipart` to parse the `multipart/form-data` body. The uploaded bytes are stored in a `SpooledTemporaryFile` (in-memory below a threshold, spilled to disk above it). This is wrapped in Starlette's `UploadFile` class (from `starlette/datastructures.py`), which exposes async `read()`, `seek()`, `close()` methods plus `filename` and `content_type` attributes.",
+    "notes": "Multi-hop — Form parsing → Starlette UploadFile"
+  },
+  {
+    "id": "Q30",
+    "topic": "relationship",
+    "question": "How does using `Security()` instead of `Depends()` affect OAuth2 scope handling and the OpenAPI schema?",
+    "ground_truth": "`Security` is defined in `fastapi/params.py` alongside `Depends` and accepts an additional `scopes` parameter. During dependency resolution FastAPI populates `SecurityScopes.scopes` with the union of scopes from all `Security()` declarations in the route's dependency tree. Inside the dependency you read `security_scopes.scopes` to verify the token grants the required scopes. FastAPI also emits the required scopes in the OpenAPI `security` field on the route.",
+    "notes": "Implementation + relationship — Security scopes vs Depends"
+  }
+]
