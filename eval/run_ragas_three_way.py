@@ -101,7 +101,7 @@ async def get_answer(nodes: list[CodeNode], question: str) -> str:
         try:
             return "".join([t async for t in explore_stream(nodes, question)])
         except Exception as e:
-            s = str(e).lower()
+            s = (str(e) + " " + type(e).__name__).lower()
             if "429" in str(e) or "rate" in s or "capacity" in s or "timeout" in s or "connect" in s:
                 wait = 15 * (attempt + 1)
                 print(f"    [llm error, retry {attempt+1}/6, wait {wait}s]: {type(e).__name__}")
@@ -142,7 +142,7 @@ async def run_question(
             )
             break
         except Exception as e:
-            s = str(e).lower()
+            s = (str(e) + " " + type(e).__name__).lower()
             if "429" in str(e) or "capacity" in s or "timeout" in s or "connect" in s:
                 print(f"  [{qid}] retrieval error, retry {attempt+1}/5: {type(e).__name__}")
                 await asyncio.sleep(30)
