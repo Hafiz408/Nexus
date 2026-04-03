@@ -22,6 +22,7 @@ import sqlite_vec
 
 from app.core.model_factory import get_embedding_client
 from app.models.schemas import CodeNode
+from app.retrieval.reranker import cross_encode_rerank
 
 logger = logging.getLogger(__name__)
 
@@ -291,6 +292,7 @@ def graph_rag_retrieve(
     db_path: str,
     max_nodes: int = 10,
     hop_depth: int = 1,
+    use_cross_encoder: bool = True,
 ) -> tuple[list[CodeNode], dict]:
     """Orchestrate the Graph RAG retrieval pipeline.
 
@@ -302,24 +304,31 @@ def graph_rag_retrieve(
               IMPORTS edges excluded to prevent cross-file pollution.
     Step 5 — combine candidate pool: seeds take RRF score, neighbors take
               propagated score (seeds win on overlap).
+    Step 5b — cross-encoder rerank (optional): jointly scores (query, node_text)
+              pairs over the top 2×max_nodes candidates for more accurate relevance
+              discrimination. Skipped if use_cross_encoder=False or CE raises.
     Step 6 — mmr_diversify: diversity-aware final selection.
 
     hop_depth is retained in the signature for call-site compatibility but
     is ignored internally — expansion is always depth-1 CALLS only.
 
     Args:
-        query:     Natural language query string.
-        repo_path: Repository root path to scope the sqlite-vec search.
-        G:         The code call/import DiGraph with full node attributes.
-        db_path:   Path to the SQLite database file.
-        max_nodes: Maximum number of CodeNode objects to return (default 10).
-        hop_depth: Ignored. Retained for call-site compatibility.
+        query:              Natural language query string.
+        repo_path:          Repository root path to scope the sqlite-vec search.
+        G:                  The code call/import DiGraph with full node attributes.
+        db_path:            Path to the SQLite database file.
+        max_nodes:          Maximum number of CodeNode objects to return (default 10).
+        hop_depth:          Ignored. Retained for call-site compatibility.
+        use_cross_encoder:  If True (default), rerank the top 2×max_nodes candidates
+                            with the cross-encoder before MMR. Falls back to score
+                            order if the model raises.
 
     Returns:
         Tuple of:
           - list[CodeNode]: Top max_nodes reranked CodeNode objects.
           - dict: Stats dict per spec (seed_count, semantic_seeds, fts_seeds,
-                  fts_new, neighbor_count, candidate_pool, returned_count).
+                  fts_new, neighbor_count, candidate_pool, returned_count,
+                  cross_encoder_used).
     """
     # Step 1: semantic vector search
     semantic_results = semantic_search(query, repo_path, top_k=max_nodes, db_path=db_path)
@@ -367,9 +376,21 @@ def graph_rag_retrieve(
         try:
             node = CodeNode(**{k: v for k, v in attrs.items() if k in CodeNode.model_fields})
             scored.append((score, node))
-        except Exception:
+        except Exception as exc:
+            logger.debug("skipping node %s — CodeNode construction failed: %s", node_id, exc)
             continue
     scored.sort(key=lambda x: x[0], reverse=True)
+
+    # Step 5b: Cross-encoder rerank — jointly scores (query, node_text) pairs for
+    # more accurate relevance discrimination than cosine similarity alone.
+    # Operates on top 2*max_nodes candidates; MMR enforces file diversity after.
+    ce_used = False
+    if use_cross_encoder and scored:
+        try:
+            scored = cross_encode_rerank(query, scored[:max_nodes * 2], top_n=max_nodes * 2)
+            ce_used = True
+        except Exception as exc:
+            logger.warning("cross-encoder rerank failed, using score order: %s", exc)
 
     # Step 6: MMR diversity selection
     nodes = mmr_diversify(scored, max_nodes)
@@ -382,5 +403,6 @@ def graph_rag_retrieve(
         "neighbor_count": len(expanded_neighbors),
         "candidate_pool": len(candidate_pool),
         "returned_count": len(nodes),
+        "cross_encoder_used": ce_used,
     }
     return nodes, stats
