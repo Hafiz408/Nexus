@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   backend-unit-tests:
-    name: Backend unit tests (244 tests, no API keys)
+    name: Backend unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
