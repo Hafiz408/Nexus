@@ -162,7 +162,23 @@ def score_pipeline(samples, metrics, run_config, label: str = "pipeline"):
     }, df
 
 
-# ─── Load previous baseline ───────────────────────────────────────────────────
+# ─── Load previous baselines ──────────────────────────────────────────────────
+
+def load_v2_baseline() -> dict | None:
+    """Load v2 (no-CE) scores from the most recent ragas_redesign_*.json result."""
+    results_dir = Path(__file__).parent / "results"
+    candidates = sorted(results_dir.glob("ragas_redesign_*.json"), reverse=True)
+    if not candidates:
+        print("  [warn] no previous redesign result found — cannot use --ce-only")
+        return None
+    data = json.loads(candidates[0].read_text())
+    v2_agg = data.get("new_rag") or data.get("new_rag_v2")
+    if not v2_agg:
+        print(f"  [warn] {candidates[0].name} has no v2 scores — cannot use --ce-only")
+        return None
+    print(f"  v2 baseline loaded from: {candidates[0].name}  ({data.get('questions', '?')}Q)")
+    return v2_agg
+
 
 def load_previous_baseline() -> dict | None:
     results_dir = Path(__file__).parent / "results"
@@ -177,8 +193,8 @@ def load_previous_baseline() -> dict | None:
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 
-async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, workers):
-    print(f"\nNexus RAGAS — Redesign Evaluation (new_rag only)")
+async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, workers, ce_only):
+    print(f"\nNexus RAGAS — Redesign Evaluation")
     print(f"  corpus : {REPO_PATH}")
     print(f"  golden : {GOLDEN_PATH.name}")
 
@@ -214,25 +230,30 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
 
     sem = asyncio.Semaphore(answer_concurrency)
 
-    print("\nRunning v2 (no CE)...")
-    base_results = await asyncio.gather(*[
-        run_question(sem, i, len(golden), entry, G, use_ce=False)
-        for i, entry in enumerate(golden, 1)
-    ])
+    if ce_only:
+        base_agg = load_v2_baseline()
+        if base_agg is None:
+            raise RuntimeError("--ce-only requires a prior ragas_redesign_*.json result")
+        base_stats = None
+        base_df = None
+    else:
+        print("\nRunning v2 (no CE)...")
+        base_results = await asyncio.gather(*[
+            run_question(sem, i, len(golden), entry, G, use_ce=False)
+            for i, entry in enumerate(golden, 1)
+        ])
+        base_samples = [r[0] for r in base_results]
+        base_stats   = [r[1] for r in base_results]
+        base_agg, base_df = score_pipeline(base_samples, metrics, run_cfg, label="v2 (no CE)")
 
     print("\nRunning v2 + CE...")
     ce_results = await asyncio.gather(*[
         run_question(sem, i, len(golden), entry, G, use_ce=True)
         for i, entry in enumerate(golden, 1)
     ])
-
-    base_samples = [r[0] for r in base_results]
-    base_stats   = [r[1] for r in base_results]
-    ce_samples   = [r[0] for r in ce_results]
-    ce_stats     = [r[1] for r in ce_results]
-
-    base_agg, base_df = score_pipeline(base_samples, metrics, run_cfg, label="v2 (no CE)")
-    ce_agg, ce_df     = score_pipeline(ce_samples,   metrics, run_cfg, label="v2 + CE")
+    ce_samples = [r[0] for r in ce_results]
+    ce_stats   = [r[1] for r in ce_results]
+    ce_agg, ce_df = score_pipeline(ce_samples, metrics, run_cfg, label="v2 + CE")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out = {
@@ -247,7 +268,7 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
         )[0].name) if baseline else None,
         "retrieval_stats": {"v2": base_stats, "v2_ce": ce_stats},
         "per_question": {
-            "v2": base_df.to_dict(orient="records"),
+            **({"v2": base_df.to_dict(orient="records")} if base_df is not None else {}),
             "v2_ce": ce_df.to_dict(orient="records"),
         },
     }
@@ -300,8 +321,10 @@ if __name__ == "__main__":
     p.add_argument("--ollama-embed-model", default="nomic-embed-text")
     p.add_argument("--answer-concurrency", type=int, default=3)
     p.add_argument("--workers", type=int, default=1)
+    p.add_argument("--ce-only", action="store_true",
+                   help="Skip v2 run; load v2 baseline from most recent ragas_redesign_*.json")
     args = p.parse_args()
     asyncio.run(main(
         args.limit, args.judge, args.ollama_chat_model, args.ollama_embed_model,
-        args.answer_concurrency, args.workers,
+        args.answer_concurrency, args.workers, args.ce_only,
     ))
