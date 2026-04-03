@@ -39,7 +39,8 @@ if _env.exists():
         _line = _line.strip()
         if _line and not _line.startswith("#") and "=" in _line:
             k, v = _line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
+            v = v.strip().strip('"').strip("'")
+            os.environ.setdefault(k.strip(), v)
 
 from ragas import EvaluationDataset, evaluate, RunConfig
 from ragas.dataset_schema import SingleTurnSample
@@ -106,6 +107,7 @@ async def get_answer(nodes: list[CodeNode], question: str) -> str:
                 await asyncio.sleep(wait)
             else:
                 raise
+    print(f"    [WARNING] get_answer exhausted all retries — returning empty string for question")
     return ""
 
 
@@ -127,6 +129,7 @@ async def run_question(
     qid = entry.get("id", f"Q{i:02d}")
 
     # Retrieval (fast, outside semaphore)
+    naive_nodes = naive_stat = graph_nodes = graph_stat = improved_nodes = improved_stat = None
     for attempt in range(5):
         try:
             naive_nodes, naive_stat = naive_retrieve(q, G)
@@ -143,6 +146,8 @@ async def run_question(
                 await asyncio.sleep(60)
             else:
                 raise
+    else:
+        raise RuntimeError(f"[{qid}] retrieval failed after 5 retries — aborting")
 
     # Answer generation (gated by semaphore to avoid LLM overload)
     async with sem:
@@ -189,7 +194,7 @@ def score_pipeline(samples, metrics, run_config, name):
 
     agg = {
         "faithfulness": _mean("faithfulness"),
-        "answer_relevancy": _mean("answer_relevancy") or _mean("response_relevancy"),
+        "answer_relevancy": (lambda x: x if x is not None else _mean("response_relevancy"))(_mean("answer_relevancy")),
         "context_precision": _mean("context_precision"),
     }
     return agg, df
@@ -228,7 +233,8 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
         print(f"  judge  : mistral (mistral-large-latest)")
         run_cfg = RunConfig(timeout=120, max_retries=3, max_workers=workers)
 
-    metrics = [Faithfulness(llm=llm), ResponseRelevancy(llm=llm, embeddings=emb), ContextPrecision(llm=llm)]
+    def _metrics():
+        return [Faithfulness(llm=llm), ResponseRelevancy(llm=llm, embeddings=emb), ContextPrecision(llm=llm)]
 
     sem = asyncio.Semaphore(answer_concurrency)
     all_results = await asyncio.gather(*[
@@ -243,9 +249,9 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
     graph_stats    = [r[4] for r in all_results]
     imprv_stats    = [r[5] for r in all_results]
 
-    naive_agg, naive_df = score_pipeline(naive_samples,  metrics, run_cfg, "naive")
-    graph_agg, graph_df = score_pipeline(graph_samples,  metrics, run_cfg, "graph_rag")
-    imprv_agg, imprv_df = score_pipeline(imprv_samples,  metrics, run_cfg, "improved")
+    naive_agg, naive_df = score_pipeline(naive_samples,  _metrics(), run_cfg, "naive")
+    graph_agg, graph_df = score_pipeline(graph_samples,  _metrics(), run_cfg, "graph_rag")
+    imprv_agg, imprv_df = score_pipeline(imprv_samples,  _metrics(), run_cfg, "improved")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out = {
@@ -282,10 +288,10 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
         g = graph_agg.get(m)
         v = imprv_agg.get(m)
         f = lambda x: f"{x:.4f}" if x is not None else "  N/A"
-        pct = lambda a, b: f"{(b-a)/a*100:+.1f}%" if a and b else "  N/A"
+        pct = lambda a, b: f"{(b-a)/a*100:+.1f}%" if a is not None and b is not None else "  N/A"
         print(f"  {m:<26} {f(n):>10} {f(g):>11} {f(v):>11} {pct(n,v):>9} {pct(g,v):>9}")
     print("=" * W)
-    print(f"\n  Results → {out_path.name}")
+    print(f"\n  Results → {out_path}")
     print("=" * W)
 
 
