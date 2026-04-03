@@ -41,6 +41,7 @@ EXPECTED_STATS_KEYS = {
     "neighbor_count",
     "candidate_pool",
     "returned_count",
+    "cross_encoder_used",
 }
 
 # Queries chosen for high expected recall against the fastapi corpus
@@ -82,6 +83,7 @@ def run_smoke() -> bool:
         return False
 
     all_passed = True
+    ce_used_any = False
 
     for query in SMOKE_QUERIES:
         print(f"\n{BOLD}Query:{RESET} {query}")
@@ -116,6 +118,14 @@ def run_smoke() -> bool:
             all(n.file_path for n in nodes),
             "",
         )
+        ok &= check(
+            "cross_encoder_used key present in stats",
+            "cross_encoder_used" in stats,
+            "",
+        )
+
+        if stats.get("cross_encoder_used"):
+            ce_used_any = True
 
         if ok:
             top = nodes[0]
@@ -123,9 +133,19 @@ def run_smoke() -> bool:
                 f"  top result: {top.name} ({top.file_path}:{top.line_start})"
                 f"  seeds={stats['seed_count']} neighbors={stats['neighbor_count']}"
                 f" pool={stats['candidate_pool']} returned={stats['returned_count']}"
+                f" ce={stats.get('cross_encoder_used')}"
             )
         else:
             all_passed = False
+
+    print(f"\n{BOLD}Cross-encoder summary:{RESET}")
+    ce_ok = check(
+        "cross_encoder_used is True for at least one query",
+        ce_used_any,
+        "CE ran on at least one query" if ce_used_any else "CE was not used on any query",
+    )
+    if not ce_ok:
+        all_passed = False
 
     return all_passed
 

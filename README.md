@@ -56,6 +56,8 @@ Question
   ├─ CALLS depth-1 expand from semantic seeds
   │   (callers + callees; IMPORTS edges excluded; propagated score = parent × 0.6)
   ├─ Combine pool: seeds overwrite neighbors + test-file ×0.5 penalty
+  ├─ Cross-encoder rerank (default on): ms-marco-MiniLM-L-6-v2 jointly scores
+  │   (query, node_context) pairs over top 2×N → re-orders; falls back silently on error
   ├─ MMR selection: score − 0.35×same-file-count → top max_nodes
   │
   └─ intent = explain?  → stream tokens → file citations
@@ -174,7 +176,7 @@ Every push to a `v*` tag triggers **GitHub Actions** (`.github/workflows/build.y
 tag push  ──────────────────────────────────────────────────────────┐
                                                                      │
           ┌──────────────────── Validation (parallel) ─────────────┐│
-          │  backend-unit-tests   273 tests, no API keys            ││
+          │  backend-unit-tests   289 tests, no API keys            ││
           │  backend-smoke-test   live index + chat stream          ││
           │  changelog-check      tag = package.json = CHANGELOG    ││
           │  extension-build      TypeScript compile check          ││

@@ -2,6 +2,24 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.2.3] - 2026-04-04
+
+### Changed
+- **Cross-encoder reranking in `graph_rag_retrieve`** — the MMR candidate pool is now passed through `cross_encode_rerank` from `backend/app/retrieval/reranker.py` before final node selection. `use_cross_encoder=True` is the new default; the pipeline records `cross_encoder_used` in retrieval stats and falls back gracefully if the CE model raises an error, so existing behaviour is fully preserved on failure.
+
+### Added
+- **Cross-encoder model pre-warm on startup** — `backend/app/main.py` launches a daemon thread at startup that calls `_get_reranker()`, loading the 66 MB `cross-encoder/ms-marco-MiniLM-L-6-v2` model into memory before the first query arrives. Cold-start latency on the initial request is eliminated.
+- **CE integration tests** — 4 new unit tests in `backend/tests/test_graph_rag.py` covering the CE rerank path; existing calls that do not exercise CE are opted out via the `use_cross_encoder=False` flag.
+- **`eval/run_ragas_redesign.py` v2+CE column** — the redesign eval script now includes a Graph RAG v2+CE pipeline column alongside the v2 baseline. A `--ce-only` flag skips re-running v2 and loads prior results from disk.
+
+### Eval results (RAGAS, 30Q, qwen2.5:7b, fastapi corpus)
+| Run | Pipeline | Faithfulness | Answer Relevancy | Context Precision |
+|-----|----------|-------------|-----------------|-------------------|
+| B | Graph RAG v2 | 0.5389 | 0.4121 | 0.2532 |
+| C | Graph RAG v2 + CE | 0.5417 | 0.4827 | 0.3706 |
+
+Context Precision: **+46%** (0.2532 → 0.3706). Answer Relevancy: **+17%** (0.4121 → 0.4827).
+
 ## [4.2.2] - 2026-04-03
 
 ### Changed

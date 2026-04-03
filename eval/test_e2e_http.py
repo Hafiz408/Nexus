@@ -301,6 +301,24 @@ def check_explain(repo: str) -> bool:
     ok &= check("explain: citations event present", "citations" in types, "")
     ok &= check("explain: done event present", "done" in types, "")
 
+    done_event = next((e for e in events if e.get("type") == "done"), None)
+    if done_event:
+        rstats = done_event.get("retrieval_stats") or {}
+        if rstats:
+            ok &= check(
+                "explain: cross_encoder_used in retrieval_stats",
+                "cross_encoder_used" in rstats,
+                f"stats keys: {list(rstats.keys())}",
+            )
+            ok &= check(
+                "explain: cross_encoder_used is True",
+                rstats.get("cross_encoder_used") is True,
+                f"got {rstats.get('cross_encoder_used')}",
+            )
+            print(f"  retrieval: seeds={rstats.get('seed_count')} returned={rstats.get('returned_count')}")
+        else:
+            print("  (no retrieval_stats in done event — CE check skipped)")
+
     cit_event = next((e for e in events if e.get("type") == "citations"), None)
     if cit_event:
         citations = cit_event.get("citations", [])
@@ -311,12 +329,6 @@ def check_explain(repo: str) -> bool:
         )
         if citations:
             print(f"  top citation: {citations[0].get('file_path')}:{citations[0].get('line_start')}")
-
-    done_event = next((e for e in events if e.get("type") == "done"), None)
-    if done_event:
-        stats = done_event.get("retrieval_stats", {})
-        if stats:
-            print(f"  retrieval: seeds={stats.get('seed_count')} returned={stats.get('returned_count')}")
 
     return ok
 

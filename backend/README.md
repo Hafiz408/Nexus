@@ -5,12 +5,12 @@ FastAPI service with three independent concerns: **ingest** code into a graph + 
 ## High-Level Design
 
 ```
-Ingestion          Retrieval            Agents
-─────────          ─────────            ──────
-Parse code    →    Semantic search  →   Route intent
-Build graph        Graph expand         Run specialist
-Embed nodes        MMR select           Critic gate
-                                        MCP side-effects
+Ingestion          Retrieval                 Agents
+─────────          ─────────                 ──────
+Parse code    →    Semantic search       →   Route intent
+Build graph        RRF merge + expand        Run specialist
+Embed nodes        MMR select + CE rerank    Critic gate
+                                             MCP side-effects
 ```
 
 `query_router.py` wires these together. It picks the **Explore** path (graph RAG + token streaming) or **Agent** path (multi-agent orchestrator) based on `intent_hint` in the request.
@@ -32,7 +32,7 @@ backend/
 │   ├── mcp/                  # → Side-effect tools (GitHub PR posting, test file writer)
 │   └── models/               # Pydantic schemas (CodeNode, QueryRequest…)
 ├── build.py                  # PyInstaller build script (outputs extension/bin/)
-├── tests/                    # 273 tests — all offline, no live API calls
+├── tests/                    # 289 tests — all offline, no live API calls
 └── requirements.txt
 ```
 
@@ -69,7 +69,7 @@ In production use the extension auto-spawns the bundled binary — no manual sta
 ## Tests
 
 ```bash
-cd backend && python -m pytest tests/ -v    # 273 tests, no API keys required
+cd backend && python -m pytest tests/ -v    # 289 tests, no API keys required
 ```
 
 ## Module Docs
