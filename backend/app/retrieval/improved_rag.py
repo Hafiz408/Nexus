@@ -59,8 +59,8 @@ async def improved_graph_rag_retrieve(
                              Falls back gracefully if the LLM call fails.
         use_cross_encoder:   Apply cross-encoder as the final selection step.
                              Falls back to MMR if False.
-        bfs_score_threshold: Min normalised RRF score for BFS expansion. Seeds
-                             below this threshold are added to the candidate pool
+        bfs_score_threshold: Min raw semantic similarity score for BFS expansion.
+                             Seeds below this threshold are added to the candidate pool
                              directly without expanding their graph neighbours.
 
     Returns:
