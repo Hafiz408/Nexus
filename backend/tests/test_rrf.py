@@ -1,4 +1,3 @@
-import pytest
 from app.retrieval.graph_rag import rrf_merge
 
 
