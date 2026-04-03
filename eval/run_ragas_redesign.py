@@ -1,25 +1,24 @@
-"""RAGAS evaluation: redesigned graph_rag_retrieve only.
+"""RAGAS evaluation: graph_rag_retrieve v2 vs v2 + cross-encoder rerank.
 
 Evaluates against eval/golden_qa_v2.json (30 code-navigation questions).
 Naive baseline is loaded from the most recent ragas_three_way_*.json — no
 re-running needed since the corpus and golden set are unchanged.
 
-Pipeline:
-  new_rag — redesigned graph_rag_retrieve (RRF + CALLS-depth-1 + propagated score + MMR)
+Pipelines (run sequentially, scored separately):
+  v2     — graph_rag_retrieve (RRF + CALLS-depth-1 + propagated score + MMR)
+  v2+CE  — same pipeline with cross-encoder rerank before MMR (use_cross_encoder=True)
 
 Comparison columns in output:
-  Prev Naive   — naive scores from last three-way run
-  Prev Graph   — graph_rag scores from last three-way run
-  Prev Improved— improved scores from last three-way run
-  New RAG      — this run
-  Δ vs Naive   — new_rag vs prev naive
-  Δ vs Graph   — new_rag vs prev graph_rag
+  v2 (no CE)    — this run, cross-encoder disabled
+  v2 + CE       — this run, cross-encoder enabled
+  Δ CE vs v2    — improvement of v2+CE over v2
+  Δ CE vs Naive — improvement of v2+CE over naive baseline
 
 Usage:
     # Quick sanity check — 5 questions
     python eval/run_ragas_redesign.py --limit 5
 
-    # Full 30-question eval, 2 Ollama workers (~1-1.5 hours, new_rag only)
+    # Full 30-question eval, 2 Ollama workers (~3 hours, two pipelines)
     OLLAMA_NUM_PARALLEL=2 python eval/run_ragas_redesign.py --limit 30 --workers 2
 
     # Mistral judge (faster scoring, requires MISTRAL_API_KEY)
@@ -101,6 +100,7 @@ async def run_question(
     total: int,
     entry: dict,
     G,
+    use_ce: bool = False,
 ) -> tuple:
     q, ref = entry["question"], entry["ground_truth"]
     qid = entry.get("id", f"Q{i:02d}")
@@ -109,7 +109,8 @@ async def run_question(
     for attempt in range(5):
         try:
             new_nodes, new_stat = graph_rag_retrieve(
-                q, REPO_PATH, G, DB_PATH, max_nodes=MAX_NODES, hop_depth=1
+                q, REPO_PATH, G, DB_PATH, max_nodes=MAX_NODES, hop_depth=1,
+                use_cross_encoder=use_ce,
             )
             break
         except Exception as e:
@@ -138,8 +139,8 @@ async def run_question(
 
 # ─── Scoring ──────────────────────────────────────────────────────────────────
 
-def score_pipeline(samples, metrics, run_config):
-    print(f"\nScoring new_rag ({len(samples)} samples)...")
+def score_pipeline(samples, metrics, run_config, label: str = "pipeline"):
+    print(f"\nScoring {label} ({len(samples)} samples)...")
     ds = EvaluationDataset(samples=samples)
     res = evaluate(dataset=ds, metrics=metrics, run_config=run_config,
                    show_progress=True, raise_exceptions=False)
@@ -212,15 +213,26 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
     metrics = [Faithfulness(llm=llm), ResponseRelevancy(llm=llm, embeddings=emb), ContextPrecision(llm=llm)]
 
     sem = asyncio.Semaphore(answer_concurrency)
-    all_results = await asyncio.gather(*[
-        run_question(sem, i, len(golden), entry, G)
+
+    print("\nRunning v2 (no CE)...")
+    base_results = await asyncio.gather(*[
+        run_question(sem, i, len(golden), entry, G, use_ce=False)
         for i, entry in enumerate(golden, 1)
     ])
 
-    samples  = [r[0] for r in all_results]
-    new_stats = [r[1] for r in all_results]
+    print("\nRunning v2 + CE...")
+    ce_results = await asyncio.gather(*[
+        run_question(sem, i, len(golden), entry, G, use_ce=True)
+        for i, entry in enumerate(golden, 1)
+    ])
 
-    new_agg, new_df = score_pipeline(samples, metrics, run_cfg)
+    base_samples = [r[0] for r in base_results]
+    base_stats   = [r[1] for r in base_results]
+    ce_samples   = [r[0] for r in ce_results]
+    ce_stats     = [r[1] for r in ce_results]
+
+    base_agg, base_df = score_pipeline(base_samples, metrics, run_cfg, label="v2 (no CE)")
+    ce_agg, ce_df     = score_pipeline(ce_samples,   metrics, run_cfg, label="v2 + CE")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out = {
@@ -228,12 +240,16 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
         "repo_path": REPO_PATH,
         "golden_qa": "golden_qa_v2.json",
         "questions": len(golden),
-        "new_rag": new_agg,
+        "new_rag_v2": base_agg,
+        "new_rag_v2_ce": ce_agg,
         "baseline_file": str(sorted(
             (Path(__file__).parent / "results").glob("ragas_three_way_*.json"), reverse=True
         )[0].name) if baseline else None,
-        "retrieval_stats": {"new_rag": new_stats},
-        "per_question": {"new_rag": new_df.to_dict(orient="records")},
+        "retrieval_stats": {"v2": base_stats, "v2_ce": ce_stats},
+        "per_question": {
+            "v2": base_df.to_dict(orient="records"),
+            "v2_ce": ce_df.to_dict(orient="records"),
+        },
     }
     out_path = Path(__file__).parent / "results" / f"ragas_redesign_{timestamp}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -260,13 +276,16 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
             print(f"  {m:<26} {f4(b_naive.get(m)):>10} {f4(b_graph.get(m)):>10} {f4(b_imprv.get(m)):>10}")
 
     print(f"\n  This run  ({timestamp}, {len(golden)}Q)")
-    print(f"  {'Metric':<26} {'New RAG':>10} {'Δ vs Naive':>12} {'Δ vs Graph':>12}")
+    print(f"  {'Metric':<26} {'v2 (no CE)':>12} {'v2 + CE':>12} {'Δ CE vs v2':>12} {'Δ CE vs Naive':>14}")
     print("  " + "-" * (W - 2))
     for m in ("faithfulness", "answer_relevancy", "context_precision"):
-        v      = new_agg.get(m)
+        v_base = base_agg.get(m)
+        v_ce   = ce_agg.get(m)
         b_n    = baseline.get("naive", {}).get(m) if baseline else None
-        b_g    = baseline.get("graph_rag", {}).get(m) if baseline else None
-        print(f"  {m:<26} {f4(v):>10} {pct(b_n, v):>12} {pct(b_g, v):>12}")
+        print(
+            f"  {m:<26} {f4(v_base):>12} {f4(v_ce):>12} "
+            f"{pct(v_base, v_ce):>12} {pct(b_n, v_ce):>14}"
+        )
 
     print("=" * W)
     print(f"\n  Results → {out_path}")
