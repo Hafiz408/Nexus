@@ -1,7 +1,6 @@
 import pytest
 import asyncio
 import networkx as nx
-import numpy as np
 from unittest.mock import patch, MagicMock, AsyncMock
 from app.models.schemas import CodeNode
 
@@ -93,14 +92,18 @@ async def test_bfs_threshold_limits_expansion(two_node_graph, mock_fts, mock_hyd
         )
     # Only func_a is strong enough for BFS; func_b added directly
     assert stats["strong_bfs_seeds"] == 1
+    assert stats["expanded_count"] == 2
 
 
 @pytest.mark.asyncio
 async def test_cross_encoder_disabled_falls_back_to_mmr(two_node_graph, mock_sem_search, mock_fts, mock_hyde, mock_ce):
     from app.retrieval.improved_rag import improved_graph_rag_retrieve
-    nodes, _ = await improved_graph_rag_retrieve(
-        "test", "/repo", two_node_graph, "/fake/db.sqlite",
-        max_nodes=2, use_cross_encoder=False
-    )
+    with patch("app.retrieval.improved_rag.mmr_diversify") as mock_mmr:
+        mock_mmr.return_value = []
+        nodes, _ = await improved_graph_rag_retrieve(
+            "test", "/repo", two_node_graph, "/fake/db.sqlite",
+            max_nodes=2, use_cross_encoder=False
+        )
     mock_ce.assert_not_called()
+    mock_mmr.assert_called_once()
     assert isinstance(nodes, list)
