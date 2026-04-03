@@ -35,6 +35,22 @@ def _start_idle_watchdog() -> None:
     threading.Thread(target=_watch, daemon=True, name="idle-watchdog").start()
 
 
+def _prewarm_cross_encoder() -> None:
+    """Load the cross-encoder model into memory on startup.
+
+    Runs in a daemon thread so startup time is unaffected. On first install,
+    triggers the one-time 66MB model download. On subsequent starts warms
+    the in-memory cache (~200ms disk load) before the first request arrives.
+    Failures are logged; model loads on demand if pre-warm fails.
+    """
+    try:
+        from app.retrieval.reranker import _get_reranker  # noqa: PLC0415
+        _get_reranker()
+        logger.info("cross-encoder model pre-warmed")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cross-encoder pre-warm failed (loads on first query): %s", exc)
+
+
 # Configure root logger so all module-level loggers (pipeline, walker, etc.) emit output
 logging.basicConfig(
     level=logging.INFO,
@@ -72,6 +88,7 @@ async def lifespan(app: FastAPI):
     _check_sqlite_vec()
     app.state.graph_cache = {}   # dict[str, nx.DiGraph] — lazy per-repo graph cache
     _start_idle_watchdog()
+    threading.Thread(target=_prewarm_cross_encoder, daemon=True, name="ce-prewarm").start()
     yield
 
 
