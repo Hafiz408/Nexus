@@ -14,7 +14,8 @@ Golden set: **`golden_qa_v2.json`** — 30 hand-labelled code-navigation Q&A pai
 | **Naive Vector** | `semantic_search` only — cosine NN, top-15, no FTS, no graph |
 | **Graph RAG v1** | FTS + BFS via CALLS+IMPORTS edges (ego_graph) + dual-score reranking (`0.7×semantic + 0.3×pagerank`) + MMR |
 | **HyDE + CrossEncoder** | HyDE query expansion (1 LLM call) + RRF merge + BFS-threshold + cross-encoder reranker — eval-only, never production |
-| **Graph RAG v2** | FTS + RRF merge + CALLS-only depth-1 expansion + propagated score (`parent_rrf × 0.6`) + MMR — current production |
+| **Graph RAG v2** | FTS + RRF merge + CALLS-only depth-1 expansion + propagated score (`parent_rrf × 0.6`) + MMR |
+| **Graph RAG v2 + CE** | Same as v2, plus cross-encoder rerank (`ms-marco-MiniLM-L-6-v2`) over top `2×N` candidates before MMR — current production |
 
 ---
 
@@ -51,6 +52,23 @@ Graph RAG v2 is the first pipeline to improve all three metrics simultaneously a
 
 ---
 
+### Run C — Cross-Encoder Reranking
+**Script:** `run_ragas_redesign.py --ce-only` · **Date:** 2026-04-04 · **File:** `ragas_redesign_20260404_024959.json`
+*(v2 baseline carried from Run B — same corpus, same golden set, same judge config)*
+
+| Pipeline | Faithfulness | Answer Relevancy | Context Precision |
+|---|---|---|---|
+| Naive Vector *(Run A)* | 0.3148 | 0.2133 | 0.1585 |
+| Graph RAG v2 *(Run B)* | 0.5389 | 0.4121 | 0.2532 |
+| **Graph RAG v2 + CE** | **0.5417** | **0.4827** | **0.3706** |
+
+**v2+CE vs v2:** +0.5% faithfulness · **+17.1% answer relevancy** · **+46.4% context precision**  
+**v2+CE vs Naive:** +72.1% faithfulness · +126.3% answer relevancy · +133.8% context precision
+
+Cross-encoder reranking produces the largest single-step gain in context precision (+46.4%) of any improvement to date. Answer relevancy improvement (+17.1%) confirms the CE is surfacing more query-relevant nodes. Faithfulness is unchanged — CE affects context selection, not answer generation.
+
+---
+
 ## What drove the improvement (v1 → v2)
 
 1. **Propagated score replaced the 0.0 semantic fallback** — Graph RAG v1 scored all BFS-expanded non-seed nodes at `0.3 × (0.2×pagerank + 0.1×in_degree)`, making score independent of query relevance. v2 sets `neighbor_score = parent_rrf_score × 0.6`, anchoring each neighbor's competitiveness to how relevant its parent seed was.
@@ -65,7 +83,7 @@ Graph RAG v2 is the first pipeline to improve all three metrics simultaneously a
 
 ## Next target
 
-Answer relevancy (0.4121) is still well below naive vector's headroom in earlier runs (~0.56 in Run 3 via `run_ragas_new_vs_old.py`). Next lever to try: **semantic filtering of CALLS neighbors** — instead of selecting the top-5 by pagerank, select by cosine similarity of neighbor to query. This avoids high-degree utility nodes that rank high on pagerank but are off-topic.
+Context precision (0.3706) and answer relevancy (0.4827) still have headroom. Next lever to try: **semantic filtering of CALLS neighbors** — instead of selecting the top-5 by pagerank, select by cosine similarity of neighbor to query. This avoids high-degree utility nodes that rank high on pagerank but are off-topic.
 
 ---
 
@@ -96,9 +114,12 @@ All questions were hand-authored against the fastapi corpus with reference answe
 ## Run command
 
 ```bash
-# Full 30Q eval (new_rag only, ~1.5 hours with 2 workers)
+# Full 30Q eval, both pipelines (~2 hours)
 source venv_eval/bin/activate
-OLLAMA_NUM_PARALLEL=2 python eval/run_ragas_redesign.py --limit 30 --workers 2
+python eval/run_ragas_redesign.py --limit 30 --workers 1
+
+# Full 30Q eval, v2+CE only — uses prior v2 result as baseline (~1 hour)
+python eval/run_ragas_redesign.py --limit 30 --workers 1 --ce-only
 
 # Quick sanity check (5 questions, ~15 min)
 python eval/run_ragas_redesign.py --limit 5
