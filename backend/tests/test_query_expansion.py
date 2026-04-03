@@ -60,4 +60,5 @@ async def test_query_appears_in_prompt():
         await hyde_expand(query)
 
     call_args = mock_llm.ainvoke.call_args[0][0]
-    assert any(query in str(msg) for msg in call_args)
+    message = call_args[0]
+    assert query in message.content
