@@ -237,6 +237,34 @@ _FTS_STOPWORDS: frozenset[str] = frozenset({
 })
 
 
+def rrf_merge(
+    ranked_lists: list[list[tuple[str, float]]],
+    k: int = 60,
+) -> dict[str, float]:
+    """Reciprocal Rank Fusion across multiple ranked retrieval result lists.
+
+    RRF score = Σ  1 / (k + rank_i + 1)  for each list where the node appears.
+    k=60 is the empirically robust constant that dampens very-high-rank advantages.
+
+    Unlike max()-based merging, RRF is rank-based: immune to score scale differences
+    between cosine similarity [0,1] and BM25 scores. A node that ranks high in
+    multiple lists scores higher than one that tops only one list.
+
+    Args:
+        ranked_lists: Zero or more result lists, each sorted descending by score.
+                      Empty lists are silently skipped.
+        k:            Damping constant (default 60).
+
+    Returns:
+        Dict mapping node_id -> RRF score (unbounded; higher is better).
+    """
+    scores: dict[str, float] = {}
+    for ranked in ranked_lists:
+        for rank, (node_id, _) in enumerate(ranked):
+            scores[node_id] = scores.get(node_id, 0.0) + 1.0 / (k + rank + 1)
+    return scores
+
+
 def fts_search(query: str, repo_path: str, top_k: int, db_path: str) -> list[tuple[str, float]]:
     """FTS5 keyword search over indexed symbol names for the given repo.
 
