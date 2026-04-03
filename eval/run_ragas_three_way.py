@@ -288,7 +288,7 @@ async def main(limit, judge, ollama_chat, ollama_embed, answer_concurrency, work
         g = graph_agg.get(m)
         v = imprv_agg.get(m)
         f = lambda x: f"{x:.4f}" if x is not None else "  N/A"
-        pct = lambda a, b: f"{(b-a)/a*100:+.1f}%" if a is not None and b is not None else "  N/A"
+        pct = lambda a, b: f"{(b-a)/a*100:+.1f}%" if (a is not None and b is not None and a != 0) else "  N/A"
         print(f"  {m:<26} {f(n):>10} {f(g):>11} {f(v):>11} {pct(n,v):>9} {pct(g,v):>9}")
     print("=" * W)
     print(f"\n  Results → {out_path}")
