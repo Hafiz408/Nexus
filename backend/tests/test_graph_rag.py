@@ -248,11 +248,13 @@ def test_graph_rag_retrieve_stats(sample_graph, mock_embedder, monkeypatch):
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
 
     nodes, stats = graph_rag_retrieve(
-        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=3, hop_depth=1
+        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=3, hop_depth=1,
+        use_cross_encoder=False,
     )
 
     for key in ("seed_count", "semantic_seeds", "fts_seeds", "fts_new",
-                "neighbor_count", "candidate_pool", "returned_count"):
+                "neighbor_count", "candidate_pool", "returned_count",
+                "cross_encoder_used"):
         assert key in stats, f"missing stats key: {key}"
     assert len(nodes) <= 3
 
@@ -270,7 +272,7 @@ def test_graph_rag_retrieve_includes_calls_neighbors(sample_graph, mock_embedder
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
 
     nodes, stats = graph_rag_retrieve(
-        "func_a", "/repo", sample_graph, db_path=":memory:", max_nodes=10
+        "func_a", "/repo", sample_graph, db_path=":memory:", max_nodes=10, use_cross_encoder=False,
     )
 
     node_ids = {n.node_id for n in nodes}
@@ -294,9 +296,96 @@ def test_graph_rag_retrieve_fts_node_included(sample_graph, mock_embedder, monke
     monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
 
     _nodes, stats = graph_rag_retrieve(
-        "find func_b or func_c", "/repo", sample_graph, db_path=":memory:", max_nodes=5
+        "find func_b or func_c", "/repo", sample_graph, db_path=":memory:", max_nodes=5,
+        use_cross_encoder=False,
     )
 
     assert stats["fts_seeds"] >= 1
     assert stats["seed_count"] >= stats["semantic_seeds"]
     assert stats["fts_new"] >= 1
+
+
+# -- cross-encoder integration tests -----------------------------------------
+
+
+def test_graph_rag_retrieve_cross_encoder_called_when_enabled(
+    sample_graph, mock_embedder, monkeypatch
+):
+    """cross_encode_rerank is called when use_cross_encoder=True."""
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    ce_mock = MagicMock(return_value=[])
+    monkeypatch.setattr("app.retrieval.graph_rag.cross_encode_rerank", ce_mock)
+
+    _nodes, stats = graph_rag_retrieve(
+        "find func_b", "/repo", sample_graph, ":memory:", max_nodes=3, use_cross_encoder=True,
+    )
+
+    ce_mock.assert_called_once()
+    assert ce_mock.call_args[0][0] == "find func_b"
+    assert stats["cross_encoder_used"] is True
+
+
+def test_graph_rag_retrieve_cross_encoder_skipped_when_disabled(
+    sample_graph, mock_embedder, monkeypatch
+):
+    """cross_encode_rerank is NOT called when use_cross_encoder=False."""
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    ce_mock = MagicMock()
+    monkeypatch.setattr("app.retrieval.graph_rag.cross_encode_rerank", ce_mock)
+
+    _nodes, stats = graph_rag_retrieve(
+        "find func_b", "/repo", sample_graph, ":memory:", max_nodes=3, use_cross_encoder=False,
+    )
+
+    ce_mock.assert_not_called()
+    assert stats["cross_encoder_used"] is False
+
+
+def test_graph_rag_retrieve_cross_encoder_failure_falls_back(
+    sample_graph, mock_embedder, monkeypatch
+):
+    """If cross_encode_rerank raises, pipeline completes via score-sorted fallback."""
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+    monkeypatch.setattr(
+        "app.retrieval.graph_rag.cross_encode_rerank",
+        MagicMock(side_effect=RuntimeError("model unavailable")),
+    )
+
+    nodes, stats = graph_rag_retrieve(
+        "find func_b", "/repo", sample_graph, ":memory:", max_nodes=3, use_cross_encoder=True,
+    )
+
+    assert stats["cross_encoder_used"] is False
+    assert isinstance(nodes, list)
+
+
+def test_graph_rag_retrieve_cross_encoder_used_key_always_present(
+    sample_graph, mock_embedder, monkeypatch
+):
+    """stats always contains 'cross_encoder_used' for both True and False flag values."""
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+    monkeypatch.setattr("app.retrieval.graph_rag.cross_encode_rerank", MagicMock(return_value=[]))
+
+    for flag in (True, False):
+        _, stats = graph_rag_retrieve(
+            "q", "/repo", sample_graph, ":memory:", max_nodes=3, use_cross_encoder=flag,
+        )
+        assert "cross_encoder_used" in stats, f"missing key with use_cross_encoder={flag}"
