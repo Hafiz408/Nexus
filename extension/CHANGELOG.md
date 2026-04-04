@@ -5,20 +5,10 @@ All notable changes to Nexus AI are documented here.
 ## [4.2.3] - 2026-04-04
 
 ### Changed
-- **Cross-encoder reranking in `graph_rag_retrieve`** — the MMR candidate pool is now passed through `cross_encode_rerank` from `backend/app/retrieval/reranker.py` before final node selection. `use_cross_encoder=True` is the new default; the pipeline records `cross_encoder_used` in retrieval stats and falls back gracefully if the CE model raises an error, so existing behaviour is fully preserved on failure.
+- **Cross-encoder reranking** — retrieved code candidates are now re-scored by a cross-encoder model before final selection, improving the relevance of context passed to the LLM. Enabled by default; falls back gracefully to the previous ranking if the model fails.
 
 ### Added
-- **Cross-encoder model pre-warm on startup** — `backend/app/main.py` launches a daemon thread at startup that calls `_get_reranker()`, loading the 66 MB `cross-encoder/ms-marco-MiniLM-L-6-v2` model into memory before the first query arrives. Cold-start latency on the initial request is eliminated.
-- **CE integration tests** — 4 new unit tests in `backend/tests/test_graph_rag.py` covering the CE rerank path; existing calls that do not exercise CE are opted out via the `use_cross_encoder=False` flag.
-- **`eval/run_ragas_redesign.py` v2+CE column** — the redesign eval script now includes a Graph RAG v2+CE pipeline column alongside the v2 baseline. A `--ce-only` flag skips re-running v2 and loads prior results from disk.
-
-### Eval results (RAGAS, 30Q, qwen2.5:7b, fastapi corpus)
-| Run | Pipeline | Faithfulness | Answer Relevancy | Context Precision |
-|-----|----------|-------------|-----------------|-------------------|
-| B | Graph RAG v2 | 0.5389 | 0.4121 | 0.2532 |
-| C | Graph RAG v2 + CE | 0.5417 | 0.4827 | 0.3706 |
-
-Context Precision: **+46%** (0.2532 → 0.3706). Answer Relevancy: **+17%** (0.4121 → 0.4827).
+- **Cross-encoder model pre-warm on startup** — the reranker loads at backend startup rather than on the first query, eliminating cold-start latency on initial requests.
 
 ## [4.2.2] - 2026-04-03
 
@@ -29,19 +19,6 @@ Context Precision: **+46%** (0.2532 → 0.3706). Answer Relevancy: **+17%** (0.4
   3. **Propagated scoring** — BFS-expanded non-seed nodes previously received a flat `0.3` fallback score independent of query relevance. Neighbors now score `parent_rrf_score × 0.6`, keeping their competitiveness anchored to how relevant their parent seed was.
   4. **Per-seed neighbor cap** — 5 callers + 5 callees per seed (ordered by pagerank), preventing BFS cluster overlap from a single high-centrality node.
   5. **MMR diversity selection** — iterative Maximal Marginal Relevance replaces score-rank cutoff; subtracts `0.35 × same-file-count` at each selection step so one class's methods cannot monopolise the result set.
-- **`improved_rag.py` and `query_expansion.py` removed** — superseded by the v2 pipeline and no longer referenced anywhere in the codebase.
-
-### Eval results (RAGAS, 30Q, qwen2.5:7b, fastapi corpus)
-| Metric | Naive baseline | Graph RAG v2 | Δ |
-|---|---|---|---|
-| Faithfulness | 0.364 | 0.539 | **+48%** |
-| Answer Relevancy | 0.250 | 0.412 | **+65%** |
-| Context Precision | 0.118 | 0.253 | **+115%** |
-
-### Added
-- **`eval/run_ragas_redesign.py`** — RAGAS evaluation script for the v2 pipeline; loads the naive baseline from the most recent three-way run rather than re-running it.
-- **`eval/test_e2e_smoke.py`** — fast retrieval smoke test (no LLM, no API keys); verifies `graph_rag_retrieve` returns nodes and correct stats keys against the fastapi corpus.
-- **`eval/test_e2e_http.py`** — full integration test; starts the backend, pushes config, and fires all four intents (explain / debug / review / test) via real HTTP + SSE with live LLM calls.
 
 ## [4.2.1] - 2026-04-03
 
@@ -61,7 +38,6 @@ Context Precision: **+46%** (0.2532 → 0.3706). Answer Relevancy: **+17%** (0.4
 
 ### Added
 - **FTS5 dual-search pipeline** — retrieval now runs a BM25 keyword search over indexed symbol names in parallel with the semantic vector search. Results are merged (per-node score = max of the two sources). FTS5 scores are capped at 0.85 so perfect semantic matches (1.0) always rank above perfect keyword matches. This catches exact/prefix function-name queries that embedding similarity alone can miss.
-- **Backend unit tests in CI** — all 244 pytest tests now run as a required gate (`backend-unit-tests` job) before the binary build steps, alongside the smoke test and extension build check.
 
 ### Changed
 - **Default context nodes raised to 15** — `nexus.maxNodes` default increased from 10 to 15, wired through all query paths (v1 streaming and v2 LangGraph). More context for the LLM with minimal latency impact on modern models.
@@ -92,12 +68,8 @@ Context Precision: **+46%** (0.2532 → 0.3706). Answer Relevancy: **+17%** (0.4
 ### Changed
 - **Idle watchdog timeout** raised from 15 minutes to 120 minutes — the backend now stays running for 2 hours of inactivity before self-terminating.
 - **Keepalive interval** reduced from 3 minutes to 30 seconds — faster dead-backend detection and recovery for reuse-path windows.
-- **Timestamps added to all log output** — every line in the "Nexus Backend" output channel now includes a `YYYY-MM-DD HH:MM:SS` prefix. Python `warnings.warn()` output (graph builder unresolvable-edge warnings) is routed through the logging system and timestamped as well.
-
-### Internal
-- `pollUntilComplete` gained an in-flight guard and a 10-minute timeout cap to prevent zombie polling intervals.
-- Citation file tabs now open as preview tabs (not pinned) to avoid filling the tab bar.
-- Test suite: patched `_check_sqlite_vec` and `init_vec_table` in `conftest.py` so all 235 tests pass on Python builds without `--enable-loadable-sqlite-extensions`.
+- **Timestamps added to all log output** — every line in the "Nexus Backend" output channel now includes a `YYYY-MM-DD HH:MM:SS` prefix. Python `warnings.warn()` output is routed through the logging system and timestamped as well.
+- **Citation file tabs open as preview** — cited source files now open as preview tabs (not pinned) so the tab bar doesn't fill up during a session.
 
 ## [4.1.0] - 2026-04-02
 
@@ -107,7 +79,6 @@ Context Precision: **+46%** (0.2532 → 0.3706). Answer Relevancy: **+17%** (0.4
 ### Added
 - **Download progress notification** — a VS Code progress notification ("Downloading Nexus backend...") appears during the first-time binary download, with percentage tracking via the file's `Content-Length`.
 - **Download failure handling** — if the download fails (network error, 404, or checksum mismatch), a clear error notification is shown with an "Open GitHub Releases" button linking to the manual download page.
-- **GitHub Release assets** — each tagged release now publishes `nexus-backend-mac.tar.gz`, `nexus-backend-win.tar.gz`, and `checksums.sha256` as permanent Release assets via CI.
 
 ## [4.0.10] - 2026-04-01
 
