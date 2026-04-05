@@ -389,3 +389,45 @@ def test_graph_rag_retrieve_cross_encoder_used_key_always_present(
             "q", "/repo", sample_graph, ":memory:", max_nodes=3, use_cross_encoder=flag,
         )
         assert "cross_encoder_used" in stats, f"missing key with use_cross_encoder={flag}"
+
+
+# ---------------------------------------------------------------------------
+# v3 improvement ①: cosine floor
+# ---------------------------------------------------------------------------
+
+def test_semantic_search_cosine_floor(mock_embedder, monkeypatch):
+    """semantic_search drops nodes whose similarity score < min_similarity.
+
+    distance=0.80 → similarity=0.20  (above default 0.15, kept)
+    distance=0.90 → similarity=0.10  (below threshold, dropped)
+    """
+    raw_rows = [("a.py::func_a", 0.80), ("b.py::func_b", 0.90)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    result = semantic_search("find func", "/repo", top_k=2, db_path=":memory:")
+
+    node_ids = [node_id for node_id, _ in result]
+    assert "a.py::func_a" in node_ids      # similarity=0.20, above threshold
+    assert "b.py::func_b" not in node_ids  # similarity=0.10, below threshold
+
+
+def test_semantic_search_cosine_floor_custom_threshold(mock_embedder, monkeypatch):
+    """Custom min_similarity threshold is respected."""
+    # distance=0.70 → similarity=0.30
+    raw_rows = [("a.py::func_a", 0.70)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    # With threshold=0.40, similarity=0.30 is below it and should be dropped
+    result = semantic_search("find func", "/repo", top_k=1, db_path=":memory:", min_similarity=0.40)
+    assert result == []
+
+    # With threshold=0.20, similarity=0.30 is above it and should be kept
+    result2 = semantic_search("find func", "/repo", top_k=1, db_path=":memory:", min_similarity=0.20)
+    assert len(result2) == 1
+    assert result2[0][0] == "a.py::func_a"

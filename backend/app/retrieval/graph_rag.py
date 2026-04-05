@@ -27,7 +27,13 @@ from app.retrieval.reranker import cross_encode_rerank
 logger = logging.getLogger(__name__)
 
 
-def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> list[tuple[str, float]]:
+def semantic_search(
+    query: str,
+    repo_path: str,
+    top_k: int,
+    db_path: str,
+    min_similarity: float = 0.15,
+) -> list[tuple[str, float]]:
     """Embed query and return top_k (node_id, score) pairs via sqlite-vec cosine search.
 
     The embedding client is instantiated lazily inside this function body so that
@@ -39,14 +45,17 @@ def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> lis
     Full CodeNode hydration is deferred to graph_rag_retrieve which reads from G.nodes.
 
     Args:
-        query:     Natural language query string to embed.
-        repo_path: Repository root path to scope the sqlite-vec search.
-        top_k:     Number of nearest-neighbour results to return.
-        db_path:   Path to the SQLite database file.
+        query:          Natural language query string to embed.
+        repo_path:      Repository root path to scope the sqlite-vec search.
+        top_k:          Number of nearest-neighbour results to return.
+        db_path:        Path to the SQLite database file.
+        min_similarity: Drop nodes with cosine similarity below this threshold
+                        before they enter the candidate pool (default 0.15).
 
     Returns:
         List of (node_id, score) tuples sorted by descending similarity score.
         Score is 1.0 - cosine_distance (0=identical, 2=opposite maps to 1.0→-1.0).
+        Nodes below min_similarity are excluded.
     """
     query_vec = get_embedding_client().embed([query])[0]
     query_bytes = sqlite_vec.serialize_float32(query_vec)
@@ -72,7 +81,8 @@ def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> lis
         conn.close()
 
     # distance is cosine distance (0=identical, 2=opposite); convert to similarity score
-    return [(row[0], float(1.0 - row[1])) for row in rows]
+    results = [(row[0], float(1.0 - row[1])) for row in rows]
+    return [(node_id, score) for node_id, score in results if score >= min_similarity]
 
 
 def expand_calls_neighbors(
