@@ -41,7 +41,7 @@ def format_context_block(nodes: list[CodeNode]) -> str:
       --- [file_path:line_start-line_end] name (type) ---
       {signature}
       {docstring}
-      {body_preview}
+      {full_body if populated, else body_preview}
     """
     blocks = []
     for node in nodes:
