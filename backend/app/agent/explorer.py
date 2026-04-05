@@ -29,13 +29,7 @@ def _get_chain():
         llm = get_llm()
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_prompt}"),
-            ("human", (
-                "Retrieved code context (your only source of truth):\n"
-                "{context}\n\n"
-                "Answer the following question using only the code blocks above. "
-                "Do not draw on outside knowledge.\n\n"
-                "Question: {question}"
-            )),
+            ("human", "Context:\n{context}\n\nQuestion: {question}"),
         ])
         _chain = prompt | llm
     return _chain
