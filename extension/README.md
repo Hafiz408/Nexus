@@ -24,7 +24,7 @@ Nexus AI builds a **call graph + vector index** of your codebase and uses it to 
 </td>
 <td align="center" valign="middle" width="40%" style="line-height: 0;">
 
-<img src="images/demo.gif" alt="Nexus AI demo" width="75%" />
+<img src="https://raw.githubusercontent.com/Hafiz408/Nexus/main/extension/images/demo.gif" alt="Nexus AI demo" width="75%" />
 
 </td>
 </tr>

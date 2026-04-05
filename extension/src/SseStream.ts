@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { Citation } from './types';
 
-const QUERY_TIMEOUT_MS = 30_000;
+const QUERY_TIMEOUT_MS = 120_000;
 
 /** Build an AbortSignal that fires on the earliest of: user cancel or 30 s timeout.
  *
@@ -58,7 +58,7 @@ export async function streamQuery(
       }),
     });
   } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
+    if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
       if (signal?.aborted) { return; }  // user-requested cancel — silent
       void webview.postMessage({ type: 'error', message: 'Query timed out. Please try again.' });
       return;
@@ -138,7 +138,7 @@ export async function streamQuery(
       }
     }
   } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
+    if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')) {
       if (signal?.aborted) { return; }  // user-requested cancel — silent
       // Timeout fired during streaming
       void webview.postMessage({ type: 'error', message: 'Query timed out. Please try again.' });

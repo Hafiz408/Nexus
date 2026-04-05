@@ -2,6 +2,15 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.3.1] - 2026-04-06
+
+### Fixed
+- **Stream timeout raised to 2 minutes** — `QUERY_TIMEOUT_MS` was 30 seconds, causing "Stream interrupted: The operation was aborted due to timeout" errors on real-world queries that take 30–60+ seconds with LLM streaming. Limit is now 120 seconds.
+- **Timeout errors now show a clear message** — `AbortSignal.timeout()` throws a `TimeoutError` (not `AbortError`), so the previous handler fell through to a generic "Stream interrupted" message. The catch now recognises both `AbortError` and `TimeoutError` and shows "Query timed out. Please try again." instead.
+- **Demo GIF displays correctly on Open VSX** — the extension README used a relative `<img src="images/demo.gif">` inside an HTML table, which `vsce package` does not rewrite reliably. Switched to an absolute GitHub raw URL so the GIF renders on both VS Marketplace and Open VSX.
+
+---
+
 ## [4.3.0] - 2026-04-05
 
 ### Improved
