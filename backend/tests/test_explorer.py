@@ -173,3 +173,27 @@ def test_system_prompt_has_anti_fabrication_rule():
     assert "fabricate" in SYSTEM_PROMPT.lower() or "never" in SYSTEM_PROMPT.lower()
     # Must mention the citation format
     assert "file" in SYSTEM_PROMPT.lower() and "line" in SYSTEM_PROMPT.lower()
+
+
+def test_format_context_block_uses_full_body_over_preview(sample_node):
+    """format_context_block uses full_body when non-empty, ignoring body_preview."""
+    sample_node.full_body = (
+        "if not username:\n"
+        "    raise ValueError('username required')\n"
+        "return check_password(username, password)"
+    )
+    result = format_context_block([sample_node])
+
+    # full_body content must appear
+    assert "raise ValueError" in result
+    assert "check_password" in result
+    # body_preview must NOT appear (it was "if not username:\n    return False")
+    assert "return False" not in result
+
+
+def test_format_context_block_falls_back_to_preview_when_full_body_empty(sample_node):
+    """format_context_block uses body_preview when full_body is empty (default)."""
+    # sample_node has full_body="" by default (new field) and body_preview set
+    assert sample_node.full_body == ""
+    result = format_context_block([sample_node])
+    assert "return False" in result  # body_preview content

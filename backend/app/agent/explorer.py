@@ -49,7 +49,8 @@ def format_context_block(nodes: list[CodeNode]) -> str:
             f"--- [{node.file_path}:{node.line_start}-{node.line_end}]"
             f" {node.name} ({node.type}) ---"
         )
-        parts = filter(None, [node.signature, node.docstring or "", node.body_preview])
+        code_body = node.full_body if node.full_body else node.body_preview
+        parts = filter(None, [node.signature, node.docstring or "", code_body])
         body = "\n".join(parts)
         blocks.append(f"{header}\n{body}")
     return "\n\n".join(blocks)
