@@ -2,6 +2,24 @@
 
 All notable changes to Nexus AI are documented here.
 
+## [4.3.0] - 2026-04-05
+
+### Added
+- **CLASS_CONTAINS edges** — `ast_parser` now emits `CLASS_CONTAINS` edges for Python and TypeScript, linking each class node to its methods. Graph expansion traverses these bidirectionally so querying a class surfaces its methods and vice versa.
+- **Personalized PageRank (PPR) expansion** — replaces the flat CALLS-depth-1 BFS hop with PPR (α=0.85, 50 iterations) seeded from the initial retrieval set. PPR follows the full graph topology rather than one hop, surfacing structurally central nodes that BFS misses.
+- **Full-body promotion** — top-ranked nodes after expansion now fetch their complete source body rather than the indexed preview snippet, giving the LLM full implementation context for the most relevant code.
+- **Cosine floor** — semantic seed candidates with cosine similarity < 0.20 are dropped before graph expansion, preventing low-signal seeds from polluting the PPR walk.
+- **Cross-encoder floor** — nodes reranked below CE score 0.1 are pruned before final selection, cutting irrelevant context that previously passed through when the candidate pool was small.
+
+### Eval (Graph RAG v3.1 vs v2+CE baseline)
+| Metric | v2+CE | v3.1 | Delta |
+|---|---|---|---|
+| Faithfulness | 0.5417 | 0.9133 | +68.6% |
+| Answer Relevancy | 0.4827 | 0.7742 | +60.4% |
+| Context Precision | 0.3706 | 0.6685 | +80.4% |
+
+---
+
 ## [4.2.3] - 2026-04-04
 
 ### Changed

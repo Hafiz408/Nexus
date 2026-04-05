@@ -50,14 +50,17 @@ The extension **automatically downloads** (on first use) and **spawns** the back
 Question
   │
   ├─ Dual search:
-  │   ├─ Embed → sqlite-vec cosine search (semantic seeds)
+  │   ├─ Embed → sqlite-vec cosine search (semantic seeds, cosine ≥ 0.20 floor)
   │   └─ FTS5 BM25 on name + embedding_text (keyword seeds, stopword-filtered)
   ├─ RRF merge: rank-fusion of semantic + FTS → unified scores
-  ├─ CALLS depth-1 expand from semantic seeds
-  │   (callers + callees; IMPORTS edges excluded; propagated score = parent × 0.6)
+  ├─ Graph expand from seed nodes:
+  │   ├─ CALLS depth-1: callers + callees (IMPORTS excluded; score = parent × 0.6)
+  │   ├─ CLASS_CONTAINS: class → method and method → class edges
+  │   └─ PPR (Personalized PageRank): alpha=0.85, 50 iterations from seed set
+  ├─ Full-body promotion: top nodes fetch complete source body (not preview)
   ├─ Combine pool: seeds overwrite neighbors + test-file ×0.5 penalty
   ├─ Cross-encoder rerank (default on): ms-marco-MiniLM-L-6-v2 jointly scores
-  │   (query, node_context) pairs over top 2×N → re-orders; falls back silently on error
+  │   (query, node_context) pairs over top 2×N → CE floor ≥ 0.1; falls back silently on error
   ├─ MMR selection: score − 0.35×same-file-count → top max_nodes
   │
   └─ intent = explain?  → stream tokens → file citations
