@@ -431,3 +431,82 @@ def test_semantic_search_cosine_floor_custom_threshold(mock_embedder, monkeypatc
     result2 = semantic_search("find func", "/repo", top_k=1, db_path=":memory:", min_similarity=0.20)
     assert len(result2) == 1
     assert result2[0][0] == "a.py::func_a"
+
+
+# ---------------------------------------------------------------------------
+# v3 improvement ②: CE score floor before MMR
+# ---------------------------------------------------------------------------
+
+def _make_ce_mock(scores_by_id: dict):
+    """Returns a cross_encode_rerank mock that assigns fixed CE scores."""
+    def _ce(query, scored, top_n):
+        result = []
+        for score, node in scored:
+            ce_score = scores_by_id.get(node.node_id, score)
+            result.append((ce_score, node))
+        result.sort(key=lambda x: x[0], reverse=True)
+        return result
+    return _ce
+
+
+def test_ce_floor_drops_negative_scores(sample_graph, mock_embedder, monkeypatch):
+    """CE ≤ 0.0 nodes are removed before MMR; stats['ce_floor_dropped'] counts them."""
+    raw_rows = [("b.py::func_b", 0.1), ("c.py::func_c", 0.2), ("a.py::func_a", 0.3)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    # b=0.8 (kept), c=-0.5 (dropped), a=0.3 (kept)
+    monkeypatch.setattr(
+        "app.retrieval.graph_rag.cross_encode_rerank",
+        _make_ce_mock({"b.py::func_b": 0.8, "c.py::func_c": -0.5, "a.py::func_a": 0.3}),
+    )
+
+    nodes, stats = graph_rag_retrieve(
+        "find funcs", "/repo", sample_graph, db_path=":memory:", max_nodes=5,
+        use_cross_encoder=True,
+    )
+
+    assert stats["ce_floor_dropped"] == 1
+    node_ids = {n.node_id for n in nodes}
+    assert "c.py::func_c" not in node_ids
+
+
+def test_ce_floor_zero_score_dropped(sample_graph, mock_embedder, monkeypatch):
+    """Nodes with CE score exactly 0.0 are also dropped (boundary: strictly > 0 required)."""
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    monkeypatch.setattr(
+        "app.retrieval.graph_rag.cross_encode_rerank",
+        _make_ce_mock({"b.py::func_b": 0.0}),
+    )
+
+    nodes, stats = graph_rag_retrieve(
+        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=5,
+        use_cross_encoder=True,
+    )
+
+    assert stats["ce_floor_dropped"] == 1
+    assert not any(n.node_id == "b.py::func_b" for n in nodes)
+
+
+def test_ce_floor_key_present_when_ce_disabled(sample_graph, mock_embedder, monkeypatch):
+    """stats['ce_floor_dropped'] is always present, equals 0 when CE is off."""
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    _, stats = graph_rag_retrieve(
+        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=5,
+        use_cross_encoder=False,
+    )
+
+    assert "ce_floor_dropped" in stats
+    assert stats["ce_floor_dropped"] == 0

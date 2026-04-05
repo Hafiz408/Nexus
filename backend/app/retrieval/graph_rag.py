@@ -395,10 +395,19 @@ def graph_rag_retrieve(
     # more accurate relevance discrimination than cosine similarity alone.
     # Operates on top 2*max_nodes candidates; MMR enforces file diversity after.
     ce_used = False
+    ce_floor_dropped = 0
     if use_cross_encoder and scored:
         try:
             scored = cross_encode_rerank(query, scored[:max_nodes * 2], top_n=max_nodes * 2)
             ce_used = True
+            # Drop CE-negative nodes before MMR — FILCO-style score floor.
+            # cross-encoder/ms-marco-MiniLM-L-6-v2 treats 0 as the relevance boundary;
+            # positive = relevant, negative = not relevant.
+            pre_floor = len(scored)
+            scored = [(ce_score, node) for ce_score, node in scored if ce_score > 0.0]
+            ce_floor_dropped = pre_floor - len(scored)
+            if ce_floor_dropped:
+                logger.debug("CE floor dropped %d nodes with score ≤ 0", ce_floor_dropped)
         except Exception as exc:
             logger.warning("cross-encoder rerank failed, using score order: %s", exc)
 
@@ -414,5 +423,6 @@ def graph_rag_retrieve(
         "candidate_pool": len(candidate_pool),
         "returned_count": len(nodes),
         "cross_encoder_used": ce_used,
+        "ce_floor_dropped": ce_floor_dropped,
     }
     return nodes, stats
