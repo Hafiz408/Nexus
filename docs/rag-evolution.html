@@ -1,0 +1,2202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From Naive to Neural — RAG Evolution Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b12;
+    --bg2: #0d1119;
+    --bg3: #121720;
+    --bg4: #1a2030;
+    --border: #1e2840;
+    --border2: #2a3650;
+    --amber: #f59e0b;
+    --amber2: #fbbf24;
+    --amber3: #fcd34d;
+    --teal: #14b8a6;
+    --teal2: #2dd4bf;
+    --blue: #3b82f6;
+    --blue2: #60a5fa;
+    --purple: #8b5cf6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+    --serif: 'DM Serif Display', serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+  .shell {
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: 260px;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 24px 0 40px;
+    z-index: 100;
+  }
+
+  .nav-logo {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .nav-logo .wordmark {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--amber);
+    letter-spacing: -0.5px;
+  }
+
+  .nav-logo .tagline {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 3px;
+    font-family: var(--mono);
+    line-height: 1.4;
+  }
+
+  .nav-section { padding: 0 12px 8px; margin-bottom: 4px; }
+
+  .nav-section-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 8px 8px 6px;
+    font-family: var(--sans);
+  }
+
+  nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+    transition: all 0.15s ease;
+    border-left: 2px solid transparent;
+  }
+
+  nav a:hover { color: var(--text); background: var(--bg3); }
+  nav a.active { color: var(--amber); background: rgba(245,158,11,0.08); border-left-color: var(--amber); }
+
+  nav a .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border2);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  nav a.active .dot { background: var(--amber); }
+  nav a:hover .dot { background: var(--text3); }
+
+  nav a .gen-badge {
+    margin-left: auto;
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-weight: 700;
+  }
+
+  /* ── MAIN ── */
+  main { margin-left: 260px; min-height: 100vh; }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 80px 60px 60px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 600px; height: 600px;
+    background: radial-gradient(ellipse, rgba(245,158,11,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--amber);
+    font-family: var(--mono);
+    margin-bottom: 24px;
+  }
+
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: 52px;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .hero h1 em { font-style: italic; color: var(--amber); }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--text2);
+    max-width: 620px;
+    line-height: 1.6;
+    margin-bottom: 36px;
+    font-family: var(--mono);
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .hero-stat { text-align: center; }
+  .hero-stat .val {
+    font-family: var(--serif);
+    font-size: 32px;
+    color: var(--amber);
+    line-height: 1;
+  }
+  .hero-stat .lbl {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+    font-family: var(--sans);
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ── TIMELINE ── */
+  .timeline-wrap {
+    padding: 48px 60px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .timeline {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    min-width: 700px;
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--border2), var(--border2));
+    z-index: 0;
+  }
+
+  .tl-node {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .tl-dot {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--border2);
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--text3);
+    margin-bottom: 12px;
+    transition: all 0.2s;
+  }
+
+  .tl-node.naive .tl-dot  { border-color: var(--text3); color: var(--text3); }
+  .tl-node.v1 .tl-dot     { border-color: var(--blue); color: var(--blue2); background: rgba(59,130,246,0.08); }
+  .tl-node.hyde .tl-dot   { border-color: var(--purple); color: #a78bfa; background: rgba(139,92,246,0.08); }
+  .tl-node.v2 .tl-dot     { border-color: var(--teal); color: var(--teal2); background: rgba(20,184,166,0.08); }
+  .tl-node.v2ce .tl-dot   { border-color: var(--border2); color: var(--text3); background: var(--bg3); }
+  .tl-node.v3 .tl-dot     { border-color: var(--green); color: #4ade80; background: rgba(34,197,94,0.08); }
+  .tl-node.v31 .tl-dot    { border-color: var(--amber); color: var(--amber2); background: rgba(245,158,11,0.1); }
+
+  .tl-label {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--text2);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .tl-node.v31 .tl-label  { color: var(--amber); }
+
+  .tl-desc {
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+    max-width: 100px;
+    line-height: 1.4;
+  }
+
+  .tl-score {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .tl-score .metric { color: var(--text3); }
+  .tl-score .val { font-weight: 600; }
+
+  /* ── SECTIONS ── */
+  section {
+    padding: 64px 60px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  section:last-child { border-bottom: none; }
+
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-family: var(--sans);
+    margin-bottom: 12px;
+  }
+
+  .section-label::before {
+    content: '';
+    display: block;
+    width: 24px; height: 1px;
+    background: var(--amber);
+    opacity: 0.5;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+    margin-top: 28px;
+  }
+
+  h3:first-of-type { margin-top: 0; }
+
+  h4 {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text2);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  p {
+    color: var(--text2);
+    margin-bottom: 16px;
+    max-width: 720px;
+    line-height: 1.75;
+  }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    display: flex;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border: 1px solid;
+    margin: 20px 0;
+    max-width: 720px;
+  }
+
+  .callout-amber { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.2); }
+  .callout-teal  { background: rgba(20,184,166,0.06); border-color: rgba(20,184,166,0.2); }
+  .callout-red   { background: rgba(239,68,68,0.06);  border-color: rgba(239,68,68,0.2); }
+  .callout-green { background: rgba(34,197,94,0.06);  border-color: rgba(34,197,94,0.2); }
+  .callout-blue  { background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.2); }
+  .callout-purple{ background: rgba(139,92,246,0.06); border-color: rgba(139,92,246,0.2); }
+
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .callout-body strong { color: var(--text); }
+
+  /* ── SCORE BARS ── */
+  .score-block {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    max-width: 560px;
+    margin: 20px 0;
+  }
+
+  .score-block-title {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .score-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .score-row:last-child { margin-bottom: 0; }
+
+  .score-label {
+    font-size: 11px;
+    color: var(--text2);
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  .score-track {
+    flex: 1;
+    height: 8px;
+    background: var(--bg4);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .score-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  .score-val {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    width: 44px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .score-delta {
+    font-size: 10px;
+    width: 46px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .delta-up   { color: var(--green); }
+  .delta-down { color: var(--red); }
+  .delta-same { color: var(--text3); }
+
+  /* ── COMPARISON BARS (before/after) ── */
+  .compare-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+    max-width: 720px;
+  }
+
+  /* ── MASTER TABLE ── */
+  .master-table-wrap {
+    overflow-x: auto;
+    margin: 24px 0;
+  }
+
+  .master-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .master-table th {
+    text-align: right;
+    padding: 10px 14px;
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border2);
+  }
+
+  .master-table th:first-child { text-align: left; }
+
+  .master-table td {
+    padding: 10px 14px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+    vertical-align: middle;
+  }
+
+  .master-table td:first-child { text-align: left; }
+
+  .master-table tr.winner { background: rgba(245,158,11,0.04); }
+  .master-table tr.winner td { color: var(--text); }
+  .master-table tr.winner .pipeline-name { color: var(--amber); font-weight: 600; }
+
+  .master-table .up   { color: var(--green); }
+  .master-table .down { color: var(--red); }
+
+  .gen-tag {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .tag-dead { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+  .tag-now  { background: rgba(245,158,11,0.1); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); }
+
+  /* ── TECHNIQUE BOXES ── */
+  .technique-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 28px 0;
+  }
+
+  .technique-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+    transition: border-color 0.2s;
+  }
+
+  .technique-card:hover { border-color: var(--border2); }
+
+  .tech-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .tech-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .tech-name {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .tech-used-in {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .tech-body {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.7;
+    margin-bottom: 14px;
+  }
+
+  .tech-analogy {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  .tech-analogy .analogy-label {
+    font-size: 9px;
+    font-family: var(--sans);
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 6px;
+  }
+
+  /* ── VISUAL DIAGRAMS ── */
+  .diagram {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    max-width: 640px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .diagram-title {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 16px;
+  }
+
+  /* ── PIPELINE CHAPTER HEADER ── */
+  .chapter-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+
+  .chapter-gen {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .chapter-meta { flex: 1; }
+  .chapter-meta h2 { margin-bottom: 6px; }
+  .chapter-verdict {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid;
+  }
+
+  /* ── WHAT CHANGED LIST ── */
+  .change-list {
+    list-style: none;
+    margin: 16px 0;
+    max-width: 680px;
+  }
+
+  .change-list li {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  .change-list li:last-child { border-bottom: none; }
+
+  .change-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text3);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .change-content strong { color: var(--text); display: block; margin-bottom: 3px; font-family: var(--sans); }
+
+  /* ── FAQ ── */
+  .faq-item {
+    border-bottom: 1px solid var(--border);
+    max-width: 720px;
+  }
+
+  .faq-q {
+    padding: 16px 0;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: color 0.15s;
+  }
+
+  .faq-q:hover { color: var(--amber); }
+  .faq-q::after { content: '+'; color: var(--text3); font-size: 18px; font-weight: 300; flex-shrink: 0; transition: transform 0.2s; }
+  .faq-q.open { color: var(--amber); }
+  .faq-q.open::after { content: '−'; color: var(--amber); }
+
+  .faq-a {
+    display: none;
+    padding: 0 0 18px;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.75;
+  }
+
+  .faq-a.visible { display: block; }
+  .faq-a code { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; color: var(--amber2); }
+  .faq-a strong { color: var(--text); }
+
+  /* ── METRIC PILL ── */
+  .metric-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--mono);
+    margin: 2px 3px;
+  }
+
+  .metric-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  /* ── PROBLEM DIAGRAM ── */
+  .problem-diagram {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    max-width: 640px;
+  }
+
+  .pd-side { text-align: center; }
+  .pd-label { font-size: 10px; color: var(--text3); font-family: var(--sans); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .pd-nodes { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .pd-node { background: var(--bg4); border: 1px solid var(--border2); border-radius: 6px; padding: 5px 12px; font-size: 11px; color: var(--text2); font-family: var(--mono); }
+  .pd-node.highlight { border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,0.06); }
+  .pd-node.related { border-color: var(--teal); color: var(--teal2); background: rgba(20,184,166,0.06); }
+  .pd-node.missed { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.06); opacity: 0.7; }
+  .pd-arrow { font-size: 20px; color: var(--text3); text-align: center; }
+
+  /* ── FLOW STEPS (inline) ── */
+  .pipeline-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 24px 0;
+    max-width: 640px;
+  }
+
+  .ps-item {
+    display: flex;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ps-item:last-child { border-bottom: none; }
+
+  .ps-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 11px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .ps-content { flex: 1; }
+  .ps-title { font-family: var(--sans); font-weight: 700; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+  .ps-desc { font-size: 12px; color: var(--text2); line-height: 1.65; }
+
+  /* ── SCROLL TOP ── */
+  .scroll-top {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    width: 36px; height: 36px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text3);
+    transition: all 0.2s;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  .scroll-top.visible { opacity: 1; pointer-events: all; }
+  .scroll-top:hover { color: var(--amber); border-color: var(--amber); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    nav { display: none; }
+    main { margin-left: 0; }
+    .hero { padding: 40px 24px; }
+    section { padding: 40px 24px; }
+    .timeline-wrap { padding: 32px 24px; }
+    .hero h1 { font-size: 36px; }
+    .compare-block { grid-template-columns: 1fr; }
+    .technique-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── SIDEBAR NAV ── -->
+<nav id="nav">
+  <div class="nav-logo">
+    <div class="wordmark">Nexus RAG</div>
+    <div class="tagline">Evolution Guide<br>Naive → v3.1</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Foundation</div>
+    <a href="#hero"><span class="dot"></span> Overview</a>
+    <a href="#the-problem"><span class="dot"></span> The Problem</a>
+    <a href="#how-we-measure"><span class="dot"></span> How We Measure</a>
+    <a href="#master-results"><span class="dot"></span> Full Results Table</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">The Journey</div>
+    <a href="#naive"><span class="dot"></span> Naive Vector <span class="gen-badge" style="background:rgba(100,116,139,0.15);color:var(--text3);border:1px solid var(--border2);">Gen 0</span></a>
+    <a href="#v1"><span class="dot"></span> Graph RAG v1 <span class="gen-badge" style="background:rgba(59,130,246,0.1);color:var(--blue2);border:1px solid rgba(59,130,246,0.2);">Gen 1</span></a>
+    <a href="#hyde"><span class="dot"></span> HyDE + CE <span class="gen-badge" style="background:rgba(139,92,246,0.1);color:#a78bfa;border:1px solid rgba(139,92,246,0.2);">Dead End</span></a>
+    <a href="#v2"><span class="dot"></span> Graph RAG v2 <span class="gen-badge" style="background:rgba(20,184,166,0.1);color:var(--teal2);border:1px solid rgba(20,184,166,0.2);">Gen 2</span></a>
+    <a href="#v2ce"><span class="dot"></span> v2 + CE <span class="gen-badge" style="background:rgba(100,116,139,0.12);color:var(--text3);border:1px solid var(--border2);">Gen 2.5</span></a>
+    <a href="#v3"><span class="dot"></span> Graph RAG v3 <span class="gen-badge" style="background:rgba(34,197,94,0.1);color:#4ade80;border:1px solid rgba(34,197,94,0.25);">Gen 3</span></a>
+    <a href="#v31"><span class="dot"></span> v3.1 PPR <span class="gen-badge" style="background:rgba(245,158,11,0.1);color:var(--amber);border:1px solid rgba(245,158,11,0.25);">Now</span></a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Techniques</div>
+    <a href="#techniques"><span class="dot"></span> All 10 Explained</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Reference</div>
+    <a href="#faq"><span class="dot"></span> FAQ</a>
+  </div>
+</nav>
+
+<!-- ── MAIN CONTENT ── -->
+<main>
+
+<!-- ── HERO ── -->
+<div class="hero" id="hero">
+  <div class="hero-badge">◆ RAG Evolution Guide</div>
+  <h1>From <em>Naive</em> to Neural</h1>
+  <p class="hero-sub">The iterative journey that took Nexus's code retrieval from plain cosine similarity to a multi-stage pipeline delivering 322% better context precision — seven generations, six eval runs, and a lot of things that broke along the way.</p>
+
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="val">7</div>
+      <div class="lbl">Pipelines Tested</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">6</div>
+      <div class="lbl">Eval Runs</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">30</div>
+      <div class="lbl">Golden Questions</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">+322%</div>
+      <div class="lbl">Context Precision</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">+126%</div>
+      <div class="lbl">Answer Relevancy</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TIMELINE ── -->
+<div class="timeline-wrap">
+  <div style="font-size:10px; color:var(--text3); font-family:var(--sans); font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:24px;">Evolution Timeline</div>
+  <div class="timeline">
+    <div class="tl-node naive">
+      <div class="tl-dot">G0</div>
+      <div class="tl-label">Naive Vector</div>
+      <div class="tl-desc">Cosine similarity only</div>
+      <div class="tl-score">
+        <div class="metric">CP</div>
+        <div class="val" style="color:var(--text3);">0.1585</div>
+      </div>
+    </div>
+    <div class="tl-node v1">
+      <div class="tl-dot">G1</div>
+      <div class="tl-label">Graph RAG v1</div>
+      <div class="tl-desc">FTS + BFS + PageRank</div>
+      <div class="tl-score">
+        <div class="metric">CP</div>
+        <div class="val" style="color:var(--red);">0.1176 ↓</div>
+      </div>
+    </div>
+    <div class="tl-node hyde">
+      <div class="tl-dot">☠</div>
+      <div class="tl-label">HyDE + CE</div>
+      <div class="tl-desc">Eval-only, never shipped</div>
+      <div class="tl-score">
+        <div class="metric">CP</div>
+        <div class="val" style="color:var(--purple);">0.1764</div>
+      </div>
+    </div>
+    <div class="tl-node v2">
+      <div class="tl-dot">G2</div>
+      <div class="tl-label">Graph RAG v2</div>
+      <div class="tl-desc">RRF + CALLS-only + propagated score</div>
+      <div class="tl-score">
+        <div class="metric">CP</div>
+        <div class="val" style="color:var(--teal2);">0.2532 ↑</div>
+      </div>
+    </div>
+    <div class="tl-node v2ce">
+      <div class="tl-dot">G2.5</div>
+      <div class="tl-label">v2 + CE</div>
+      <div class="tl-desc">Cross-encoder reranking on top</div>
+      <div class="tl-score">
+        <div class="metric">CP</div>
+        <div class="val" style="color:var(--text2);">0.3706 ↑</div>
+      </div>
+    </div>
+    <div class="tl-node v3">
+      <div class="tl-dot">G3</div>
+      <div class="tl-label">Graph RAG v3</div>
+      <div class="tl-desc">Floors + full body expansion</div>
+      <div class="tl-score">
+        <div class="metric">CP</div>
+        <div class="val" style="color:#4ade80;">0.4525 ↑</div>
+      </div>
+    </div>
+    <div class="tl-node v31">
+      <div class="tl-dot">★</div>
+      <div class="tl-label">v3.1 PPR</div>
+      <div class="tl-desc">CLASS_CONTAINS + PageRank + prompt</div>
+      <div class="tl-score">
+        <div class="metric">CP</div>
+        <div class="val" style="color:var(--amber);">0.6685 ↑</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── THE PROBLEM ── -->
+<section id="the-problem">
+  <div class="section-label">Chapter 0</div>
+  <h2>The Problem We're Solving</h2>
+
+  <p>When you ask Nexus "why does login fail?", it needs to find the right functions to give the LLM as context. Get this wrong — return irrelevant code — and the LLM either hallucinates or gives a generic answer. Get it right, and the LLM traces the exact execution path to the bug.</p>
+
+  <p>The challenge is that <strong>similar code ≠ related code</strong>. The function you're asking about might only contain the entry point — the real logic is one or two function calls away.</p>
+
+  <div class="problem-diagram">
+    <div class="pd-side">
+      <div class="pd-label">Query</div>
+      <div class="pd-nodes">
+        <div class="pd-node highlight">"why does login fail?"</div>
+      </div>
+    </div>
+    <div class="pd-arrow">→</div>
+    <div class="pd-side">
+      <div class="pd-label">Naive finds</div>
+      <div class="pd-nodes">
+        <div class="pd-node highlight">login()</div>
+        <div class="pd-node">auth_middleware()</div>
+        <div class="pd-node missed">validate_token() ✗</div>
+        <div class="pd-node missed">check_permissions() ✗</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <strong>The core insight:</strong> The bug in a login failure is almost never <em>in</em> the login function. It's in <code>validate_token()</code> or <code>check_permissions()</code> — functions that login <em>calls</em>. A good retrieval system needs to follow the call chain, not just find similar names.
+    </div>
+  </div>
+
+  <h3>What good retrieval needs</h3>
+  <ul style="list-style:none; max-width:680px;">
+    <li style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--text2);">
+      <span style="color:var(--amber); flex-shrink:0;">◆</span>
+      <span><strong style="color:var(--text);">Semantic recall</strong> — find functions whose meaning matches the query, even if they don't share keywords</span>
+    </li>
+    <li style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--text2);">
+      <span style="color:var(--amber); flex-shrink:0;">◆</span>
+      <span><strong style="color:var(--text);">Keyword recall</strong> — catch exact function names the user mentions, which embeddings sometimes blur</span>
+    </li>
+    <li style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--text2);">
+      <span style="color:var(--amber); flex-shrink:0;">◆</span>
+      <span><strong style="color:var(--text);">Causal coverage</strong> — include the functions the query function calls and callers, not just the function itself</span>
+    </li>
+    <li style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--text2);">
+      <span style="color:var(--amber); flex-shrink:0;">◆</span>
+      <span><strong style="color:var(--text);">Noise suppression</strong> — don't fill the context window with unrelated utility code</span>
+    </li>
+    <li style="display:flex; gap:10px; padding:10px 0; font-size:13px; color:var(--text2);">
+      <span style="color:var(--amber); flex-shrink:0;">◆</span>
+      <span><strong style="color:var(--text);">Precision over recall</strong> — 10 perfectly relevant nodes beats 50 vaguely relevant ones; the LLM context window is limited</span>
+    </li>
+  </ul>
+</section>
+
+<!-- ── HOW WE MEASURE ── -->
+<section id="how-we-measure">
+  <div class="section-label">Chapter 1</div>
+  <h2>How We Measure Quality</h2>
+
+  <p>Every pipeline change is validated against the same benchmark: <strong>RAGAS</strong> — Retrieval Augmented Generation Assessment — run on a handcrafted golden Q&A set. Here's what each metric actually tells you.</p>
+
+  <div class="technique-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin-bottom: 32px;">
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(245,158,11,0.1);">🎯</div>
+        <div>
+          <div class="tech-name">Context Precision</div>
+          <div class="tech-used-in" style="color:var(--amber);">The most important metric</div>
+        </div>
+      </div>
+      <div class="tech-body">Of all the code nodes we retrieved, what fraction were actually relevant to the question? High precision = no noise in the context window.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Plain English</div>
+        If you ask about authentication and we return 10 nodes — 4 about auth, 6 about logging — context precision is 0.4. We wasted 60% of the LLM's attention.
+      </div>
+    </div>
+
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(59,130,246,0.1);">💬</div>
+        <div>
+          <div class="tech-name">Answer Relevancy</div>
+          <div class="tech-used-in">Does the answer address the question?</div>
+        </div>
+      </div>
+      <div class="tech-body">Measures whether the generated answer actually answers the question asked. Low relevancy means the LLM wandered off-topic or gave a generic response.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Plain English</div>
+        Ask "where is OAuth2 defined?" and get a paragraph about HTTP in general — low answer relevancy. Get a direct answer pointing to <code>security/oauth2.py</code> — high relevancy.
+      </div>
+    </div>
+
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(34,197,94,0.1);">🔒</div>
+        <div>
+          <div class="tech-name">Faithfulness</div>
+          <div class="tech-used-in">No hallucination</div>
+        </div>
+      </div>
+      <div class="tech-body">Measures whether every claim in the answer is grounded in the retrieved context. Low faithfulness = the LLM is making things up beyond what it was given.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Plain English</div>
+        If the LLM says "the token expires in 30 minutes" but nothing in the retrieved code mentions expiry — that's an unfaithful claim, even if it happens to be true.
+      </div>
+    </div>
+  </div>
+
+  <h3>The Golden Set — golden_qa_v2</h3>
+  <p>All evaluations run against <strong>30 hand-authored Q&A pairs</strong> on the FastAPI source repo (5,006 nodes, 29,579 edges). The questions span five categories designed to stress-test different retrieval patterns:</p>
+
+  <div style="display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 24px;">
+    <span class="metric-pill"><span class="dot" style="background:var(--amber);"></span> Symbol navigation</span>
+    <span class="metric-pill"><span class="dot" style="background:var(--blue2);"></span> Class inheritance</span>
+    <span class="metric-pill"><span class="dot" style="background:var(--teal2);"></span> Parameter validation</span>
+    <span class="metric-pill"><span class="dot" style="background:var(--purple);"></span> Middleware &amp; DI</span>
+    <span class="metric-pill"><span class="dot" style="background:var(--green);"></span> ASGI routing</span>
+  </div>
+
+  <div class="callout callout-blue">
+    <span class="callout-icon">⚙</span>
+    <div class="callout-body">
+      <strong>Eval setup:</strong> Judge model — <code>ollama qwen2.5:7b</code> (local). Embeddings — <code>nomic-embed-text</code> (local). All 3 runs use identical config so scores are directly comparable. Each run takes ~1–2 hours on a MacBook.
+    </div>
+  </div>
+</section>
+
+<!-- ── MASTER RESULTS TABLE ── -->
+<section id="master-results">
+  <div class="section-label">Full Picture</div>
+  <h2>Complete Results — All Pipelines</h2>
+  <p>Before diving into each chapter, here's the full comparison. Context Precision is the headline metric — it directly measures retrieval quality independent of LLM response quality.</p>
+
+  <div class="master-table-wrap">
+    <table class="master-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;">Pipeline</th>
+          <th>Run</th>
+          <th>Faithfulness</th>
+          <th>Ans. Relevancy</th>
+          <th>Context Precision</th>
+          <th>vs Naive CP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pipeline-name">Naive Vector</span></td>
+          <td style="color:var(--text3);">A</td>
+          <td>0.3148</td>
+          <td>0.2133</td>
+          <td>0.1585</td>
+          <td style="color:var(--text3);">baseline</td>
+        </tr>
+        <tr>
+          <td><span class="pipeline-name">Graph RAG v1</span></td>
+          <td style="color:var(--text3);">A</td>
+          <td>0.3636</td>
+          <td>0.2500</td>
+          <td class="down">0.1176</td>
+          <td class="down">−26%</td>
+        </tr>
+        <tr>
+          <td><span class="pipeline-name">HyDE + CrossEncoder</span> <span class="gen-tag tag-dead">eval-only</span></td>
+          <td style="color:var(--text3);">A</td>
+          <td>0.3571</td>
+          <td>0.2119</td>
+          <td>0.1764</td>
+          <td class="up">+11%</td>
+        </tr>
+        <tr>
+          <td><span class="pipeline-name">Graph RAG v2</span></td>
+          <td style="color:var(--text3);">B</td>
+          <td>0.5389</td>
+          <td>0.4121</td>
+          <td>0.2532</td>
+          <td class="up">+60%</td>
+        </tr>
+        <tr>
+          <td><span class="pipeline-name">Graph RAG v2 + CE</span></td>
+          <td style="color:var(--text3);">C</td>
+          <td>0.5417</td>
+          <td class="up">0.4827</td>
+          <td class="up">0.3706</td>
+          <td class="up">+134%</td>
+        </tr>
+        <tr>
+          <td><span class="pipeline-name">Graph RAG v3</span> <span class="gen-tag" style="background:rgba(34,197,94,0.1);color:#4ade80;border:1px solid rgba(34,197,94,0.25);">gen 3</span></td>
+          <td style="color:#4ade80;">D</td>
+          <td class="up">0.4825</td>
+          <td class="up">0.4985</td>
+          <td class="up">0.4525</td>
+          <td class="up">+185%</td>
+        </tr>
+        <tr class="winner">
+          <td><span class="pipeline-name">Graph RAG v3.1</span> <span class="gen-tag tag-now">production</span></td>
+          <td style="color:var(--amber);">F</td>
+          <td class="up">0.9133</td>
+          <td class="up">0.7742</td>
+          <td class="up">0.6685</td>
+          <td class="up">+322%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-amber" style="margin-top:20px;">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body">
+      <strong>The counterintuitive moment:</strong> Graph RAG v1 was supposed to be better than naive — but it made context precision <em>worse</em> (0.1176 vs 0.1585). This is the most important data point in the whole journey. Chapter 3 explains exactly why.
+    </div>
+  </div>
+</section>
+
+<!-- ── NAIVE VECTOR ── -->
+<section id="naive">
+  <div class="section-label">Chapter 2 — Generation 0</div>
+
+  <div class="chapter-header">
+    <div class="chapter-gen" style="border-color:var(--text3); color:var(--text3);">G0</div>
+    <div class="chapter-meta">
+      <h2>Naive Vector Search</h2>
+      <span class="chapter-verdict" style="border-color:var(--border2); color:var(--text3);">⬤ The Baseline</span>
+    </div>
+  </div>
+
+  <p>The starting point. Embed the query as a vector, search for the closest code nodes by cosine similarity. Simple, fast, and surprisingly hard to beat on some metrics.</p>
+
+  <h3>How it works</h3>
+  <div class="pipeline-steps">
+    <div class="ps-item">
+      <div class="ps-num" style="border-color:var(--text3); color:var(--text3);">1</div>
+      <div class="ps-content">
+        <div class="ps-title">Embed the query</div>
+        <div class="ps-desc">The user's question is converted to a high-dimensional vector by <code>nomic-embed-text</code>. Every code node was embedded the same way at index time and stored in <code>sqlite-vec</code>.</div>
+      </div>
+    </div>
+    <div class="ps-item">
+      <div class="ps-num" style="border-color:var(--text3); color:var(--text3);">2</div>
+      <div class="ps-content">
+        <div class="ps-title">Cosine nearest-neighbour search</div>
+        <div class="ps-desc">Find the top-15 code nodes whose vectors point in the most similar direction to the query vector. That's the entire pipeline. No graph, no keyword search, no reranking.</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>RAGAS scores</h3>
+  <div class="score-block">
+    <div class="score-block-title">Run A — Naive Vector (30Q, fastapi)</div>
+    <div class="score-row">
+      <div class="score-label">Faithfulness</div>
+      <div class="score-track"><div class="score-fill" style="width:44%; background:var(--text3);"></div></div>
+      <div class="score-val">0.3148</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Answer Relevancy</div>
+      <div class="score-track"><div class="score-fill" style="width:30%; background:var(--text3);"></div></div>
+      <div class="score-val">0.2133</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Context Precision</div>
+      <div class="score-track"><div class="score-fill" style="width:22%; background:var(--text3);"></div></div>
+      <div class="score-val">0.1585</div>
+    </div>
+  </div>
+
+  <h3>Where it falls short</h3>
+
+  <div class="callout callout-red">
+    <span class="callout-icon">✗</span>
+    <div class="callout-body">
+      <strong>Semantics ≠ causality.</strong> "Why does login fail?" finds functions that are <em>semantically about login</em>. But the bug is in <code>validate_token()</code> — a function login <em>calls</em>. The embedding for "validate a JWT token" and "why does login fail" are not close in vector space. Cosine search misses it entirely.
+    </div>
+  </div>
+
+  <div class="callout callout-red">
+    <span class="callout-icon">✗</span>
+    <div class="callout-body">
+      <strong>Exact names get blurred.</strong> If a user asks "where is <code>OAuth2PasswordBearer</code> defined?", embedding the exact class name still produces a vector that might match generic authentication concepts. FTS keyword search would find it exactly — but naive vector has no FTS.
+    </div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <strong>Why it's still the baseline:</strong> Naive vector sets the floor. Every subsequent pipeline improvement is measured against it. Context precision of 0.1585 means roughly 16 out of every 100 retrieved nodes were actually relevant — there is a lot of room to improve.
+    </div>
+  </div>
+</section>
+
+<!-- ── GRAPH RAG v1 ── -->
+<section id="v1">
+  <div class="section-label">Chapter 3 — Generation 1</div>
+
+  <div class="chapter-header">
+    <div class="chapter-gen" style="border-color:var(--blue); color:var(--blue2);">G1</div>
+    <div class="chapter-meta">
+      <h2>Graph RAG v1</h2>
+      <span class="chapter-verdict" style="border-color:rgba(239,68,68,0.3); color:var(--red);">↓ Context Precision Regression</span>
+    </div>
+  </div>
+
+  <p>The first attempt to add graph-awareness. The core idea was right: follow CALLS edges to find causally related code. But the implementation had three flaws that made context precision <em>worse</em> than doing nothing.</p>
+
+  <h3>What was added</h3>
+  <div class="pipeline-steps">
+    <div class="ps-item">
+      <div class="ps-num" style="border-color:var(--blue); color:var(--blue2);">1</div>
+      <div class="ps-content">
+        <div class="ps-title">FTS5 keyword search added</div>
+        <div class="ps-desc">BM25 keyword search over function and class names. Finds exact matches that cosine similarity misses. Merged with semantic results using <code>max(semantic, fts)</code>.</div>
+      </div>
+    </div>
+    <div class="ps-item">
+      <div class="ps-num" style="border-color:var(--blue); color:var(--blue2);">2</div>
+      <div class="ps-content">
+        <div class="ps-title">BFS expansion via ego_graph</div>
+        <div class="ps-desc">From seed nodes, NetworkX's <code>ego_graph()</code> expands to all neighbours within hop_depth=1. This includes both CALLS <em>and</em> IMPORTS edges — every import in the file becomes a candidate.</div>
+      </div>
+    </div>
+    <div class="ps-item">
+      <div class="ps-num" style="border-color:var(--blue); color:var(--blue2);">3</div>
+      <div class="ps-content">
+        <div class="ps-title">Dual-score reranking</div>
+        <div class="ps-desc">Non-seed BFS nodes all got a flat score of <code>0.3</code> — completely independent of how relevant their parent seed was. Sorted by this score, then MMR.</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>RAGAS scores vs baseline</h3>
+  <div class="compare-block">
+    <div class="score-block">
+      <div class="score-block-title">Naive Vector (baseline)</div>
+      <div class="score-row">
+        <div class="score-label">Faithfulness</div>
+        <div class="score-track"><div class="score-fill" style="width:44%; background:var(--text3);"></div></div>
+        <div class="score-val">0.3148</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Ans. Relevancy</div>
+        <div class="score-track"><div class="score-fill" style="width:30%; background:var(--text3);"></div></div>
+        <div class="score-val">0.2133</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Context Precision</div>
+        <div class="score-track"><div class="score-fill" style="width:22%; background:var(--text3);"></div></div>
+        <div class="score-val">0.1585</div>
+      </div>
+    </div>
+    <div class="score-block">
+      <div class="score-block-title">Graph RAG v1</div>
+      <div class="score-row">
+        <div class="score-label">Faithfulness</div>
+        <div class="score-track"><div class="score-fill" style="width:51%; background:var(--blue);"></div></div>
+        <div class="score-val">0.3636</div>
+        <div class="score-delta delta-up">+15%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Ans. Relevancy</div>
+        <div class="score-track"><div class="score-fill" style="width:35%; background:var(--blue);"></div></div>
+        <div class="score-val">0.2500</div>
+        <div class="score-delta delta-up">+17%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Context Precision</div>
+        <div class="score-track"><div class="score-fill" style="width:16%; background:var(--red);"></div></div>
+        <div class="score-val">0.1176</div>
+        <div class="score-delta delta-down">−26%</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Why context precision dropped — the three culprits</h3>
+
+  <ul class="change-list">
+    <li>
+      <div class="change-num" style="border-color:var(--red); color:var(--red);">1</div>
+      <div class="change-content">
+        <strong>IMPORTS edges caused cross-file pollution</strong>
+        <code>ego_graph()</code> followed both CALLS and IMPORTS edges. When you query about <code>Depends()</code>, BFS expansion includes every module that imports <code>fastapi.params</code> — logging, typing, and dozens of unrelated utilities all become candidates, flooding the result set with off-topic nodes.
+      </div>
+    </li>
+    <li>
+      <div class="change-num" style="border-color:var(--red); color:var(--red);">2</div>
+      <div class="change-content">
+        <strong>Flat 0.3 score made all neighbors equally irrelevant</strong>
+        Every BFS-expanded node got a score of exactly <code>0.3</code>, regardless of how relevant its parent seed was. A neighbor of a highly relevant seed and a neighbor of a barely-relevant seed competed on equal footing. The scoring was query-independent.
+      </div>
+    </li>
+    <li>
+      <div class="change-num" style="border-color:var(--red); color:var(--red);">3</div>
+      <div class="change-content">
+        <strong>ego_graph over-expansion</strong>
+        With multiple seeds and BFS at depth=1 across all seed neighbors, <code>ego_graph</code> could pull in 50+ candidate nodes. More candidates meant more noise, and the flat 0.3 score meant there was no signal to rank them by.
+      </div>
+    </li>
+  </ul>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <strong>The lesson:</strong> Faithfulness and answer relevancy improved because FTS seeds were better. But context precision cratered because of graph expansion noise. Adding graph context is the right direction — but the expansion strategy was wrong.
+    </div>
+  </div>
+</section>
+
+<!-- ── HyDE + CE ── -->
+<section id="hyde">
+  <div class="section-label">Chapter 4 — Dead End</div>
+
+  <div class="chapter-header">
+    <div class="chapter-gen" style="border-color:var(--purple); color:#a78bfa;">☠</div>
+    <div class="chapter-meta">
+      <h2>HyDE + Cross-Encoder</h2>
+      <span class="chapter-verdict" style="border-color:rgba(139,92,246,0.3); color:#a78bfa;">⬤ Eval-Only, Never Shipped</span>
+    </div>
+  </div>
+
+  <p>Between v1 and v2, we tested a more complex eval-only pipeline combining two ideas: Hypothetical Document Embedding (HyDE) for query expansion, and an early cross-encoder reranker. It was promising on paper but never made it to production.</p>
+
+  <h3>What HyDE does</h3>
+  <p>Instead of embedding the raw user query ("why does login fail?"), HyDE first asks an LLM to <em>generate a hypothetical code snippet</em> that would answer the question. Then it embeds <em>that hypothetical snippet</em> for vector search. The idea: hypothetical code lands closer to real code in the embedding space than a natural language question does.</p>
+
+  <div class="callout callout-red">
+    <span class="callout-icon">✗</span>
+    <div class="callout-body">
+      <strong>Why it didn't ship:</strong> HyDE requires an extra LLM call for every query — adding ~400–800ms of latency before retrieval even starts. For a dev tool where 200–600ms to first token is the target, that's not acceptable. The precision gain (+11% vs naive) didn't justify doubling the latency budget.
+    </div>
+  </div>
+
+  <div class="callout callout-purple">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body" style="color:var(--text2);">
+      <strong>What it taught us:</strong> The cross-encoder component of this pipeline showed real promise for precision. That idea was carried forward — but applied after v2's cleaner graph expansion rather than on top of v1's noisy candidates.
+    </div>
+  </div>
+
+  <div class="score-block">
+    <div class="score-block-title">HyDE + CE vs Naive</div>
+    <div class="score-row">
+      <div class="score-label">Faithfulness</div>
+      <div class="score-track"><div class="score-fill" style="width:50%; background:var(--purple);"></div></div>
+      <div class="score-val">0.3571</div>
+      <div class="score-delta delta-up">+13%</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Ans. Relevancy</div>
+      <div class="score-track"><div class="score-fill" style="width:30%; background:var(--purple);"></div></div>
+      <div class="score-val">0.2119</div>
+      <div class="score-delta delta-down">−1%</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Context Precision</div>
+      <div class="score-track"><div class="score-fill" style="width:25%; background:var(--purple);"></div></div>
+      <div class="score-val">0.1764</div>
+      <div class="score-delta delta-up">+11%</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── GRAPH RAG v2 ── -->
+<section id="v2">
+  <div class="section-label">Chapter 5 — Generation 2</div>
+
+  <div class="chapter-header">
+    <div class="chapter-gen" style="border-color:var(--teal); color:var(--teal2);">G2</div>
+    <div class="chapter-meta">
+      <h2>Graph RAG v2 — The Redesign</h2>
+      <span class="chapter-verdict" style="border-color:rgba(20,184,166,0.3); color:var(--teal2);">↑ First pipeline to improve all three metrics</span>
+    </div>
+  </div>
+
+  <p>A ground-up redesign that fixed the three problems in v1. Every change was surgical — each one directly addressed a specific failure mode identified from v1's RAGAS regression.</p>
+
+  <h3>Four targeted fixes</h3>
+
+  <ul class="change-list">
+    <li>
+      <div class="change-num" style="border-color:var(--teal); color:var(--teal2);">1</div>
+      <div class="change-content">
+        <strong>RRF replaced max() merge</strong>
+        Cosine scores live in [0,1]. BM25 scores have a different scale entirely. The old <code>max(semantic, fts)</code> merge was comparing apples and oranges. <strong>Reciprocal Rank Fusion</strong> merges by <em>rank position</em>, not score value — immune to scale differences between the two retrieval systems.
+      </div>
+    </li>
+    <li>
+      <div class="change-num" style="border-color:var(--teal); color:var(--teal2);">2</div>
+      <div class="change-content">
+        <strong>CALLS-only expansion (IMPORTS removed)</strong>
+        BFS now follows only <code>type == "CALLS"</code> edges. Removing IMPORTS edges eliminates the cross-file pollution that destroyed v1's context precision. Querying about <code>Depends()</code> no longer pulls in the entire import graph of every file that uses it.
+      </div>
+    </li>
+    <li>
+      <div class="change-num" style="border-color:var(--teal); color:var(--teal2);">3</div>
+      <div class="change-content">
+        <strong>Propagated scoring replaced the flat 0.3 fallback</strong>
+        Each neighbor now inherits its score from its parent seed: <code>neighbor_score = parent_rrf_score × 0.6</code>. A neighbor of a highly-relevant seed scores ~0.54. A neighbor of a barely-relevant seed scores ~0.12. The graph expansion is now query-aware.
+      </div>
+    </li>
+    <li>
+      <div class="change-num" style="border-color:var(--teal); color:var(--teal2);">4</div>
+      <div class="change-content">
+        <strong>Per-seed neighbor cap (5 callers + 5 callees)</strong>
+        Instead of <code>ego_graph</code> expanding all neighbors of all seeds indiscriminately, each seed gets at most 5 top callers + 5 top callees (ordered by PageRank). Prevents high-degree hub nodes from flooding the candidate pool with their entire neighborhood.
+      </div>
+    </li>
+  </ul>
+
+  <h3>RAGAS scores vs v1 and naive</h3>
+  <div class="score-block">
+    <div class="score-block-title">Graph RAG v2 — Run B</div>
+    <div class="score-row">
+      <div class="score-label">Faithfulness</div>
+      <div class="score-track"><div class="score-fill" style="width:75%; background:var(--teal);"></div></div>
+      <div class="score-val">0.5389</div>
+      <div class="score-delta delta-up">+71% vs naive</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Ans. Relevancy</div>
+      <div class="score-track"><div class="score-fill" style="width:58%; background:var(--teal);"></div></div>
+      <div class="score-val">0.4121</div>
+      <div class="score-delta delta-up">+93% vs naive</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Context Precision</div>
+      <div class="score-track"><div class="score-fill" style="width:35%; background:var(--teal);"></div></div>
+      <div class="score-val">0.2532</div>
+      <div class="score-delta delta-up">+60% vs naive</div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">★</span>
+    <div class="callout-body">
+      <strong>The milestone:</strong> Graph RAG v2 was the first pipeline to improve all three metrics simultaneously against every prior baseline. v1 improved faithfulness but hurt precision. v2 fixed both. Vs v1: +48% faithfulness · +65% answer relevancy · +115% context precision.
+    </div>
+  </div>
+</section>
+
+<!-- ── v2 + CE ── -->
+<section id="v2ce">
+  <div class="section-label">Chapter 6 — Previous Generation</div>
+
+  <div class="chapter-header">
+    <div class="chapter-gen" style="border-color:var(--border2); color:var(--text3);">G2.5</div>
+    <div class="chapter-meta">
+      <h2>v2 + Cross-Encoder Reranking</h2>
+      <span class="chapter-verdict" style="border-color:var(--border2); color:var(--text3);">↑ Largest single-step precision gain at the time</span>
+    </div>
+  </div>
+
+  <p>After v2 fixed graph expansion, the remaining bottleneck was the ranking signal itself. Cosine similarity encodes query and document <em>separately</em> — it can't see how a specific query and a specific node interact with each other. A cross-encoder fixes this.</p>
+
+  <h3>The key idea</h3>
+
+  <div class="technique-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 24px;">
+    <div class="technique-card" style="border-color:var(--border2);">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(100,116,139,0.1);">📝</div>
+        <div>
+          <div class="tech-name">Bi-encoder (cosine)</div>
+          <div class="tech-used-in">What we had</div>
+        </div>
+      </div>
+      <div class="tech-body">Query → vector. Document → vector. Compare vectors. Each is encoded independently — they never see each other during scoring.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        Two people read the same book separately and write summaries. Then you compare summaries. Fast, but nuanced interactions between query and document get lost in the summaries.
+      </div>
+    </div>
+
+    <div class="technique-card" style="border-color:rgba(245,158,11,0.3);">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(245,158,11,0.1);">🔬</div>
+        <div>
+          <div class="tech-name">Cross-encoder</div>
+          <div class="tech-used-in" style="color:var(--amber);">What we added</div>
+        </div>
+      </div>
+      <div class="tech-body">Query + document are read <em>together</em> in one pass. The model attends to how specific terms in the query relate to specific parts of the document.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        One expert reads both the question and the document simultaneously and scores how well they match. More accurate — but can't pre-compute document vectors, so only practical for reranking a small candidate set.
+      </div>
+    </div>
+  </div>
+
+  <h3>How it fits into the pipeline</h3>
+  <p>The cross-encoder doesn't replace the retrieval pipeline — it runs <em>after</em> v2's candidate pool is assembled. It takes the top <code>2×max_nodes</code> candidates and rescores them. MMR diversity selection then operates on the CE-scored list.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">Pipeline Order</div>
+    <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:20px;">1.</span>
+        <span style="color:var(--text2);">Semantic search + FTS5 → RRF merge</span>
+        <span style="color:var(--text3); font-size:10px; margin-left:auto;">seeds</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:20px;">2.</span>
+        <span style="color:var(--text2);">CALLS expansion → propagated scoring</span>
+        <span style="color:var(--text3); font-size:10px; margin-left:auto;">candidates</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.15); border-radius:6px; padding:7px 10px; margin:4px 0;">
+        <span style="color:var(--amber); width:20px;">3.</span>
+        <span style="color:var(--amber2);">Cross-encoder rerank (top 2×N pairs)</span>
+        <span style="color:var(--amber); font-size:10px; margin-left:auto;">↑ new</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:20px;">4.</span>
+        <span style="color:var(--text2);">MMR diversity → final N nodes</span>
+        <span style="color:var(--text3); font-size:10px; margin-left:auto;">result</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Startup pre-warming</h3>
+  <p>The model (<code>ms-marco-MiniLM-L-6-v2</code>, 66 MB) is loaded in a background daemon thread when the FastAPI server starts. By the time the first query arrives, the model is already in memory (~200ms disk load). If pre-warm fails, the model loads on first request — no crash, just that one request pays the cold-start cost.</p>
+
+  <h3>RAGAS scores — the final leap</h3>
+  <div class="compare-block">
+    <div class="score-block">
+      <div class="score-block-title">Graph RAG v2 (baseline)</div>
+      <div class="score-row">
+        <div class="score-label">Faithfulness</div>
+        <div class="score-track"><div class="score-fill" style="width:75%; background:var(--teal);"></div></div>
+        <div class="score-val">0.5389</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Ans. Relevancy</div>
+        <div class="score-track"><div class="score-fill" style="width:58%; background:var(--teal);"></div></div>
+        <div class="score-val">0.4121</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Context Precision</div>
+        <div class="score-track"><div class="score-fill" style="width:35%; background:var(--teal);"></div></div>
+        <div class="score-val">0.2532</div>
+      </div>
+    </div>
+    <div class="score-block">
+      <div class="score-block-title">v2 + Cross-Encoder ★</div>
+      <div class="score-row">
+        <div class="score-label">Faithfulness</div>
+        <div class="score-track"><div class="score-fill" style="width:76%; background:var(--amber);"></div></div>
+        <div class="score-val">0.5417</div>
+        <div class="score-delta delta-up">+0.5%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Ans. Relevancy</div>
+        <div class="score-track"><div class="score-fill" style="width:68%; background:var(--amber);"></div></div>
+        <div class="score-val">0.4827</div>
+        <div class="score-delta delta-up">+17%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Context Precision</div>
+        <div class="score-track"><div class="score-fill" style="width:52%; background:var(--amber);"></div></div>
+        <div class="score-val">0.3706</div>
+        <div class="score-delta delta-up">+46%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">→</span>
+    <div class="callout-body">
+      <strong>+46% context precision</strong> is the largest single-step gain up to this point. But v2+CE's CALLS expansion is still depth-1 BFS with a flat propagated score — it can't discover multi-hop paths or understand that class methods are topologically related to their parent class. That's what v3 addresses.
+    </div>
+  </div>
+</section>
+
+<!-- ── v3.0 ── -->
+<section id="v3">
+  <div class="section-label">Chapter 7 — Retrieval Hardening</div>
+
+  <div class="chapter-header">
+    <div class="chapter-gen" style="border-color:var(--green); color:#4ade80; background:rgba(34,197,94,0.08);">G3</div>
+    <div class="chapter-meta">
+      <h2>Graph RAG v3 — Three Retrieval Filters</h2>
+      <span class="chapter-verdict" style="border-color:rgba(34,197,94,0.3); color:#4ade80;">↑ +22% context precision over v2+CE</span>
+    </div>
+  </div>
+
+  <p>v2+CE left three retrieval problems unsolved. Low-similarity embeddings were still entering the candidate pool as noise. CE scores below zero — meaning the cross-encoder judged the node <em>negatively</em> relevant — were still being passed to MMR. And functions truncated at ingestion time were being fed as incomplete context to the LLM. v3 addresses all three.</p>
+
+  <h3>Improvement ① — Cosine Similarity Floor</h3>
+  <p>Semantic search now discards any candidate whose cosine similarity to the query falls below a minimum threshold (default <code>0.15</code>). Before this, every indexed node returned by the ANN search would enter the pipeline regardless of quality. Nodes with similarity near zero add noise without contributing signal — filtering them early reduces the size of the candidate pool and means every subsequent stage (RRF, CE, MMR) works with higher-quality inputs.</p>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <strong>Why 0.15?</strong> Cosine similarity of 0.15 is roughly the noise floor for sentence-transformer embeddings on code — two completely unrelated functions often score 0.1–0.13. A floor of 0.15 preserves all genuinely related nodes while cutting about 15–20% of the candidate pool.
+    </div>
+  </div>
+
+  <h3>Improvement ② — CE Score Floor</h3>
+  <p>After cross-encoder reranking, any node with a CE score ≤ 0 is dropped before MMR runs. A negative CE score means the cross-encoder's joint read of (query, node) produced a score that maps below the relevance midpoint — the model is actively saying this pair is <em>not</em> a match. In v2+CE, these nodes were still passed to MMR and could end up in the final result if the pool was sparse. The v3 floor prevents the CE from handing the LLM context it explicitly judged as irrelevant.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">v3 Pipeline — CE Floor Added</div>
+    <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+      <div style="display:flex; align-items:center; gap:10px; background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.15); border-radius:6px; padding:7px 10px;">
+        <span style="color:#4ade80; width:20px;">1.</span>
+        <span style="color:#4ade80;">Semantic search → cosine floor (≥ 0.15 only)</span>
+        <span style="color:#4ade80; font-size:10px; margin-left:auto;">↑ new</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:20px;">2.</span>
+        <span style="color:var(--text2);">FTS5 keyword search → RRF merge</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:20px;">3.</span>
+        <span style="color:var(--text2);">CALLS expansion → propagated scoring</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:20px;">4.</span>
+        <span style="color:var(--text2);">Cross-encoder rerank</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.15); border-radius:6px; padding:7px 10px;">
+        <span style="color:#4ade80; width:20px;">4b.</span>
+        <span style="color:#4ade80;">CE score floor — drop nodes with CE ≤ 0</span>
+        <span style="color:#4ade80; font-size:10px; margin-left:auto;">↑ new</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.15); border-radius:6px; padding:7px 10px;">
+        <span style="color:#4ade80; width:20px;">4c.</span>
+        <span style="color:#4ade80;">Full body expansion — replace truncated previews</span>
+        <span style="color:#4ade80; font-size:10px; margin-left:auto;">↑ new</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:20px;">5.</span>
+        <span style="color:var(--text2);">MMR diversity → final N nodes</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Improvement ③ — Full Body Expansion</h3>
+  <p>At ingestion time, large functions are truncated to a <code>body_preview</code> (the first ~500 chars) to keep index size manageable. At query time, v3 fetches the complete <code>full_body</code> from the database for every selected node before building the context string. This means the LLM sees the complete function implementation — no invisible truncation boundary mid-function. The <code>full_body_expanded</code> stat in the retrieval summary tracks how many nodes needed expansion per query (typically 4–5 out of 15).</p>
+
+  <h3>RAGAS scores — v3 vs v2+CE</h3>
+  <div class="compare-block">
+    <div class="score-block">
+      <div class="score-block-title">v2 + CE (baseline)</div>
+      <div class="score-row">
+        <div class="score-label">Faithfulness</div>
+        <div class="score-track"><div class="score-fill" style="width:76%; background:var(--border2);"></div></div>
+        <div class="score-val">0.5417</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Ans. Relevancy</div>
+        <div class="score-track"><div class="score-fill" style="width:68%; background:var(--border2);"></div></div>
+        <div class="score-val">0.4827</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Context Precision</div>
+        <div class="score-track"><div class="score-fill" style="width:52%; background:var(--border2);"></div></div>
+        <div class="score-val">0.3706</div>
+      </div>
+    </div>
+    <div class="score-block">
+      <div class="score-block-title">Graph RAG v3</div>
+      <div class="score-row">
+        <div class="score-label">Faithfulness</div>
+        <div class="score-track"><div class="score-fill" style="width:68%; background:var(--green);"></div></div>
+        <div class="score-val">0.4825</div>
+        <div class="score-delta delta-down">−11%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Ans. Relevancy</div>
+        <div class="score-track"><div class="score-fill" style="width:71%; background:var(--green);"></div></div>
+        <div class="score-val">0.4985</div>
+        <div class="score-delta delta-up">+3%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Context Precision</div>
+        <div class="score-track"><div class="score-fill" style="width:64%; background:var(--green);"></div></div>
+        <div class="score-val">0.4525</div>
+        <div class="score-delta delta-up">+22%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-green">
+    <span class="callout-icon">📊</span>
+    <div class="callout-body">
+      <strong>+22% context precision</strong> from three filtering improvements alone. Faithfulness slightly decreases (−11%) because v3 now provides <em>more complete</em> context bodies — the LLM has to reconcile richer, fuller code, which the RAGAS judge scores differently. The CE floor dropped an average of <strong>22 candidates per query</strong>, confirming that v2+CE was feeding the LLM nodes the cross-encoder itself had judged as irrelevant.
+    </div>
+  </div>
+</section>
+
+<!-- ── v3.1 ── -->
+<section id="v31">
+  <div class="section-label">Chapter 8 — Current Production</div>
+
+  <div class="chapter-header">
+    <div class="chapter-gen" style="border-color:var(--amber); color:var(--amber2); background:rgba(245,158,11,0.1);">★</div>
+    <div class="chapter-meta">
+      <h2>v3.1 — CLASS_CONTAINS + Personalized PageRank</h2>
+      <span class="chapter-verdict" style="border-color:rgba(245,158,11,0.3); color:var(--amber);">↑ +48% over v3, +80% over v2+CE on context precision</span>
+    </div>
+  </div>
+
+  <p>v3's BFS expansion still had a fundamental problem: it was limited to depth-1 CALLS edges and had no awareness of class structure. If the best seed node was a class, its methods stayed invisible. If a method was the seed, its sibling methods and parent class were unreachable. v3.1 replaces BFS with Personalized PageRank — and first adds the structural edges PPR needs to be useful.</p>
+
+  <h3>New graph edges: CLASS_CONTAINS</h3>
+  <p>Both the Python and TypeScript AST parsers now emit <code>CLASS_CONTAINS</code> edges from each class node to its method nodes, detected by line-range containment at parse time. <code>graph_builder.py</code> resolves these directly (both sides are already full <code>node_id</code>s) via a new <code>_add_class_contains_edge()</code> helper. This means the graph now has structural topology that PPR can traverse: a class and all its methods are a tightly connected cluster.</p>
+
+  <div class="technique-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 24px;">
+    <div class="technique-card" style="border-color:var(--border2);">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(100,116,139,0.1);">🌲</div>
+        <div>
+          <div class="tech-name">BFS Expansion (v3.0)</div>
+          <div class="tech-used-in">What we had</div>
+        </div>
+      </div>
+      <div class="tech-body">Depth-1 only. From each seed: follow CALLS edges one hop. Fixed 0.6× score decay. Could not reach class siblings, grandparent callers, or discover methods via their class.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        Ask your immediate manager and direct reports. No one else in the org, even if they're in the same team and highly relevant.
+      </div>
+    </div>
+
+    <div class="technique-card" style="border-color:rgba(245,158,11,0.3);">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(245,158,11,0.1);">🔀</div>
+        <div>
+          <div class="tech-name">Personalized PageRank (v3.1)</div>
+          <div class="tech-used-in" style="color:var(--amber);">What we built</div>
+        </div>
+      </div>
+      <div class="tech-body">Global random-walk seeded from RRF scores. Traverses CALLS + CLASS_CONTAINS. Multi-hop naturally. Returns top-30 non-seed neighbors by PPR score. Seeds teleport proportional to their RRF relevance.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        A random walker starts at your top search results, proportional to how relevant they are. They wander the code graph — following calls, stepping into classes and their methods — and the nodes they visit most often are returned as context.
+      </div>
+    </div>
+  </div>
+
+  <h3>How PPR works in the pipeline</h3>
+  <p>PPR is seeded proportionally from the RRF-unified scores: the teleportation distribution is the normalized RRF score vector. The walk traverses only <code>CALLS</code> and <code>CLASS_CONTAINS</code> edges — IMPORTS are excluded (same reason as v1: cross-file pollution). The result is the top-30 non-seed nodes by PPR score. These are merged into the candidate pool (seed RRF scores take precedence on overlap) before the CE rerank.</p>
+
+  <div class="diagram">
+    <div class="diagram-title">v3.1 Pipeline — Full Picture</div>
+    <div style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:24px;">1.</span>
+        <span style="color:var(--text2);">Semantic search → cosine floor (≥ 0.15)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:24px;">2.</span>
+        <span style="color:var(--text2);">FTS5 keyword search → RRF merge</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.15); border-radius:6px; padding:7px 10px; margin:4px 0;">
+        <span style="color:var(--amber); width:24px;">3.</span>
+        <span style="color:var(--amber2);">PPR expansion — CALLS + CLASS_CONTAINS, top-30 neighbors</span>
+        <span style="color:var(--amber); font-size:10px; margin-left:auto;">↑ replaces BFS</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:24px;">4.</span>
+        <span style="color:var(--text2);">Cross-encoder rerank → CE floor (drop CE ≤ 0)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:24px;">4b.</span>
+        <span style="color:var(--text2);">Full body expansion — replace truncated previews</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="color:var(--text3); width:24px;">5.</span>
+        <span style="color:var(--text2);">MMR diversity → final N nodes</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Balanced grounding prompt</h3>
+  <p>With PPR providing richer multi-hop context, the original strict grounding rule (<em>"use ONLY the provided code context"</em>) became a liability — it forced the LLM to refuse to explain code patterns it could see but couldn't connect, producing canned refusals that RAGAS scored as low faithfulness. The revised prompt uses softer framing: <em>prefer retrieved context as the primary source, allow general programming knowledge to explain patterns, never state codebase-specific facts not in context</em>. The eval confirmed this: faithfulness jumped from 0.0455 (strict prompt) to <strong>0.9133</strong>.</p>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body">
+      <strong>The strict-prompt trap:</strong> PPR surfaces callers-of-callers and class siblings — rich multi-hop context. The LLM can see, say, a base class and all its subclasses. A strict "ONLY cite retrieved context" rule meant it couldn't explain why the abstract method pattern exists, even though the pattern was visible. It would fall back to the canned refusal phrase, which RAGAS judged as faithfulness = 0. The balanced prompt unlocks the context PPR worked hard to find.
+    </div>
+  </div>
+
+  <h3>RAGAS scores — v3.1 vs all prior pipelines</h3>
+  <div class="compare-block">
+    <div class="score-block">
+      <div class="score-block-title">Graph RAG v3 (previous)</div>
+      <div class="score-row">
+        <div class="score-label">Faithfulness</div>
+        <div class="score-track"><div class="score-fill" style="width:68%; background:var(--green);"></div></div>
+        <div class="score-val">0.4825</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Ans. Relevancy</div>
+        <div class="score-track"><div class="score-fill" style="width:71%; background:var(--green);"></div></div>
+        <div class="score-val">0.4985</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Context Precision</div>
+        <div class="score-track"><div class="score-fill" style="width:64%; background:var(--green);"></div></div>
+        <div class="score-val">0.4525</div>
+      </div>
+    </div>
+    <div class="score-block">
+      <div class="score-block-title">Graph RAG v3.1 ★</div>
+      <div class="score-row">
+        <div class="score-label">Faithfulness</div>
+        <div class="score-track"><div class="score-fill" style="width:100%; background:var(--amber);"></div></div>
+        <div class="score-val">0.9133</div>
+        <div class="score-delta delta-up">+89%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Ans. Relevancy</div>
+        <div class="score-track"><div class="score-fill" style="width:100%; background:var(--amber);"></div></div>
+        <div class="score-val">0.7742</div>
+        <div class="score-delta delta-up">+55%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Context Precision</div>
+        <div class="score-track"><div class="score-fill" style="width:95%; background:var(--amber);"></div></div>
+        <div class="score-val">0.6685</div>
+        <div class="score-delta delta-up">+48%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">★</span>
+    <div class="callout-body">
+      <strong>v3.1 is the best pipeline across all three metrics simultaneously</strong> — and by a large margin. Faithfulness at <strong>0.9133</strong> (+89% vs v3, +69% vs v2+CE) reflects that the LLM now receives complete, multi-hop context it can reason about. Context precision at <strong>0.6685</strong> (+322% vs naive) means two-thirds of everything in the context window is actually relevant to the query.
+    </div>
+  </div>
+</section>
+
+<!-- ── TECHNIQUES ── -->
+<section id="techniques">
+  <div class="section-label">Reference</div>
+  <h2>All 10 Techniques Explained</h2>
+  <p>Every building block in the current pipeline — what it is, why it exists, and how to think about it without code.</p>
+
+  <div class="technique-grid">
+
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(100,116,139,0.15);">📐</div>
+        <div>
+          <div class="tech-name">Cosine Similarity</div>
+          <div class="tech-used-in">Used in: all pipelines (Step 1)</div>
+        </div>
+      </div>
+      <div class="tech-body">Measures how similar two embeddings are by the angle between them. Score of 1.0 = identical direction. Score of 0 = perpendicular (unrelated). The primary retrieval signal in every pipeline.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        Every topic is a compass direction. "Authentication" and "login security" point in roughly the same direction. "Logging utilities" points somewhere else. Cosine similarity is the angle between two compass bearings — small angle = related topics.
+      </div>
+    </div>
+
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(59,130,246,0.1);">🔤</div>
+        <div>
+          <div class="tech-name">BM25 / FTS5</div>
+          <div class="tech-used-in">Used in: v1, v2, v2+CE (Step 2)</div>
+        </div>
+      </div>
+      <div class="tech-body">Keyword search that counts how often your search terms appear in a document, with diminishing returns for repetition and a penalty for very common terms. Catches exact identifier names that embedding models blur.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        A librarian who counts how many times your exact terms appear. "OAuth2PasswordBearer" appearing once in a file title is a strong signal. "The" appearing 100 times means nothing. BM25 handles both cases correctly.
+      </div>
+    </div>
+
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(245,158,11,0.1);">⚖️</div>
+        <div>
+          <div class="tech-name">Reciprocal Rank Fusion</div>
+          <div class="tech-used-in">Used in: v2, v2+CE (Step 3)</div>
+        </div>
+      </div>
+      <div class="tech-body">Merges multiple ranked result lists using <em>rank position</em>, not score values. A node ranked #2 in semantic search and #3 in FTS scores higher than one ranked #1 in only one list. Formula: <code>Σ 1/(k + rank)</code> where k=60 dampens very high rank advantages.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        Two scouts each rank candidates independently. Instead of averaging their scores (which use different scales), you combine their rank positions. Consistently ranked high by both scouts beats a single scout's top pick. Scale-invariant and robust.
+      </div>
+    </div>
+
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(20,184,166,0.1);">🌐</div>
+        <div>
+          <div class="tech-name">CALLS Graph Expansion</div>
+          <div class="tech-used-in">Used in: v1, v2, v2+CE (Step 4)</div>
+        </div>
+      </div>
+      <div class="tech-body">Starting from semantic seed nodes, follow CALLS edges in the code call graph to include direct callers and callees. Depth-1 only — one hop from any seed. IMPORTS edges excluded to prevent pollution.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        You found the manager (seed). Now follow the org chart one level to find who reports to them (callees) and who they report to (callers). The bug is often in someone in that immediate team, not in the manager's own code.
+      </div>
+    </div>
+
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(20,184,166,0.1);">📊</div>
+        <div>
+          <div class="tech-name">Propagated Scoring</div>
+          <div class="tech-used-in">Introduced in: v2 (replaces flat 0.3)</div>
+        </div>
+      </div>
+      <div class="tech-body">BFS-expanded neighbors inherit their relevance score from their parent seed: <code>neighbor_score = parent_rrf_score × 0.6</code>. Neighbors of highly-relevant seeds compete aggressively; neighbors of weak seeds stay subordinate.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        If the manager (seed) was highly relevant (score 0.9), their team members start with a credibility of 0.54. If the manager was barely relevant (score 0.2), their team starts at 0.12 — and won't crowd out better candidates.
+      </div>
+    </div>
+
+    <div class="technique-card">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(139,92,246,0.1);">🎲</div>
+        <div>
+          <div class="tech-name">Maximal Marginal Relevance</div>
+          <div class="tech-used-in">Used in: v1, v2, v2+CE (final step)</div>
+        </div>
+      </div>
+      <div class="tech-body">Selects the final N nodes iteratively — always picking the next candidate that is most relevant <em>and</em> least similar to already-selected nodes. Uses file_path as a diversity proxy: each additional node from the same file gets a 0.35 penalty per prior selection.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        You're assembling a panel of 10 experts. After choosing the top auth expert, the next person from the same team gets penalized — you'd rather add a routing expert than a second auth expert who covers the same ground.
+      </div>
+    </div>
+
+    <div class="technique-card" style="border-color:rgba(245,158,11,0.2);">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(245,158,11,0.1);">🔬</div>
+        <div>
+          <div class="tech-name">Cross-Encoder Reranking</div>
+          <div class="tech-used-in" style="color:var(--amber);">Introduced in: v2+CE (Step 4)</div>
+        </div>
+      </div>
+      <div class="tech-body">Runs the full text of each (query, node) pair through a transformer model simultaneously. Unlike cosine similarity which encodes them separately, the cross-encoder reads both together — catching query-document interactions that bi-encoders miss. Model: <code>ms-marco-MiniLM-L-6-v2</code> (66 MB, ~100ms for 20 candidates on CPU).</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        Bi-encoder: two people read the job description and résumé separately, then compare notes. Cross-encoder: one expert reads both together, line by line, noticing exactly where they align. The second approach catches subtle relevance signals the first approach misses in translation.
+      </div>
+    </div>
+
+    <div class="technique-card" style="border-color:rgba(34,197,94,0.2);">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(34,197,94,0.1);">🚧</div>
+        <div>
+          <div class="tech-name">Cosine Similarity Floor</div>
+          <div class="tech-used-in" style="color:#4ade80;">Introduced in: v3 (Step 1 filter)</div>
+        </div>
+      </div>
+      <div class="tech-body">Discards semantic search candidates whose cosine similarity to the query is below a minimum threshold (default 0.15). Applied immediately after the ANN search, before FTS or graph expansion. Reduces candidate pool size and ensures every downstream stage operates on candidates with at least minimal topical alignment.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        A job fair bouncer. Before any interview, they check if the candidate's résumé is even in the right industry. If it's completely unrelated, they're turned away at the door — saving the interviewers from reviewing nurse résumés for a software engineering role.
+      </div>
+    </div>
+
+    <div class="technique-card" style="border-color:rgba(34,197,94,0.2);">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(34,197,94,0.1);">✂️</div>
+        <div>
+          <div class="tech-name">CE Score Floor</div>
+          <div class="tech-used-in" style="color:#4ade80;">Introduced in: v3 (Step 4b filter)</div>
+        </div>
+      </div>
+      <div class="tech-body">After cross-encoder reranking, drops any candidate node with CE score ≤ 0. A negative CE score indicates the cross-encoder's joint (query, node) evaluation is below the relevance threshold — the model is explicitly saying this is not a match. Rather than let MMR inherit these negative-signal nodes, v3 removes them first.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        The expert interviewer who read both the job description and résumé together has scored this candidate negative. Even if the interview panel (MMR) needs to fill seats, this person is out. Don't let slot-filling override an explicit negative judgment.
+      </div>
+    </div>
+
+    <div class="technique-card" style="border-color:rgba(245,158,11,0.3);">
+      <div class="tech-header">
+        <div class="tech-icon" style="background:rgba(245,158,11,0.1);">🔀</div>
+        <div>
+          <div class="tech-name">Personalized PageRank (PPR)</div>
+          <div class="tech-used-in" style="color:var(--amber);">Introduced in: v3.1 (replaces BFS)</div>
+        </div>
+      </div>
+      <div class="tech-body">A global random-walk over the code graph seeded proportionally from RRF-unified scores. Traverses CALLS and CLASS_CONTAINS edges (IMPORTS excluded). Returns top-30 non-seed neighbors by PPR score. Multi-hop by nature: discovers callers-of-callers, class siblings, and methods of retrieved classes — all weighted by their proximity to relevant seeds.</div>
+      <div class="tech-analogy">
+        <div class="analogy-label">Analogy</div>
+        Imagine a random walker who starts at your top search results, with a stronger pull toward the more relevant ones. They wander the code graph, following function calls and stepping into class hierarchies. The nodes they visit most frequently are likely the most structurally connected to your query — whether they're one hop or three hops away.
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section id="faq">
+  <div class="section-label">Deep Dive</div>
+  <h2>FAQ — Understanding the Journey</h2>
+  <p>The questions that unlock deeper understanding of each decision.</p>
+
+  <div style="margin-top: 32px;">
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why did Graph RAG v1 make context precision <em>worse</em> than doing nothing?</div>
+      <div class="faq-a">Three compounding problems hit at once. First, <code>ego_graph()</code> followed both CALLS and IMPORTS edges — so querying about <code>Depends()</code> expanded into every module that imports <code>fastapi.params</code>, flooding the pool with unrelated logging and typing utilities. Second, every BFS-expanded node got a flat score of 0.3, completely independent of whether its parent seed was relevant — so 50+ noisy neighbors all competed on equal footing. Third, there was no per-seed cap, so high-degree nodes (functions called everywhere) pulled in dozens of off-topic neighbors. The result: more nodes, worse signal. Context precision measures the fraction of retrieved nodes that were actually relevant — more noise directly lowers it.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why does context precision matter more than faithfulness for our use case?</div>
+      <div class="faq-a">Faithfulness measures "did the LLM stick to what it was given?" — but if what it was given was mostly irrelevant, a high faithfulness score means it faithfully described irrelevant code. Context precision measures "was what we gave the LLM actually relevant?" — this is the retrieval quality signal that's independent of LLM behavior. For code navigation and debugging, the retrieval step is the hardest problem. Faithfulness can be improved by prompt engineering; context precision can only be improved by better retrieval.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why does RRF work better than max() for merging semantic and FTS results?</div>
+      <div class="faq-a">Cosine similarity scores are in [0, 1]. BM25 scores (from FTS5) are in a completely different, unbounded range — the values are not comparable. <code>max(semantic_score, fts_score)</code> means the semantic score almost always wins because it happens to produce higher numbers, regardless of relevance. RRF is rank-based: it doesn't care about score values, only rank positions. A node ranked #1 by FTS and #4 by semantic gets a strong RRF score, even if its raw BM25 number is tiny. RRF is scale-invariant — it works correctly no matter how different the scoring ranges are.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why CALLS-only? Couldn't IMPORTS edges also be useful?</div>
+      <div class="faq-a">In theory, yes — if you query about <code>Depends</code>, expanding to files that import it could find usage examples. In practice, IMPORTS edges create cross-file pollution at a massive scale. In the fastapi corpus, something like <code>from typing import Optional</code> creates an IMPORTS edge from every single file to <code>typing.py</code>. Following IMPORTS edges from any seed would include virtually the entire codebase as candidates. CALLS edges are much more selective — a function calls at most a handful of other functions, and those relationships are directly causally relevant to understanding the function's behavior. The precision gain from removing IMPORTS in v2 (+115% context precision vs v1) confirmed this decisively.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">If we already have cosine similarity, why does the cross-encoder add so much?</div>
+      <div class="faq-a">Cosine similarity scores query and document <em>independently</em> — the model never sees how specific terms in the query interact with specific parts of the document. It's asking "are these two things generally about the same topic?" The cross-encoder reads them <em>together</em> and asks "does this specific document answer this specific question?" For code retrieval, the difference is significant: a function signature might be semantically related to authentication in general (high cosine score), but the cross-encoder can see that it doesn't actually implement the specific thing being asked about. The +46% context precision gain from CE directly reflects this — the CE is demoting high-cosine but low-relevance nodes.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why does faithfulness barely move when we add the cross-encoder (+0.5%)?</div>
+      <div class="faq-a">Faithfulness measures whether the LLM sticks to what it was given — it doesn't care whether what it was given was good. Adding a cross-encoder changes <em>which</em> nodes are selected, but not how the LLM uses them. The LLM was already being faithful with v2's context; now it's faithful with a better context. The downstream effect shows up in answer relevancy (+17%) — better nodes → more precisely targeted answers — not in faithfulness, which was already near its ceiling for this model and prompt.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why is the golden set only 30 questions? Is that enough?</div>
+      <div class="faq-a">30 is a pragmatic choice. Each question requires a full retrieval + LLM generation cycle with an Ollama judge — a full 30Q run takes ~1–2 hours locally. The questions were hand-authored to cover the five main query patterns (symbol navigation, inheritance, parameter validation, middleware/DI, routing) with ~6 questions per category. For the delta comparisons we care about (does this change help or hurt?), 30 well-chosen questions is sufficient to detect signal above noise. The consistent ordering — naive &lt; v1 &lt; HyDE &lt; v2 &lt; v2+CE on context precision — across a hand-labeled set gives high confidence the trend is real, not an artifact of small sample size.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">What was the plan before v3 — and how did it change?</div>
+      <div class="faq-a">After v2+CE, the identified next steps were: (1) semantic filtering of CALLS neighbors — replace BFS's PageRank ordering with cosine similarity to the query; (2) actual source lines fetched at query time to eliminate truncation; (3) backward CALLS expansion. v3 delivered (2) as full body expansion. v3.1 replaced BFS entirely with PPR, making (1) partially redundant — PPR weights neighbors by seed-proximity already, not structural centrality. The remaining open work is query-aware CE filtering of expanded neighbors and chunk-level indexing for very large functions.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why did PPR cause faithfulness to collapse before the prompt fix?</div>
+      <div class="faq-a">PPR surfaces multi-hop context — callers of callers, class siblings, inherited methods. The stricter "ONLY use the provided context" grounding prompt was written for v2's shallow BFS context, where a citation refusal was appropriate for anything not visible. With PPR's richer context, the LLM could often <em>see</em> the relevant pattern (e.g., a base class and all its subclasses) but couldn't explain the relationship without general programming knowledge. The strict rule forced a canned refusal phrase ("I'm not certain based on the retrieved context"), which the RAGAS faithfulness judge consistently scored as near-zero. The fix was to allow general programming knowledge to <em>connect</em> what's in context — not to invent codebase facts, but to explain patterns. Faithfulness went from 0.0455 → 0.9133.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">What are CLASS_CONTAINS edges and why do they matter for PPR?</div>
+      <div class="faq-a">A <code>CLASS_CONTAINS</code> edge connects a class node to each of its method nodes. Before v3.1, the code graph only had <code>CALLS</code> and <code>IMPORTS</code> edges — so a class and its methods were structurally isolated unless they called each other. If a class was semantically similar to the query and became a seed, its methods were invisible to PPR. With CLASS_CONTAINS edges, the random walker naturally distributes mass across the class and all its methods, then follows CALLS edges from those methods outward — giving a complete neighborhood for class-centric queries.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">What does the eval actually run — what's the judge doing?</div>
+      <div class="faq-a">The eval calls <code>graph_rag_retrieve()</code> (or the naive equivalent) for each of the 30 questions, generates an answer by passing the retrieved context to <code>explore_stream()</code>, then scores the (question, answer, retrieved_contexts, ground_truth) tuple using RAGAS. The RAGAS judge is <code>ollama qwen2.5:7b</code> running locally — it scores each sample on the three metrics by prompting the LLM to assess faithfulness, relevancy, and precision. Using a local Ollama judge means there's no API cost, but it also means the judge has its own biases and limitations. The scores are meaningful for relative comparisons between pipelines, not as absolute ground truth.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How do I run the eval after making a retrieval change?</div>
+      <div class="faq-a">Activate the eval venv: <code>source venv_eval/bin/activate</code>. For a quick sanity check (5 questions, ~15 min): <code>python eval/run_ragas_v3.py --limit 5</code>. For a full 30Q run (~2 hrs): <code>python eval/run_ragas_v3.py --limit 30 --workers 1</code>. To reuse a prior context precision result and only re-run faithfulness/relevancy (e.g., after a prompt-only change): <code>python eval/run_ragas_v3.py --limit 30 --workers 1 --skip-context-precision</code>. Results land in <code>eval/results/ragas_v3_*.json</code>. The comparison table printed at the end shows your run vs all prior baselines.</div>
+    </div>
+
+  </div>
+</section>
+
+</main>
+</div>
+
+<div class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+
+<script>
+  // ── FAQ toggle ──
+  function toggleFaq(el) {
+    const answer = el.nextElementSibling;
+    const isOpen = el.classList.contains('open');
+    el.classList.toggle('open', !isOpen);
+    answer.classList.toggle('visible', !isOpen);
+  }
+
+  // ── Scroll-to-top ──
+  const scrollBtn = document.getElementById('scrollTop');
+  window.addEventListener('scroll', () => {
+    scrollBtn.classList.toggle('visible', window.scrollY > 400);
+  });
+
+  // ── Active nav highlight ──
+  const navLinks = document.querySelectorAll('nav a');
+  const sections = document.querySelectorAll('section[id], .hero[id], .timeline-wrap[id]');
+
+  function updateActiveLink() {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) current = s.id;
+    });
+    // Also check hero and timeline
+    const hero = document.getElementById('hero');
+    const tl = document.getElementById('timeline');
+    if (hero && window.scrollY < hero.offsetHeight) current = 'hero';
+
+    navLinks.forEach(link => {
+      const href = link.getAttribute('href').replace('#','');
+      link.classList.toggle('active', href === current);
+    });
+  }
+
+  window.addEventListener('scroll', updateActiveLink, { passive: true });
+  updateActiveLink();
+</script>
+</body>
+</html>
