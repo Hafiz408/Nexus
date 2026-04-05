@@ -39,6 +39,9 @@ def build_graph(nodes: list[CodeNode], raw_edges: list[tuple]) -> nx.DiGraph:
             _add_calls_edge(G, source_id, target_name, name_to_ids)
         elif edge_type == "IMPORTS":
             _add_imports_edges(G, source_id, target_name, file_to_ids)
+        elif edge_type == "CLASS_CONTAINS":
+            # target_name is already a fully-resolved node_id (no name lookup needed)
+            _add_class_contains_edge(G, source_id, target_name)
 
     # Pass 3: Compute graph metrics (after all edges are final)
     _compute_metrics(G)
@@ -113,6 +116,17 @@ def _add_imports_edges(
     for src in source_node_ids:
         for tgt in target_node_ids:
             G.add_edge(src, tgt, type="IMPORTS")
+
+
+def _add_class_contains_edge(G: nx.DiGraph, class_id: str, method_id: str) -> None:
+    """Add a CLASS_CONTAINS edge from a class node to one of its methods.
+
+    Both IDs are already fully resolved node_ids emitted by ast_parser — no
+    name lookup required. Silently skips if either node is absent from the graph
+    (e.g. parse skipped one side due to syntax errors).
+    """
+    if class_id in G and method_id in G:
+        G.add_edge(class_id, method_id, type="CLASS_CONTAINS")
 
 
 def _compute_metrics(G: nx.DiGraph) -> None:

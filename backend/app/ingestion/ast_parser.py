@@ -120,8 +120,9 @@ def _parse_python(
     nodes: list[CodeNode] = []
     raw_edges: list[tuple] = []
 
-    # Process class nodes first to build class name → line range map for method detection
-    class_ranges: list[tuple[int, int]] = []
+    # Process class nodes first to build class name → line range map for method detection.
+    # Stores (start_row, end_row, class_node_id) so CLASS_CONTAINS edges can be emitted.
+    class_ranges: list[tuple[int, int, str]] = []
     for cnode in class_nodes:
         name_nodes = captures.get("class.name", [])
         cname = _first_name_for(name_nodes, cnode, source_bytes)
@@ -148,7 +149,7 @@ def _parse_python(
                 embedding_text=emb,
             )
         )
-        class_ranges.append((cnode.start_point[0], cnode.end_point[0]))
+        class_ranges.append((cnode.start_point[0], cnode.end_point[0], node_id))
 
     # Process function nodes — determine if method (inside a class range)
     for fnode in func_nodes:
@@ -159,7 +160,7 @@ def _parse_python(
         node_id = f"{rel_path}::{fname}"
         is_method = any(
             start <= fnode.start_point[0] and fnode.end_point[0] <= end
-            for start, end in class_ranges
+            for start, end, _ in class_ranges
         )
         node_type = "method" if is_method else "function"
         sig = _extract_signature(fnode, source_bytes)
@@ -181,6 +182,13 @@ def _parse_python(
             embedding_text=emb,
         )
         nodes.append(cnode_obj)
+
+        # CLASS_CONTAINS edge: link enclosing class → this method
+        if is_method:
+            for start, end, class_node_id in class_ranges:
+                if start <= fnode.start_point[0] and fnode.end_point[0] <= end:
+                    raw_edges.append((class_node_id, node_id, "CLASS_CONTAINS"))
+                    break
 
         # CALLS edges
         call_captures = QueryCursor(PY_CALLS_QUERY).captures(fnode)
@@ -227,7 +235,8 @@ def _parse_typescript(
     nodes: list[CodeNode] = []
     raw_edges: list[tuple] = []
 
-    # Classes
+    # Classes — store (start_row, end_row, class_node_id) for CLASS_CONTAINS edges
+    class_ranges: list[tuple[int, int, str]] = []
     for cnode in captures.get("class.def", []):
         name_nodes = captures.get("class.name", [])
         cname = _first_name_for(name_nodes, cnode, source_bytes)
@@ -244,6 +253,7 @@ def _parse_typescript(
             complexity=_compute_complexity(body_text),
             embedding_text=f"{sig}\n\n{preview}",
         ))
+        class_ranges.append((cnode.start_point[0], cnode.end_point[0], node_id))
 
     # Functions
     for fnode in captures.get("func.def", []):
@@ -263,7 +273,7 @@ def _parse_typescript(
             embedding_text=f"{sig}\n\n{preview}",
         ))
 
-    # Methods
+    # Methods — emit CLASS_CONTAINS edge when method falls inside a class range
     for mnode in captures.get("method.def", []):
         mname_nodes = captures.get("method.name", [])
         mname = _first_name_for(mname_nodes, mnode, source_bytes)
@@ -280,6 +290,10 @@ def _parse_typescript(
             complexity=_compute_complexity(body_text),
             embedding_text=f"{sig}\n\n{preview}",
         ))
+        for start, end, class_node_id in class_ranges:
+            if start <= mnode.start_point[0] and mnode.end_point[0] <= end:
+                raw_edges.append((class_node_id, node_id, "CLASS_CONTAINS"))
+                break
 
     # Arrow functions (the arrow.def capture is the arrow_function node itself;
     # arrow.name is the variable declarator name — both come from the same lexical_declaration match)
