@@ -18,6 +18,7 @@ from app.models.schemas import CodeNode
 
 # Module-level sentinel — chain is built lazily to avoid ValidationError
 # when OPENAI_API_KEY is absent (e.g., during test collection).
+# Reset to None whenever the prompt template changes to force a rebuild.
 _chain = None
 
 
@@ -28,7 +29,13 @@ def _get_chain():
         llm = get_llm()
         prompt = ChatPromptTemplate.from_messages([
             ("system", "{system_prompt}"),
-            ("human", "Context:\n{context}\n\nQuestion: {question}"),
+            ("human", (
+                "Retrieved code context (your only source of truth):\n"
+                "{context}\n\n"
+                "Answer the following question using only the code blocks above. "
+                "Do not draw on outside knowledge.\n\n"
+                "Question: {question}"
+            )),
         ])
         _chain = prompt | llm
     return _chain

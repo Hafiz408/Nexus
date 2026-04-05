@@ -438,10 +438,19 @@ def graph_rag_retrieve(
             # cross-encoder/ms-marco-MiniLM-L-6-v2 treats 0 as the relevance boundary;
             # positive = relevant, negative = not relevant.
             pre_floor = len(scored)
-            scored = [(ce_score, node) for ce_score, node in scored if ce_score > 0.0]
+            # Hybrid CE floor: always keep top-3, then keep extras within 4.0 of the best.
+            # Pure ce_score > 0.0 drops everything when the model scores all candidates
+            # negative (common for abstract/architectural queries). The relative floor
+            # preserves the best candidates regardless of absolute score polarity.
+            if scored:
+                max_ce = scored[0][0]  # already sorted descending
+                floor = max_ce - 4.0
+                kept = list(scored[:3])
+                extras = [item for item in scored[3:] if item[0] > floor]
+                scored = kept + extras
             ce_floor_dropped = pre_floor - len(scored)
             if ce_floor_dropped:
-                logger.debug("CE floor dropped %d nodes with score ≤ 0", ce_floor_dropped)
+                logger.debug("CE floor dropped %d nodes (hybrid floor)", ce_floor_dropped)
         except Exception as exc:
             logger.warning("cross-encoder rerank failed, using score order: %s", exc)
 
