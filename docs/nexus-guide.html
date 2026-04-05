@@ -1099,7 +1099,7 @@
 
 <!-- ─── HERO ─── -->
 <div class="hero" id="what-is">
-  <div class="hero-badge">VS Code Extension + Python Backend</div>
+  <div class="hero-badge">VS Code Extension + Python Backend · v4.1</div>
   <h1>Nexus — <em>Code Intelligence</em><br>for Your Entire Codebase</h1>
   <p class="hero-sub">
     A VS Code extension that turns any codebase into a searchable, AI-queryable knowledge graph.
@@ -1119,17 +1119,25 @@
       <div class="stat-label">Query Modes</div>
     </div>
     <div class="stat-box">
-      <div class="stat-val">0.54</div>
-      <div class="stat-label">Faithfulness (RAGAS v2+CE)</div>
+      <div class="stat-val" style="color: var(--green);">0.91</div>
+      <div class="stat-label">Faithfulness (RAGAS v3.1)</div>
     </div>
     <div class="stat-box">
-      <div class="stat-val">5+</div>
+      <div class="stat-val">5</div>
       <div class="stat-label">LLM Providers</div>
     </div>
     <div class="stat-box">
       <div class="stat-val">0</div>
       <div class="stat-label">Server Setup Required</div>
     </div>
+  </div>
+
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 28px; font-family: var(--mono); font-size: 11px;">
+    <span style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: 4px; padding: 3px 8px; color: var(--amber);">v4.1 current — binary from GitHub Releases (SHA256)</span>
+    <span style="background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 4px; padding: 3px 8px; color: var(--blue2);">v4.0 — 5-provider model factory, PyInstaller sidecar</span>
+    <span style="background: rgba(20,184,166,0.08); border: 1px solid rgba(20,184,166,0.2); border-radius: 4px; padding: 3px 8px; color: var(--teal2);">v3.1 — PPR + full-body, faithfulness 0.91</span>
+    <span style="background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.2); border-radius: 4px; padding: 3px 8px; color: #c4b5fd;">v2.0 — LangGraph multi-agent (Router/Debug/Review/Test/Critic)</span>
+    <span style="background: rgba(100,116,139,0.08); border: 1px solid rgba(100,116,139,0.2); border-radius: 4px; padding: 3px 8px; color: var(--text3);">v1.0 — FastAPI + SQLite + VS Code extension</span>
   </div>
 
   <div class="compare-grid" style="margin-top: 32px;">
@@ -1322,9 +1330,10 @@ intent_hint = <span class="str">"debug"</span>  →  IntentResult(intent=<span c
             <span class="arch-item">semantic_search() — sqlite-vec ANN</span>
             <span class="arch-item">fts_search() — SQLite FTS5</span>
             <span class="arch-item">rrf_merge() — rank fusion</span>
-            <span class="arch-item">expand_via_graph() — CALLS-only BFS</span>
-            <span class="arch-item">cross_encode_rerank() — ms-marco-MiniLM</span>
-            <span class="arch-item">mmr_diversify() — diversity selection</span>
+            <span class="arch-item">ppr_expand() — Personalized PageRank (CALLS+CLASS_CONTAINS)</span>
+            <span class="arch-item">cross_encode_rerank() — ms-marco-MiniLM + hybrid CE floor</span>
+            <span class="arch-item">_expand_full_bodies() — live source lines top-5</span>
+            <span class="arch-item">mmr_diversify() — file-diversity selection</span>
           </div>
         </div>
         <div class="arch-layer layer-age">
@@ -1360,6 +1369,13 @@ intent_hint = <span class="str">"debug"</span>  →  IntentResult(intent=<span c
     <span class="callout-icon">⚡</span>
     <div class="callout-body">
       <strong>Stateless by design.</strong> Every request includes a <code>db_path</code> field pointing to the workspace's SQLite file. The backend never stores "which repo is open." Multiple VS Code windows share one backend; the backend can restart without losing state (state lives in SQLite).
+    </div>
+  </div>
+
+  <div class="callout callout-blue" style="margin-top: 12px;">
+    <span class="callout-icon">📦</span>
+    <div class="callout-body">
+      <strong>v4.1 sidecar startup flow.</strong> On first use per version: <code>SidecarManager._ensureExtracted()</code> → fetch <code>checksums.sha256</code> from GitHub Release → stream-download <code>tar.gz</code> with <code>vscode.window.withProgress</code> → SHA256 verify → <code>tar -xzf</code> extract → delete archive → cache in <code>globalStoragePath/backend/{version}/</code>. Subsequent starts hit the warm path (fs.existsSync check) — zero network, zero notification. VSIX ships with no binary: ~1.5 MB vs 62 MB in v4.0.
     </div>
   </div>
 </section>
@@ -1455,7 +1471,7 @@ intent_hint = <span class="str">"debug"</span>  →  IntentResult(intent=<span c
   <div class="callout callout-teal">
     <span class="callout-icon">⚡</span>
     <div class="callout-body">
-      <strong>Latency to first token (warm graph):</strong> typically <strong>200–600ms</strong> — network + embedding API + cosine search + BFS + cross-encoder rerank (pre-warmed) + first LLM token.
+      <strong>Latency to first token (warm graph):</strong> typically <strong>300–800ms</strong> — network + embedding API + cosine ANN + FTS5 + RRF + Personalized PageRank expansion + cross-encoder rerank (pre-warmed, ~100ms CPU) + full-body expansion (disk read) + first LLM token.
     </div>
   </div>
 </section>
@@ -1563,37 +1579,48 @@ intent_hint = <span class="str">"debug"</span>  →  IntentResult(intent=<span c
   <p>The core search innovation. Eight sequential steps in <code>graph_rag.py</code> turn a plain-English question into a precisely curated list of code nodes. The pipeline combines vector search, keyword search, rank fusion, graph random-walk, cross-encoder reranking, full-body expansion, and file-diversity selection.</p>
 
   <div class="score-bar-wrap" style="margin: 24px 0 8px;">
-    <div style="font-size: 12px; color: var(--text3); margin-bottom: 12px; font-family: var(--sans); font-weight: 700;">RAGAS Benchmark — v2+CE vs naive (golden_qa_v2, 30Q, fastapi corpus)</div>
+    <div style="font-size: 12px; color: var(--text3); margin-bottom: 12px; font-family: var(--sans); font-weight: 700;">RAGAS Benchmark — v3.1 (PPR + full-body) vs baselines (golden_qa_v2, 30Q, fastapi corpus)</div>
     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
       <div class="stat-box">
-        <div class="stat-val" style="font-size: 28px;">0.54</div>
-        <div class="stat-label">Faithfulness (v2+CE)</div>
+        <div class="stat-val" style="font-size: 28px; color: var(--green);">0.91</div>
+        <div class="stat-label">Faithfulness (v3.1)</div>
       </div>
       <div class="stat-box">
-        <div class="stat-val" style="font-size: 28px;">0.48</div>
-        <div class="stat-label">Answer Relevancy (v2+CE)</div>
+        <div class="stat-val" style="font-size: 28px; color: var(--green);">0.77</div>
+        <div class="stat-label">Answer Relevancy (v3.1)</div>
       </div>
       <div class="stat-box">
-        <div class="stat-val" style="font-size: 28px;">0.37</div>
-        <div class="stat-label">Context Precision (v2+CE)</div>
+        <div class="stat-val" style="font-size: 28px; color: var(--green);">0.67</div>
+        <div class="stat-label">Context Precision (v3.1)</div>
       </div>
     </div>
+    <div style="font-size: 11px; color: var(--text3); margin-bottom: 10px; font-family: var(--sans); font-weight: 600;">Faithfulness progression across pipeline versions:</div>
     <div class="score-row">
-      <div class="score-label">Graph RAG v2 + CE (current)</div>
-      <div class="score-track"><div class="score-fill" style="width: 74%; background: var(--amber);"></div></div>
-      <div class="score-val">0.3706</div>
+      <div class="score-label">v3.1 — PPR + full-body + hybrid CE floor (current)</div>
+      <div class="score-track"><div class="score-fill" style="width: 91%; background: var(--green);"></div></div>
+      <div class="score-val">0.9133</div>
     </div>
     <div class="score-row">
-      <div class="score-label">Graph RAG v2</div>
-      <div class="score-track"><div class="score-fill" style="width: 51%; background: var(--teal);"></div></div>
-      <div class="score-val">0.2532</div>
+      <div class="score-label">v2 + CE — BFS + cross-encoder</div>
+      <div class="score-track"><div class="score-fill" style="width: 54%; background: var(--amber);"></div></div>
+      <div class="score-val">0.5417</div>
     </div>
     <div class="score-row">
-      <div class="score-label">Naive Vector Search</div>
-      <div class="score-track"><div class="score-fill" style="width: 32%; background: var(--text3);"></div></div>
-      <div class="score-val">0.1585</div>
+      <div class="score-label">v2 — BFS expansion (no CE)</div>
+      <div class="score-track"><div class="score-fill" style="width: 54%; background: var(--teal);"></div></div>
+      <div class="score-val">0.5389</div>
     </div>
-    <div style="font-size: 11px; color: var(--text3); margin-top: 8px;">Context Precision shown. CE adds +46% vs v2 alone, +134% vs naive vector. Run eval: <code>python eval/run_ragas_redesign.py --limit 30</code></div>
+    <div class="score-row">
+      <div class="score-label">v1 — cosine + depth-1 BFS</div>
+      <div class="score-track"><div class="score-fill" style="width: 36%; background: var(--blue2);"></div></div>
+      <div class="score-val">0.3636</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Naive Vector Search (no graph)</div>
+      <div class="score-track"><div class="score-fill" style="width: 31%; background: var(--text3);"></div></div>
+      <div class="score-val">0.3148</div>
+    </div>
+    <div style="font-size: 11px; color: var(--text3); margin-top: 8px;">v3.1 faithfulness is <strong style="color: var(--green);">+69%</strong> vs v2+CE and <strong style="color: var(--green);">+190%</strong> vs naive. The key lever: PPR multi-hop traversal + full-body source expansion for top-5 CE survivors. Run eval: <code>python eval/run_ragas_v3.py --limit 30</code></div>
   </div>
 
   <h3>The 8-Step Retrieval Pipeline</h3>
@@ -2053,8 +2080,8 @@ Rules:
       </tr>
       <tr>
         <td><code>SidecarManager.ts</code></td>
-        <td>Spawns / reuses backend binary</td>
-        <td>Lockfile <code>.nexus/sidecar.lock</code> (PID + port). Multiple windows share one sidecar. Backend self-terminates after 600s idle.</td>
+        <td>Spawns / reuses / downloads backend binary</td>
+        <td>Lockfile at <code>globalStoragePath/backend.lock</code> (PID + port + version). Multiple windows share one process via health-check reuse. v4.1: on cache miss downloads binary from GitHub Releases, verifies SHA256, extracts to <code>globalStoragePath/backend/{version}/</code>, caches permanently. Backend self-terminates after 7200s idle (<code>_IDLE_TIMEOUT</code>).</td>
       </tr>
       <tr>
         <td><code>SidebarProvider.ts</code></td>
@@ -2209,15 +2236,24 @@ Rules:
     </tbody>
   </table>
 
-  <h3>Supported LLM Providers (Model Factory)</h3>
-  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;">
-    <span class="tag tag-amber">Mistral</span>
-    <span class="tag tag-blue">OpenAI</span>
-    <span class="tag tag-purple">Anthropic</span>
-    <span class="tag tag-teal">Ollama (local)</span>
-    <span class="tag tag-green">Gemini</span>
+  <h3>Supported AI Providers — Model Factory (<code>model_factory.py</code>)</h3>
+  <p>Provider-agnostic via abstract <code>EmbeddingClient</code> ABC + <code>get_llm()</code> factory. Config comes from <code>POST /api/config</code> (runtime push from extension) — no .env in v4.0+. Chat and embedding providers are configured independently.</p>
+  <table class="data-table" style="margin-top: 12px;">
+    <thead><tr><th>Provider</th><th>Chat</th><th>Embedding</th><th>Embedding Model</th><th>Dimensions</th><th>API Key</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Mistral</strong></td><td>✓</td><td>✓</td><td>mistral-embed</td><td>1024</td><td>Required (SecretStorage)</td></tr>
+      <tr><td><strong>OpenAI</strong></td><td>✓</td><td>✓</td><td>text-embedding-3-small</td><td>1536</td><td>Required (SecretStorage)</td></tr>
+      <tr><td><strong>Anthropic</strong></td><td>✓</td><td>✗</td><td>—</td><td>—</td><td>Required (chat only; no embedding API)</td></tr>
+      <tr><td><strong>Ollama</strong></td><td>✓</td><td>✓</td><td>nomic-embed-text (default)</td><td>768 (varies)</td><td>None (local, no key)</td></tr>
+      <tr><td><strong>Gemini</strong></td><td>✓</td><td>✓</td><td>models/text-embedding-004</td><td>768</td><td>Required (SecretStorage)</td></tr>
+    </tbody>
+  </table>
+  <div class="callout callout-amber" style="margin-top: 16px;">
+    <span class="callout-icon">⚡</span>
+    <div class="callout-body">
+      <strong>Embedding dimension mismatch guard:</strong> After indexing, <code>nexus_meta</code> table stores (provider, model, dimensions). If you switch embedding provider/model, the extension shows a "Re-index required" banner and blocks chat. Dimensions differ between providers (1024 vs 1536 vs 768) — mixing them produces silent garbage retrieval. Adding a new provider: <code>get_llm()</code> + <code>EmbeddingClient</code> subclass in <code>model_factory.py</code>, then register in <code>_EMBEDDING_CLIENTS</code> dict.
+    </div>
   </div>
-  <p style="margin-top: 12px;">Adding a new provider: add an <code>elif</code> branch in <code>get_llm()</code> and <code>get_embeddings()</code> in <code>model_factory.py</code>, install the LangChain integration package, add the API key field in <code>config.py</code>.</p>
 </section>
 
 <!-- ─── DECISIONS ─── -->
@@ -2241,9 +2277,9 @@ Rules:
     </div>
     <div class="tradeoff-card">
       <div class="t-decision">Graph RAG vs. plain vector search</div>
-      <div class="t-chose">✓ Chose: Semantic + FTS5 + BFS</div>
+      <div class="t-chose">✓ Chose: Semantic + FTS5 + PPR + CE + full-body</div>
       <div class="t-rejected">✗ Rejected: Cosine-only</div>
-      <div class="t-why">Context Precision: 0.3706 (v2+CE) vs 0.1585 (naive) — +134%. The bug is often one CALLS hop away from the function you asked about; cross-encoder reranking further tightens the context window.</div>
+      <div class="t-why">Faithfulness: 0.91 (v3.1) vs 0.31 (naive) — +190%. PPR traverses CALLS+CLASS_CONTAINS edges with score-weighted teleportation (multi-hop), discovering callers-of-callers and class siblings. Full-body expansion reads the actual live source lines for top-5 survivors, replacing truncated body_preview. The bug is often multiple CALLS hops away.</div>
     </div>
     <div class="tradeoff-card">
       <div class="t-decision">Deterministic Critic vs. LLM Critic</div>
@@ -2263,6 +2299,24 @@ Rules:
       <div class="t-rejected">✗ Rejected: Module-level imports</div>
       <div class="t-why">During pytest collection, module-level imports trigger <code>get_settings()</code> before fixtures run → ValidationError (no API keys). Lazy imports prevent this.</div>
     </div>
+    <div class="tradeoff-card">
+      <div class="t-decision">Config delivery: POST /api/config vs. .env file</div>
+      <div class="t-chose">✓ Chose: POST /api/config dynamic push (v4.0)</div>
+      <div class="t-rejected">✗ Rejected: .env singleton on disk</div>
+      <div class="t-why">Extension is the single source of truth for provider/model/keys. Config push enables hot-switching providers without restart. .env survives process restart but requires file I/O, secrets on disk, and a sidecar restart to take effect.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="t-decision">API key storage: VS Code SecretStorage vs. Settings</div>
+      <div class="t-chose">✓ Chose: SecretStorage (system keychain)</div>
+      <div class="t-rejected">✗ Rejected: Plain VS Code settings / disk file</div>
+      <div class="t-why">API keys are credentials. SecretStorage encrypts via OS keychain (macOS Keychain, Windows Credential Manager). Settings are stored in plain JSON — visible in workspace.json and sync'd to VS Code cloud settings.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="t-decision">Binary distribution: bundle in VSIX vs. GitHub Releases download (v4.1)</div>
+      <div class="t-chose">✓ Chose: Download from GitHub Releases on first use</div>
+      <div class="t-rejected">✗ Rejected: Bundle binary inside VSIX (v4.0)</div>
+      <div class="t-why">Bundled VSIX was 62 MB — triggered AV false positives on VS Marketplace. v4.1: VSIX shrinks to ~1.5 MB. Binary downloads once per version, cached permanently. SHA256-verified before execution. Cold path shows vscode.window.withProgress; warm path is silent.</div>
+    </div>
   </div>
 </section>
 
@@ -2278,22 +2332,22 @@ Rules:
       <strong>Static analysis only.</strong> tree-sitter extracts CALLS from source text. Dynamic dispatch (Python duck typing, JS callbacks, virtual method overrides) produces no edges. The call graph is an approximation — polymorphic calls are invisible.
     </div>
   </div>
-  <div class="callout callout-red" style="margin-bottom: 12px;">
-    <span class="callout-icon">⚠</span>
+  <div class="callout callout-amber" style="margin-bottom: 12px;">
+    <span class="callout-icon">⚡</span>
     <div class="callout-body">
-      <strong>Truncated body previews.</strong> <code>CodeNode.body_preview</code> stores only the first N characters of a function. Critical logic in large functions may be in the truncated part — the LLM never sees it.
+      <strong>Body preview truncation — partially resolved in v3.1.</strong> <code>CodeNode.body_preview</code> stores only the first N characters at index time. In v3.1, <code>_expand_full_bodies()</code> reads live source lines for the <strong>top-5 CE survivors</strong> at query time, replacing the preview with the full function body. Nodes ranked 6th+ still use the truncated preview — large functions outside the top-5 may still have blind spots.
     </div>
   </div>
   <div class="callout callout-red" style="margin-bottom: 12px;">
     <span class="callout-icon">⚠</span>
     <div class="callout-body">
-      <strong>Single-process retrieval.</strong> Vector search + BFS run in the FastAPI process handling all requests. On large repos (50K+ nodes), BFS at depth 2 can block other requests for several hundred milliseconds. A worker queue would fix this.
+      <strong>Single-process retrieval.</strong> Vector search + PPR + cross-encoder rerank all run in the FastAPI process. On large repos (50K+ nodes), the full pipeline can block concurrent requests for several hundred milliseconds (CE rerank is the main bottleneck at ~100ms CPU). A worker queue or async CE call would fix this.
     </div>
   </div>
   <div class="callout callout-amber">
     <span class="callout-icon">💡</span>
     <div class="callout-body">
-      <strong>If rewriting retrieval:</strong> (1) <s>Replace cosine similarity with a learned re-ranker</s> — done: cross-encoder (ms-marco-MiniLM-L-6-v2) now reranks top candidates. (2) Add backward CALLS expansion (who calls this? — current BFS is forward-only). (3) Fetch actual source lines at query time instead of stored body_preview — larger context, fewer blind spots in large functions.
+      <strong>Future retrieval improvements:</strong> (1) <s>Replace cosine similarity with a learned re-ranker</s> — done: cross-encoder (ms-marco-MiniLM-L-6-v2). (2) <s>Fetch actual source lines at query time</s> — done in v3.1: full-body expansion for top-5 CE survivors. (3) Extend full-body expansion beyond top-5 (disk I/O trade-off). (4) PPR currently excludes IMPORTS edges — cross-module discovery still limited. (5) Dynamic dispatch edges (duck typing, callbacks) remain absent from the graph.
     </div>
   </div>
 </section>
@@ -2330,15 +2384,15 @@ Rules:
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Backend isn't starting — where do I look?</div>
-      <div class="faq-a">(1) VS Code Output panel → "Nexus" — SidecarManager logs stdout/stderr. (2) Check for Pydantic ValidationError (missing env var), ImportError (missing dep), or port conflicts. (3) Check <code>.nexus/sidecar.lock</code> — stale PID from crashed process? Delete it to force fresh start. (4) <code>GET /health</code> → 200 means backend is up; check for port mismatch.</div>
+      <div class="faq-a">(1) VS Code Output panel → "Nexus Backend" — SidecarManager logs stdout/stderr with timestamps. (2) v4.1: check if binary download failed (network issue? no GitHub Release for this version?). (3) Check for Pydantic ValidationError (missing config), ImportError (missing dep), or port conflicts. (4) Lockfile is at <code>VS Code globalStorageUri/backend.lock</code> (not in the repo). Delete it to force a fresh start. (5) <code>GET /api/health</code> → <code>{"status":"ok"}</code> means backend is up.</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">What is .nexus/ and should I gitignore it?</div>
-      <div class="faq-a"><strong>Yes, always gitignore it.</strong> Contains <code>graph.db</code> (SQLite index, 5–50 MB) and <code>sidecar.lock</code> (PID/port). Machine-specific absolute paths, local embeddings. Committing it causes conflicts across team members.</div>
+      <div class="faq-a"><strong>Yes, always gitignore it.</strong> Contains <code>graph.db</code> (SQLite index, 5–50 MB, stores the code graph + vec0 embeddings + nexus_meta). Machine-specific absolute paths. Committing it causes conflicts across team members. The lockfile (<code>backend.lock</code>) lives in VS Code globalStorage — not in <code>.nexus/</code>.</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">How do I run the RAGAS evaluation after changing retrieval?</div>
-      <div class="faq-a"><code>python eval/run_ragas_redesign.py --limit 30 --workers 1</code> for a full 30Q run (both v2 and v2+CE pipelines). Use <code>--ce-only</code> to skip re-running v2 and load the prior result instead (~1hr vs ~2hrs). Results land in <code>eval/results/ragas_redesign_*.json</code>. Key metrics: faithfulness, answer_relevancy, context_precision.</div>
+      <div class="faq-a"><code>python eval/run_ragas_v3.py --limit 30</code> for a full 30Q run against the v3.1 pipeline. Results land in <code>eval/results/ragas_v3_*.json</code>. Key metrics: faithfulness, answer_relevancy, context_precision. Current best: 0.91 / 0.77 / 0.67. <br>For comparison runs: <code>run_ragas_three_way.py</code> computes naive vs v2 vs v3.1 side-by-side. Ensure the repo is indexed with the same embedding model as the eval run — model mismatch produces silent garbage results.</div>
     </div>
   </div>
 
@@ -2346,7 +2400,7 @@ Rules:
   <div id="faq-interview" class="faq-panel">
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Why Graph RAG over plain vector similarity search?</div>
-      <div class="faq-a">Plain vector search finds <strong>semantically similar</strong> code, not <strong>causally related</strong> code. "Why does login fail?" returns functions whose names look like login. Graph-RAG starts from those seeds then uses <strong>Personalized PageRank</strong> over CALLS+CLASS_CONTAINS edges to discover multi-hop neighbors — what login calls, what calls login, and methods of the same class — all proportionally weighted by how strong the original seed was. Then a cross-encoder (ms-marco-MiniLM-L-6-v2, 66MB) jointly scores (query, node_text) pairs for precise relevance discrimination. Results: faithfulness=0.54, answer_relevancy=0.48, context_precision=0.37 on golden_qa_v2 30Q. +46% precision vs v2 alone (BFS), +134% vs naive vector (0.1585).</div>
+      <div class="faq-a">Plain vector search finds <strong>semantically similar</strong> code, not <strong>causally related</strong> code. "Why does login fail?" returns functions whose names look like login. Graph-RAG v3.1 pipeline: (1) cosine ANN seeds (min_similarity=0.15), (2) FTS5 BM25 keyword seeds (stopword-filtered), (3) RRF merge, (4) <strong>Personalized PageRank</strong> over CALLS+CLASS_CONTAINS edges — multi-hop, score-proportional teleportation (alpha=0.85), top-30 neighbors, (5) cross-encoder (ms-marco-MiniLM-L-6-v2, 66MB) joint (query, node_text) scoring with hybrid CE floor (always keep top-3, drop extras &gt;4.0 below best), (6) <strong>full-body expansion</strong> — reads live source lines for top-5 CE survivors, replacing truncated body_preview, (7) MMR file-diversity selection. Results on golden_qa_v2 30Q: <strong>faithfulness=0.91, answer_relevancy=0.77, context_precision=0.67</strong>. That's +190% faithfulness vs naive vector (0.31) and +69% vs v2+CE (0.54).</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Why NetworkX in-memory rather than Neo4j?</div>
@@ -2366,7 +2420,7 @@ Rules:
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">How does the sidecar handle multiple VS Code windows?</div>
-      <div class="faq-a">Lockfile singleton: <code>.nexus/sidecar.lock</code> = PID + port. Second window opening same repo reads lockfile and reuses existing sidecar. Different repo → new sidecar on different port. Sidecar self-terminates after 600s idle (<code>_IDLE_TIMEOUT</code> in main.py).</div>
+      <div class="faq-a">Lockfile singleton: <code>globalStorageUri/backend.lock</code> (VS Code global storage, not inside the repo) = PID + port + version. Second window reads lockfile, does an HTTP health check against that port, and reuses the running backend if healthy. v4.1 note: sidecar binary is no longer bundled in the VSIX — on first use per version, SidecarManager downloads it from GitHub Releases, verifies SHA256, extracts, then caches permanently. Subsequent starts use the warm-path (cache hit → no download, no notification). Sidecar self-terminates after <strong>7200s idle</strong> (<code>_IDLE_TIMEOUT</code> in main.py) — fallback for IDE windows that close without triggering dispose().</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">How does CI ensure the shipped binary actually works?</div>
@@ -2375,6 +2429,18 @@ Rules:
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Why lazy imports inside agent function bodies?</div>
       <div class="faq-a">During <code>pytest</code> collection, Python imports every test file. Module-level <code>get_settings()</code> / <code>get_llm()</code> would run before test fixtures — triggering Pydantic ValidationError (no API keys). Importing inside the function body means the import only runs when the function is called. Tests can import <code>debugger.py</code> to test <code>_score_node</code> without live API keys.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why move the binary out of the VSIX and onto GitHub Releases? (v4.1)</div>
+      <div class="faq-a">The bundled PyInstaller binary in v4.0 made the VSIX 62 MB. VS Marketplace AV scanners flagged it as a false positive (PyInstaller binaries look like packers). v4.1 solution: VSIX ships empty of the binary (~1.5 MB). On first use per version, <code>SidecarManager._ensureExtracted()</code> fetches <code>checksums.sha256</code> from the GitHub Release, downloads the <code>tar.gz</code> via streaming <code>fetch()</code> with incremental progress reporting, verifies SHA256 digest, extracts, caches permanently. Cold path shows <code>vscode.window.withProgress</code> toast. Warm path (cache hit) is instant and silent. Graceful failure: if fetch 404s (dev build, no matching release), silently falls back to <code>http://127.0.0.1:8000</code>. If download fails, shows error notification with "Open GitHub Releases" button.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How does the 5-provider model factory work?</div>
+      <div class="faq-a"><code>model_factory.py</code> defines an abstract <code>EmbeddingClient</code> ABC with <code>embed()</code>, <code>dimensions</code>, and <code>max_tokens</code>. Five concrete implementations: MistralEmbeddingClient (1024-dim), OpenAIEmbeddingClient (1536-dim), OllamaEmbeddingClient (768-dim, queries <code>/api/show</code> on startup for actual context length), GeminiEmbeddingClient (768-dim). For LLMs: <code>get_llm()</code> returns a LangChain <code>BaseChatModel</code> for whichever provider is set in runtime config. Anthropic is chat-only (no embedding API). Ollama requires no API key. Config comes from <code>POST /api/config</code> (extension push) — never from .env in v4.0+. Switching embedding providers blocks chat and requires a full re-index (dimensions change: 1024 vs 1536 vs 768 are incompatible).</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">What is the embedding mismatch detection system?</div>
+      <div class="faq-a">After every successful index run, <code>meta_store.set_embedding_meta()</code> writes (provider, model, dimensions) to the <code>nexus_meta</code> table in <code>graph.db</code>. On each config push from the extension, <code>query_router.py</code> reads <code>nexus_meta</code> and compares it to the new config. If dimensions differ (e.g. switched from Mistral 1024-dim to OpenAI 1536-dim), the query endpoint returns a warning and the chat UI shows a "re-index required" banner. This prevents silent garbage results where the query embedding vector is in a different space than the stored node vectors.</div>
     </div>
   </div>
 
@@ -2410,7 +2476,7 @@ Rules:
   <div id="faq-curveball" class="faq-panel">
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">What's the biggest weakness of the current architecture?</div>
-      <div class="faq-a"><strong>Three honest weaknesses:</strong> (1) Static analysis only — dynamic dispatch (duck typing, callbacks, virtual methods) produces no CALLS edges. (2) Truncated body previews — critical logic in large functions may be cut. (3) Single-process retrieval — BFS at depth 2 on large repos can block other requests. A worker queue would fix the third.</div>
+      <div class="faq-a"><strong>Three honest weaknesses:</strong> (1) Static analysis only — dynamic dispatch (duck typing, callbacks, virtual methods) produces no CALLS edges; the call graph is an approximation. (2) Full-body expansion only for top-5 CE survivors — nodes ranked 6th+ still use truncated body_preview; large functions outside the top-5 have blind spots. (3) Single-process retrieval — CE rerank (~100ms CPU) on large repos can block other requests. A worker queue would fix the third.</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Why does write_test_file check for ".." before Path.resolve()?</div>
@@ -2447,7 +2513,7 @@ Rules:
     <div class="card">
       <div class="card-title" style="color: var(--teal2);">The Graph RAG Story</div>
       <div class="card-desc" style="margin-top: 6px; line-height: 1.8;">
-        "Vector finds similar code. RRF fuses vector+keyword. PPR random-walk finds causally related multi-hop neighbors. Cross-encoder reranks by joint (query, code) relevance. Full-body expansion for top-5. MMR ensures file diversity." faith=0.54, rel=0.48, prec=0.37 (v2+CE, +134% vs naive).
+        "Vector finds similar code. RRF fuses vector+keyword. PPR random-walk finds causally related multi-hop neighbors (CALLS+CLASS_CONTAINS, alpha=0.85). Cross-encoder reranks by joint (query, code) relevance with hybrid CE floor. Full-body source expansion for top-5. MMR ensures file diversity." <strong>faith=0.91, rel=0.77, prec=0.67 (v3.1, +190% faithfulness vs naive)</strong>.
       </div>
     </div>
     <div class="card">

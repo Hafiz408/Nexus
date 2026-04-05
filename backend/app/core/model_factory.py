@@ -49,7 +49,7 @@ class MistralEmbeddingClient(EmbeddingClient):
     """Mistral AI — mistral-embed (1024 dimensions)."""
 
     def __init__(self, api_key: str) -> None:
-        from mistralai import Mistral
+        from mistralai.client import Mistral
         self._client = Mistral(api_key=api_key)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
