@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
+from pathlib import Path
 
 import networkx as nx
 import sqlite_vec
@@ -189,6 +190,39 @@ def mmr_diversify(
         file_counts[file_key] = file_counts.get(file_key, 0) + 1
 
     return selected
+
+
+def _expand_full_bodies(
+    scored: list[tuple[float, CodeNode]],
+    top_n: int = 5,
+) -> int:
+    """Read full source lines for top_n scored nodes and populate full_body in-place.
+
+    For each of the first top_n (score, node) pairs, reads line_start→line_end
+    from node.file_path and writes the joined lines to node.full_body. Nodes
+    beyond top_n are left unchanged. Failures (missing file, permission error)
+    are silently swallowed — the node keeps full_body="" and falls back to
+    body_preview in format_context_block.
+
+    Args:
+        scored: Pre-sorted (score, CodeNode) list, typically post-CE-floor.
+        top_n:  Number of top nodes to expand (default 5).
+
+    Returns:
+        Count of nodes successfully expanded.
+    """
+    expanded = 0
+    for _score, node in scored[:top_n]:
+        try:
+            text = Path(node.file_path).read_text(encoding="utf-8", errors="replace")
+            lines = text.splitlines()
+            # line_start and line_end are 1-indexed; slice to 0-indexed
+            body_lines = lines[node.line_start - 1 : node.line_end]
+            node.full_body = "\n".join(body_lines)
+            expanded += 1
+        except Exception:
+            pass  # silently fall back to body_preview for this node
+    return expanded
 
 
 _FTS_STOPWORDS: frozenset[str] = frozenset({

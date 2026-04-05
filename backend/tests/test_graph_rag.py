@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.retrieval.graph_rag import (
+    _expand_full_bodies,
     expand_calls_neighbors,
     fts_search,
     graph_rag_retrieve,
@@ -510,3 +511,77 @@ def test_ce_floor_key_present_when_ce_disabled(sample_graph, mock_embedder, monk
 
     assert "ce_floor_dropped" in stats
     assert stats["ce_floor_dropped"] == 0
+
+
+# ---------------------------------------------------------------------------
+# v3 improvement ③: full body expansion
+# ---------------------------------------------------------------------------
+
+def test_expand_full_bodies_reads_source(tmp_path):
+    """_expand_full_bodies reads line_start→line_end from the source file."""
+    src = tmp_path / "funcs.py"
+    src.write_text(
+        "def foo():\n"          # line 1
+        "    x = 1\n"           # line 2
+        "    return x\n"        # line 3
+        "\n"                    # line 4
+        "def bar():\n"          # line 5
+        "    pass\n"            # line 6
+    )
+
+    node = CodeNode(
+        node_id="funcs.py::foo", name="foo", type="function",
+        file_path=str(src), line_start=1, line_end=3,
+        signature="def foo():", body_preview="x = 1",
+    )
+    scored = [(0.9, node)]
+    count = _expand_full_bodies(scored, top_n=1)
+
+    assert count == 1
+    assert "def foo():" in node.full_body
+    assert "return x" in node.full_body
+    # bar() lines must NOT be present
+    assert "def bar():" not in node.full_body
+
+
+def test_expand_full_bodies_fallback_on_missing_file():
+    """_expand_full_bodies falls back silently when file_path is unreadable."""
+    node = CodeNode(
+        node_id="missing.py::baz", name="baz", type="function",
+        file_path="/nonexistent/path/missing.py", line_start=1, line_end=2,
+        signature="def baz():", body_preview="pass",
+    )
+    scored = [(0.5, node)]
+    count = _expand_full_bodies(scored, top_n=1)
+
+    assert count == 0        # nothing expanded
+    assert node.full_body == ""  # unchanged — still fallback value
+
+
+def test_expand_full_bodies_only_expands_top_n(tmp_path):
+    """_expand_full_bodies only expands the first top_n nodes in scored."""
+    src = tmp_path / "f.py"
+    src.write_text("def a():\n    pass\n\ndef b():\n    pass\n")
+
+    node_a = CodeNode(
+        node_id="f.py::a", name="a", type="function",
+        file_path=str(src), line_start=1, line_end=2,
+        signature="def a():", body_preview="pass",
+    )
+    node_b = CodeNode(
+        node_id="f.py::b", name="b", type="function",
+        file_path=str(src), line_start=4, line_end=5,
+        signature="def b():", body_preview="pass",
+    )
+    scored = [(0.9, node_a), (0.5, node_b)]
+    count = _expand_full_bodies(scored, top_n=1)
+
+    assert count == 1
+    assert node_a.full_body != ""   # first node expanded
+    assert node_b.full_body == ""   # second node NOT expanded (beyond top_n=1)
+
+
+def test_expand_full_bodies_returns_zero_when_empty():
+    """_expand_full_bodies with empty scored list returns 0."""
+    count = _expand_full_bodies([], top_n=5)
+    assert count == 0
