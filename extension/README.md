@@ -34,8 +34,9 @@ Nexus AI builds a **call graph + vector index** of your codebase and uses it to 
 
 ## Features
 
-- **Graph-aware retrieval** — expands from semantically matched code to their direct callers and callees, so answers include the functions that call into or are called by the code you're asking about, not just the closest keyword match
+- **Graph-aware retrieval** — uses Personalized PageRank to traverse the call graph and class-method relationships from matched code, surfacing structurally connected functions and the class methods that belong to them
 - **Dual-search pipeline** — semantic vector search and BM25 keyword search run in parallel and are rank-fused, catching exact function and symbol name queries that embedding similarity alone can miss
+- **Full-source context** — the LLM receives the complete source body of the most relevant functions, not a truncated preview, so complex implementations are answered with full information
 - **Diverse result selection** — picks context from across your codebase rather than returning multiple methods from the same file, keeping answers grounded in the full picture
 - **Cross-encoder reranking** — a second-pass model jointly scores each retrieved snippet against your query for higher relevance accuracy; pre-warmed at startup so the first query has no cold-start delay
 - **Live streaming answers** — tokens stream into the chat panel as the LLM generates them

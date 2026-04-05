@@ -69,7 +69,7 @@ In production use the extension auto-spawns the bundled binary — no manual sta
 ## Tests
 
 ```bash
-cd backend && python -m pytest tests/ -v    # 289 tests, no API keys required
+cd backend && python -m pytest tests/ -v    # 319 tests, no API keys required
 ```
 
 ## Module Docs
