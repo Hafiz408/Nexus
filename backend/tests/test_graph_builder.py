@@ -119,3 +119,37 @@ def test_degree_correctness(sample_nodes, sample_raw_edges):
 def test_pagerank_no_crash_on_empty_graph():
     G = build_graph([], [])
     assert G.number_of_nodes() == 0
+
+
+# --- CLASS_CONTAINS edge resolution ---
+
+def test_class_contains_edge_added(sample_nodes):
+    """CLASS_CONTAINS edge is added between two existing nodes."""
+    edges = [("file_a.py::caller", "file_a.py::helper", "CLASS_CONTAINS")]
+    G = build_graph(sample_nodes, edges)
+    assert G.has_edge("file_a.py::caller", "file_a.py::helper")
+
+def test_class_contains_edge_type_attribute(sample_nodes):
+    """CLASS_CONTAINS edge has type='CLASS_CONTAINS' attribute."""
+    edges = [("file_a.py::caller", "file_a.py::helper", "CLASS_CONTAINS")]
+    G = build_graph(sample_nodes, edges)
+    assert G.edges["file_a.py::caller", "file_a.py::helper"]["type"] == "CLASS_CONTAINS"
+
+def test_class_contains_missing_source_silently_skipped(sample_nodes):
+    """CLASS_CONTAINS edge with unknown source node does not raise."""
+    edges = [("nonexistent::node", "file_a.py::helper", "CLASS_CONTAINS")]
+    G = build_graph(sample_nodes, edges)
+    assert G.number_of_nodes() == 3  # no phantom nodes created
+
+def test_class_contains_missing_target_silently_skipped(sample_nodes):
+    """CLASS_CONTAINS edge with unknown target node does not raise."""
+    edges = [("file_a.py::caller", "nonexistent::method", "CLASS_CONTAINS")]
+    G = build_graph(sample_nodes, edges)
+    assert G.number_of_edges() == 0
+
+def test_class_contains_does_not_affect_pagerank_computation(sample_nodes):
+    """Graph with CLASS_CONTAINS edges still computes pagerank on all nodes."""
+    edges = [("file_a.py::caller", "file_a.py::helper", "CLASS_CONTAINS")]
+    G = build_graph(sample_nodes, edges)
+    for nid in G.nodes:
+        assert "pagerank" in G.nodes[nid]
