@@ -445,6 +445,10 @@ def graph_rag_retrieve(
         except Exception as exc:
             logger.warning("cross-encoder rerank failed, using score order: %s", exc)
 
+    # Step 5c: Full body expansion for top-5 CE survivors (cAST 2025 pattern).
+    # Reads line_start→line_end from source file. Failures silently fall back.
+    full_body_expanded = _expand_full_bodies(scored, top_n=5)
+
     # Step 6: MMR diversity selection
     nodes = mmr_diversify(scored, max_nodes)
 
@@ -458,5 +462,6 @@ def graph_rag_retrieve(
         "returned_count": len(nodes),
         "cross_encoder_used": ce_used,
         "ce_floor_dropped": ce_floor_dropped,
+        "full_body_expanded": full_body_expanded,
     }
     return nodes, stats
