@@ -45,3 +45,4 @@ extension/test-v4.1.mjs
 /eval/results
 /venv_eval
 *.py
+*.html
