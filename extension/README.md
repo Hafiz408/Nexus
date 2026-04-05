@@ -8,6 +8,10 @@ Nexus AI builds a **call graph + vector index** of your codebase and uses it to 
 
 ---
 
+<table>
+<tr>
+<td width="60%" valign="top">
+
 ## What You Can Do
 
 | Mode | Description |
@@ -16,6 +20,15 @@ Nexus AI builds a **call graph + vector index** of your codebase and uses it to 
 | **Debug** | Point at a function — get a ranked list of likely root causes with impact analysis across the call graph |
 | **Review** | Get structured findings (severity · category · suggestion) ready to post directly to a GitHub PR |
 | **Test** | Generate framework-aware tests written directly into your repo |
+
+</td>
+<td align="center" valign="middle" width="40%" style="line-height: 0;">
+
+<img src="images/demo.gif" alt="Nexus AI demo" width="75%" />
+
+</td>
+</tr>
+</table>
 
 ---
 
