@@ -2,7 +2,7 @@
   "name": "nexus-ai",
   "displayName": "Nexus AI",
   "description": "AI code assistant powered by call-graph + vector search. Ask, debug, review, and generate tests — all locally.",
-  "version": "4.2.3",
+  "version": "4.3.0",
   "publisher": "Hafiz408",
   "license": "MIT",
   "icon": "media/nexus-icon.png",

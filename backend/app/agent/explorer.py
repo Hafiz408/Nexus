@@ -18,6 +18,7 @@ from app.models.schemas import CodeNode
 
 # Module-level sentinel — chain is built lazily to avoid ValidationError
 # when OPENAI_API_KEY is absent (e.g., during test collection).
+# Reset to None whenever the prompt template changes to force a rebuild.
 _chain = None
 
 
@@ -41,7 +42,7 @@ def format_context_block(nodes: list[CodeNode]) -> str:
       --- [file_path:line_start-line_end] name (type) ---
       {signature}
       {docstring}
-      {body_preview}
+      {full_body if populated, else body_preview}
     """
     blocks = []
     for node in nodes:
@@ -49,7 +50,8 @@ def format_context_block(nodes: list[CodeNode]) -> str:
             f"--- [{node.file_path}:{node.line_start}-{node.line_end}]"
             f" {node.name} ({node.type}) ---"
         )
-        parts = filter(None, [node.signature, node.docstring or "", node.body_preview])
+        code_body = node.full_body if node.full_body else node.body_preview
+        parts = filter(None, [node.signature, node.docstring or "", code_body])
         body = "\n".join(parts)
         blocks.append(f"{header}\n{body}")
     return "\n\n".join(blocks)

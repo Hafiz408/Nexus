@@ -102,6 +102,51 @@ class TestTypeScriptParsing:
         assert all(len(n.signature) > 0 for n in nodes)
 
 
+class TestClassContainsEdges:
+    def test_class_contains_edge_emitted_python(self, python_sample_file):
+        """CLASS_CONTAINS edge emitted from class → method for Python."""
+        file_path, repo_root = python_sample_file
+        _, edges = parse_file(str(file_path), str(repo_root), "python")
+        cc_edges = [(s, t, et) for s, t, et in edges if et == "CLASS_CONTAINS"]
+        assert len(cc_edges) >= 1
+
+    def test_class_contains_source_is_class(self, python_sample_file):
+        """CLASS_CONTAINS source node_id references the class, not the method."""
+        file_path, repo_root = python_sample_file
+        _, edges = parse_file(str(file_path), str(repo_root), "python")
+        cc_edges = [(s, t, et) for s, t, et in edges if et == "CLASS_CONTAINS"]
+        sources = {s for s, _, _ in cc_edges}
+        assert any("MyClass" in s for s in sources)
+
+    def test_class_contains_target_is_method(self, python_sample_file):
+        """CLASS_CONTAINS target node_id references the method."""
+        file_path, repo_root = python_sample_file
+        _, edges = parse_file(str(file_path), str(repo_root), "python")
+        cc_edges = [(s, t, et) for s, t, et in edges if et == "CLASS_CONTAINS"]
+        targets = {t for _, t, _ in cc_edges}
+        assert any("method_one" in t for t in targets)
+
+    def test_standalone_function_no_class_contains(self, python_sample_file):
+        """Functions outside a class do not get CLASS_CONTAINS edges."""
+        file_path, repo_root = python_sample_file
+        _, edges = parse_file(str(file_path), str(repo_root), "python")
+        cc_edges = [(s, t, et) for s, t, et in edges if et == "CLASS_CONTAINS"]
+        targets = {t for _, t, _ in cc_edges}
+        assert not any("standalone_function" in t for t in targets)
+        assert not any("another_function" in t for t in targets)
+
+    def test_class_contains_emitted_typescript(self, typescript_sample_file):
+        """CLASS_CONTAINS edge emitted from TS class → method."""
+        file_path, repo_root = typescript_sample_file
+        _, edges = parse_file(str(file_path), str(repo_root), "typescript")
+        cc_edges = [(s, t, et) for s, t, et in edges if et == "CLASS_CONTAINS"]
+        assert len(cc_edges) >= 1
+        sources = {s for s, _, _ in cc_edges}
+        targets = {t for _, t, _ in cc_edges}
+        assert any("UserService" in s for s in sources)
+        assert any("getName" in t for t in targets)
+
+
 class TestEdgeCases:
     def test_unsupported_language_returns_empty(self, tmp_path):
         f = tmp_path / "code.rb"

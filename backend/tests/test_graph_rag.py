@@ -19,9 +19,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.retrieval.graph_rag import (
+    _expand_full_bodies,
     expand_calls_neighbors,
     fts_search,
     graph_rag_retrieve,
+    ppr_expand,
     semantic_search,
 )
 from app.models.schemas import CodeNode
@@ -389,3 +391,329 @@ def test_graph_rag_retrieve_cross_encoder_used_key_always_present(
             "q", "/repo", sample_graph, ":memory:", max_nodes=3, use_cross_encoder=flag,
         )
         assert "cross_encoder_used" in stats, f"missing key with use_cross_encoder={flag}"
+
+
+# ---------------------------------------------------------------------------
+# v3 improvement ①: cosine floor
+# ---------------------------------------------------------------------------
+
+def test_semantic_search_cosine_floor(mock_embedder, monkeypatch):
+    """semantic_search drops nodes whose similarity score < min_similarity.
+
+    distance=0.80 → similarity=0.20  (above default 0.15, kept)
+    distance=0.90 → similarity=0.10  (below threshold, dropped)
+    """
+    raw_rows = [("a.py::func_a", 0.80), ("b.py::func_b", 0.90)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    result = semantic_search("find func", "/repo", top_k=2, db_path=":memory:")
+
+    node_ids = [node_id for node_id, _ in result]
+    assert "a.py::func_a" in node_ids      # similarity=0.20, above threshold
+    assert "b.py::func_b" not in node_ids  # similarity=0.10, below threshold
+
+
+def test_semantic_search_cosine_floor_custom_threshold(mock_embedder, monkeypatch):
+    """Custom min_similarity threshold is respected."""
+    # distance=0.70 → similarity=0.30
+    raw_rows = [("a.py::func_a", 0.70)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    # With threshold=0.40, similarity=0.30 is below it and should be dropped
+    result = semantic_search("find func", "/repo", top_k=1, db_path=":memory:", min_similarity=0.40)
+    assert result == []
+
+    # With threshold=0.20, similarity=0.30 is above it and should be kept
+    result2 = semantic_search("find func", "/repo", top_k=1, db_path=":memory:", min_similarity=0.20)
+    assert len(result2) == 1
+    assert result2[0][0] == "a.py::func_a"
+
+
+# ---------------------------------------------------------------------------
+# v3 improvement ②: CE score floor before MMR
+# ---------------------------------------------------------------------------
+
+def _make_ce_mock(scores_by_id: dict):
+    """Returns a cross_encode_rerank mock that assigns fixed CE scores."""
+    def _ce(query, scored, top_n):
+        result = []
+        for score, node in scored:
+            ce_score = scores_by_id.get(node.node_id, score)
+            result.append((ce_score, node))
+        result.sort(key=lambda x: x[0], reverse=True)
+        return result
+    return _ce
+
+
+def test_ce_hybrid_floor_keeps_top3_always(sample_graph, mock_embedder, monkeypatch):
+    """Hybrid CE floor always keeps top-3 even when all scores are negative.
+
+    Old hard floor (> 0.0) would drop everything; hybrid floor preserves top-3.
+    With 3 candidates all negative and all within 4.0 of the best, none are dropped.
+    """
+    raw_rows = [("b.py::func_b", 0.1), ("c.py::func_c", 0.2), ("a.py::func_a", 0.3)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    # All three candidates score negative — hybrid floor keeps top-3 unconditionally
+    monkeypatch.setattr(
+        "app.retrieval.graph_rag.cross_encode_rerank",
+        _make_ce_mock({"b.py::func_b": -1.0, "c.py::func_c": -2.0, "a.py::func_a": -3.0}),
+    )
+
+    nodes, stats = graph_rag_retrieve(
+        "find funcs", "/repo", sample_graph, db_path=":memory:", max_nodes=5,
+        use_cross_encoder=True,
+    )
+
+    assert stats["ce_floor_dropped"] == 0
+    assert len(nodes) > 0  # top-3 preserved — no zero-context response
+
+
+def test_ce_hybrid_floor_drops_outside_range(sample_graph, mock_embedder, monkeypatch):
+    """Hybrid floor drops nodes more than 4.0 logit-units below the best score.
+
+    Best=2.0, floor=-2.0. A node at -3.0 (beyond rank-3) is dropped.
+    """
+    import networkx as nx
+
+    # Build a graph with enough nodes to go beyond top-3
+    G = nx.DiGraph()
+    ids = [f"f{i}.py::func" for i in range(6)]
+    for nid in ids:
+        G.add_node(nid, node_id=nid, name="func", type="function",
+                   file_path=f"/{nid}.py", line_start=1, line_end=2,
+                   signature="def func():", docstring=None, body_preview="pass",
+                   complexity=1, embedding_text="def func():", pagerank=0.1,
+                   in_degree=0, out_degree=0, full_body="")
+    raw_rows = [(nid, 0.1) for nid in ids]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    # 5 nodes score positively, 1 node (f5) is 4.1 below the best → dropped
+    scores = {ids[0]: 2.0, ids[1]: 1.5, ids[2]: 1.0, ids[3]: 0.5, ids[4]: 0.1, ids[5]: -2.1}
+    monkeypatch.setattr("app.retrieval.graph_rag.cross_encode_rerank", _make_ce_mock(scores))
+
+    nodes, stats = graph_rag_retrieve(
+        "find funcs", "/repo", G, db_path=":memory:", max_nodes=10, use_cross_encoder=True,
+    )
+
+    assert stats["ce_floor_dropped"] == 1
+    assert not any(n.node_id == ids[5] for n in nodes)
+
+
+def test_ce_floor_zero_score_kept_as_top3(sample_graph, mock_embedder, monkeypatch):
+    """A single node scoring 0.0 is kept — it's within top-3 by definition.
+
+    Hybrid floor only drops nodes beyond position 3 that exceed the 4.0 range.
+    """
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    monkeypatch.setattr(
+        "app.retrieval.graph_rag.cross_encode_rerank",
+        _make_ce_mock({"b.py::func_b": 0.0}),
+    )
+
+    nodes, stats = graph_rag_retrieve(
+        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=5,
+        use_cross_encoder=True,
+    )
+
+    # Single node is top-1, so it's in the always-kept top-3 → not dropped
+    assert stats["ce_floor_dropped"] == 0
+    assert any(n.node_id == "b.py::func_b" for n in nodes)
+
+
+def test_ce_floor_key_present_when_ce_disabled(sample_graph, mock_embedder, monkeypatch):
+    """stats['ce_floor_dropped'] is always present, equals 0 when CE is off."""
+    raw_rows = [("b.py::func_b", 0.1)]
+    mock_conn = _make_mock_sqlite_conn(raw_rows)
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite3.connect", MagicMock(return_value=mock_conn))
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.load", MagicMock())
+    monkeypatch.setattr("app.retrieval.graph_rag.sqlite_vec.serialize_float32", MagicMock(return_value=b"\x00"))
+
+    _, stats = graph_rag_retrieve(
+        "find func_b", "/repo", sample_graph, db_path=":memory:", max_nodes=5,
+        use_cross_encoder=False,
+    )
+
+    assert "ce_floor_dropped" in stats
+    assert stats["ce_floor_dropped"] == 0
+
+
+# ---------------------------------------------------------------------------
+# v3 improvement ③: full body expansion
+# ---------------------------------------------------------------------------
+
+def test_expand_full_bodies_reads_source(tmp_path):
+    """_expand_full_bodies reads line_start→line_end from the source file."""
+    src = tmp_path / "funcs.py"
+    src.write_text(
+        "def foo():\n"          # line 1
+        "    x = 1\n"           # line 2
+        "    return x\n"        # line 3
+        "\n"                    # line 4
+        "def bar():\n"          # line 5
+        "    pass\n"            # line 6
+    )
+
+    node = CodeNode(
+        node_id="funcs.py::foo", name="foo", type="function",
+        file_path=str(src), line_start=1, line_end=3,
+        signature="def foo():", body_preview="x = 1",
+    )
+    scored = [(0.9, node)]
+    count = _expand_full_bodies(scored, top_n=1)
+
+    assert count == 1
+    assert "def foo():" in node.full_body
+    assert "return x" in node.full_body
+    # bar() lines must NOT be present
+    assert "def bar():" not in node.full_body
+
+
+def test_expand_full_bodies_fallback_on_missing_file():
+    """_expand_full_bodies falls back silently when file_path is unreadable."""
+    node = CodeNode(
+        node_id="missing.py::baz", name="baz", type="function",
+        file_path="/nonexistent/path/missing.py", line_start=1, line_end=2,
+        signature="def baz():", body_preview="pass",
+    )
+    scored = [(0.5, node)]
+    count = _expand_full_bodies(scored, top_n=1)
+
+    assert count == 0        # nothing expanded
+    assert node.full_body == ""  # unchanged — still fallback value
+
+
+def test_expand_full_bodies_only_expands_top_n(tmp_path):
+    """_expand_full_bodies only expands the first top_n nodes in scored."""
+    src = tmp_path / "f.py"
+    src.write_text("def a():\n    pass\n\ndef b():\n    pass\n")
+
+    node_a = CodeNode(
+        node_id="f.py::a", name="a", type="function",
+        file_path=str(src), line_start=1, line_end=2,
+        signature="def a():", body_preview="pass",
+    )
+    node_b = CodeNode(
+        node_id="f.py::b", name="b", type="function",
+        file_path=str(src), line_start=4, line_end=5,
+        signature="def b():", body_preview="pass",
+    )
+    scored = [(0.9, node_a), (0.5, node_b)]
+    count = _expand_full_bodies(scored, top_n=1)
+
+    assert count == 1
+    assert node_a.full_body != ""   # first node expanded
+    assert node_b.full_body == ""   # second node NOT expanded (beyond top_n=1)
+
+
+def test_expand_full_bodies_returns_zero_when_empty():
+    """_expand_full_bodies with empty scored list returns 0."""
+    count = _expand_full_bodies([], top_n=5)
+    assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# v3.1: ppr_expand tests
+# Graph topology for PPR tests:
+#   cls.py::MyClass -> cls.py::method_a  (CLASS_CONTAINS)
+#   cls.py::MyClass -> cls.py::method_b  (CLASS_CONTAINS)
+#   cls.py::method_a -> util.py::helper  (CALLS)
+#   other.py::other -> util.py::helper   (IMPORTS — must NOT be traversed)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def ppr_graph():
+    """Graph with CALLS, CLASS_CONTAINS, and IMPORTS edges for PPR traversal tests."""
+    import networkx as nx
+
+    def _node(nid, name):
+        return dict(node_id=nid, name=name, type="function", file_path=f"/{nid}.py",
+                    line_start=1, line_end=5, signature=f"def {name}():", docstring=None,
+                    body_preview="pass", complexity=1, embedding_text=name,
+                    pagerank=0.1, in_degree=0, out_degree=0, full_body="")
+
+    G = nx.DiGraph()
+    for nid, nm in [
+        ("cls.py::MyClass", "MyClass"),
+        ("cls.py::method_a", "method_a"),
+        ("cls.py::method_b", "method_b"),
+        ("util.py::helper", "helper"),
+        ("other.py::other", "other"),
+    ]:
+        G.add_node(nid, **_node(nid, nm))
+
+    G.add_edge("cls.py::MyClass", "cls.py::method_a", type="CLASS_CONTAINS")
+    G.add_edge("cls.py::MyClass", "cls.py::method_b", type="CLASS_CONTAINS")
+    G.add_edge("cls.py::method_a", "util.py::helper", type="CALLS")
+    G.add_edge("other.py::other", "util.py::helper", type="IMPORTS")
+    return G
+
+
+def test_ppr_expand_returns_neighbors(ppr_graph):
+    """PPR seeded from MyClass discovers its CLASS_CONTAINS children."""
+    result = ppr_expand({"cls.py::MyClass": 0.5}, ppr_graph)
+    assert "cls.py::method_a" in result
+    assert "cls.py::method_b" in result
+
+
+def test_ppr_expand_seeds_not_in_result(ppr_graph):
+    """Seed nodes are never included in the returned neighbor dict."""
+    seeds = {"cls.py::MyClass": 0.5}
+    result = ppr_expand(seeds, ppr_graph)
+    for seed in seeds:
+        assert seed not in result
+
+
+def test_ppr_expand_traverses_calls_edges(ppr_graph):
+    """CALLS edges are followed — multi-hop neighbor surfaced."""
+    # Seed = method_a; via CALLS it reaches helper
+    result = ppr_expand({"cls.py::method_a": 0.5}, ppr_graph)
+    assert "util.py::helper" in result
+
+
+def test_ppr_expand_ignores_imports_edges(ppr_graph):
+    """IMPORTS edges are not traversed by PPR."""
+    # Seed = other.py::other; its IMPORTS edge to helper must not be followed
+    result = ppr_expand({"other.py::other": 0.5}, ppr_graph)
+    assert "util.py::helper" not in result
+
+
+def test_ppr_expand_empty_seeds_returns_empty(ppr_graph):
+    """Empty seed dict returns empty dict without error."""
+    assert ppr_expand({}, ppr_graph) == {}
+
+
+def test_ppr_expand_isolated_seed_returns_empty(ppr_graph):
+    """Seed with no traversable edges returns empty (no neighbors reachable)."""
+    result = ppr_expand({"other.py::other": 0.5}, ppr_graph)
+    # other only has an IMPORTS edge which is excluded — no reachable neighbors
+    assert result == {}
+
+
+def test_ppr_expand_respects_top_n(ppr_graph):
+    """top_n cap limits the number of returned neighbors."""
+    result = ppr_expand({"cls.py::MyClass": 1.0}, ppr_graph, top_n=1)
+    assert len(result) <= 1
+
+
+def test_ppr_expand_scores_are_positive(ppr_graph):
+    """All returned PPR scores are > 0."""
+    result = ppr_expand({"cls.py::MyClass": 1.0}, ppr_graph)
+    assert all(v > 0 for v in result.values())

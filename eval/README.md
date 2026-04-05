@@ -81,9 +81,31 @@ Cross-encoder reranking produces the largest single-step gain in context precisi
 
 ---
 
-## Next target
+### Run D — v3.1 (PPR + CLASS_CONTAINS + hybrid CE floor + balanced prompt)
+**Script:** `run_ragas_v3.py --skip-context-precision` · **Date:** 2026-04-05 · **Files:** `ragas_v3_20260405_214543.json` + `ragas_v3_20260406_*.json`
 
-Context precision (0.3706) and answer relevancy (0.4827) still have headroom. Next lever to try: **semantic filtering of CALLS neighbors** — instead of selecting the top-5 by pagerank, select by cosine similarity of neighbor to query. This avoids high-degree utility nodes that rank high on pagerank but are off-topic.
+| Pipeline | Faithfulness | Answer Relevancy | Context Precision |
+|---|---|---|---|
+| Naive Vector *(Run A)* | 0.3148 | 0.2133 | 0.1585 |
+| Graph RAG v2+CE *(Run C)* | 0.5417 | 0.4827 | 0.3706 |
+| **Graph RAG v3.1** | **0.9133** | **0.7742** | **0.6685** |
+
+**v3.1 vs v2+CE:** +68.6% faithfulness · +60.4% answer relevancy · +80.4% context precision  
+**v3.1 vs Naive:** +190% faithfulness · +263% answer relevancy · +322% context precision
+
+---
+
+## What drove the v3.1 improvement
+
+1. **CLASS_CONTAINS edges** — Python + TypeScript AST parsers now emit class→method hierarchy edges (255 new edges in fastapi corpus). Requires re-index.
+
+2. **Personalized PageRank expansion** — replaced BFS depth-1 expansion with PPR seeded proportionally from RRF scores, traversing CALLS + CLASS_CONTAINS edges. Top-30 non-seed neighbors returned; IMPORTS excluded to avoid cross-file pollution. Source: HippoRAG (NeurIPS 2024).
+
+3. **Hybrid CE floor** — replaces hard `ce_score > 0` cut with: always keep top-3 candidates, drop extras >4.0 logit-units below best. Prevents zero-context responses on abstract queries. Source: FILCO.
+
+4. **Full-body expansion** — top-5 CE-ranked nodes get full source read (`line_start → line_end`) instead of `body_preview`. Source: cAST 2025 (+5.5pts on RepoEval).
+
+5. **Balanced grounding prompt** — "prefer retrieved context as primary source; use general programming knowledge to explain and connect what you see in code." Replaced an over-restrictive "ban all parametric knowledge" rule that caused the LLM to refuse answering instead of reasoning from code (faith=0.04 with the ban; faith=0.91 with the balanced version).
 
 ---
 
@@ -91,9 +113,10 @@ Context precision (0.3706) and answer relevancy (0.4827) still have headroom. Ne
 
 | Script | Purpose |
 |---|---|
-| `run_ragas_redesign.py` | Current — evaluates `graph_rag_retrieve` (v2) only; loads naive baseline from last three-way JSON |
-| `run_ragas_three_way.py` | Archived — was naive / Graph RAG v1 / HyDE+CrossEncoder; `improved` column now stubs to v2 |
-| `run_ragas_new_vs_old.py` | Archived — two-way comparison used during v1 iterative development |
+| `run_ragas_v3.py` | **Current** — evaluates v3.1 pipeline only; loads all prior baselines from file. Supports `--skip-context-precision` to reuse ctx_prec and save ~33% eval time. |
+| `run_ragas_redesign.py` | Archived — v2/v2+CE evaluation |
+| `run_ragas_three_way.py` | Archived — naive / Graph RAG v1 / HyDE+CrossEncoder |
+| `run_ragas_new_vs_old.py` | Archived — two-way comparison used during v1 development |
 | `run_ragas_new_only.py` | Archived — single-pipeline scoring used during v1 development |
 
 ---
@@ -114,13 +137,17 @@ All questions were hand-authored against the fastapi corpus with reference answe
 ## Run command
 
 ```bash
-# Full 30Q eval, both pipelines (~2 hours)
 source venv_eval/bin/activate
-python eval/run_ragas_redesign.py --limit 30 --workers 1
 
-# Full 30Q eval, v2+CE only — uses prior v2 result as baseline (~1 hour)
-python eval/run_ragas_redesign.py --limit 30 --workers 1 --ce-only
+# Full 30Q v3 eval (~2h)
+python eval/run_ragas_v3.py --limit 30 --workers 1 --answer-concurrency 1
+
+# Full 30Q — skip Context Precision (reuse from last result, saves ~40 min)
+python eval/run_ragas_v3.py --limit 30 --workers 1 --skip-context-precision
 
 # Quick sanity check (5 questions, ~15 min)
-python eval/run_ragas_redesign.py --limit 5
+python eval/run_ragas_v3.py --limit 5
 ```
+
+> **Note:** Re-index the corpus after any ingestion changes to pick up new edge types.
+> Delete `.nexus/graph.db` or run `python eval/reindex_fastapi.py` to rebuild from scratch.

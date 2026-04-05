@@ -1,12 +1,12 @@
 """Graph RAG retrieval module.
 
 Implements a five-step pipeline:
-  1. semantic_search      — embed query, cosine NN via sqlite-vec
-  2. fts_search           — BM25 keyword search, stopword-filtered, cap=5
-  3. rrf_merge            — rank-fusion of semantic + FTS into unified scores
-  4. expand_calls_neighbors — depth-1 CALLS expansion from semantic seeds only,
-                              propagated score = parent_rrf_score × 0.6 decay
-  5. mmr_diversify        — MMR final selection over unified + neighbor pool
+  1. semantic_search  — embed query, cosine NN via sqlite-vec
+  2. fts_search       — BM25 keyword search, stopword-filtered, cap=5
+  3. rrf_merge        — rank-fusion of semantic + FTS into unified scores
+  4. ppr_expand       — Personalized PageRank seeded from RRF scores; traverses
+                        CALLS + CLASS_CONTAINS edges for multi-hop discovery
+  5. mmr_diversify    — MMR final selection over unified + neighbor pool
 
 graph_rag_retrieve orchestrates all steps and returns (list[CodeNode], stats_dict).
 """
@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
+from pathlib import Path
 
 import networkx as nx
 import sqlite_vec
@@ -27,7 +28,13 @@ from app.retrieval.reranker import cross_encode_rerank
 logger = logging.getLogger(__name__)
 
 
-def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> list[tuple[str, float]]:
+def semantic_search(
+    query: str,
+    repo_path: str,
+    top_k: int,
+    db_path: str,
+    min_similarity: float = 0.15,
+) -> list[tuple[str, float]]:
     """Embed query and return top_k (node_id, score) pairs via sqlite-vec cosine search.
 
     The embedding client is instantiated lazily inside this function body so that
@@ -39,14 +46,17 @@ def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> lis
     Full CodeNode hydration is deferred to graph_rag_retrieve which reads from G.nodes.
 
     Args:
-        query:     Natural language query string to embed.
-        repo_path: Repository root path to scope the sqlite-vec search.
-        top_k:     Number of nearest-neighbour results to return.
-        db_path:   Path to the SQLite database file.
+        query:          Natural language query string to embed.
+        repo_path:      Repository root path to scope the sqlite-vec search.
+        top_k:          Number of nearest-neighbour results to return.
+        db_path:        Path to the SQLite database file.
+        min_similarity: Drop nodes with cosine similarity below this threshold
+                        before they enter the candidate pool (default 0.15).
 
     Returns:
         List of (node_id, score) tuples sorted by descending similarity score.
         Score is 1.0 - cosine_distance (0=identical, 2=opposite maps to 1.0→-1.0).
+        Nodes below min_similarity are excluded.
     """
     query_vec = get_embedding_client().embed([query])[0]
     query_bytes = sqlite_vec.serialize_float32(query_vec)
@@ -72,7 +82,74 @@ def semantic_search(query: str, repo_path: str, top_k: int, db_path: str) -> lis
         conn.close()
 
     # distance is cosine distance (0=identical, 2=opposite); convert to similarity score
-    return [(row[0], float(1.0 - row[1])) for row in rows]
+    results = [(row[0], float(1.0 - row[1])) for row in rows]
+    return [(node_id, score) for node_id, score in results if score >= min_similarity]
+
+
+def ppr_expand(
+    seed_scores: dict[str, float],
+    G: nx.DiGraph,
+    top_n: int = 30,
+    alpha: float = 0.85,
+) -> dict[str, float]:
+    """Personalized PageRank expansion from RRF seed nodes.
+
+    Replaces the depth-1 BFS in expand_calls_neighbors with a global random-walk
+    seeded proportionally from unified RRF scores. Traverses CALLS and
+    CLASS_CONTAINS edges — IMPORTS excluded to prevent cross-file pollution.
+
+    PPR advantages over BFS:
+    - Multi-hop: discovers callers-of-callers and class siblings naturally
+    - Score-proportional: neighbors of high-scoring seeds score higher
+    - CLASS_CONTAINS-aware: methods of retrieved classes (and vice versa) surface
+
+    Args:
+        seed_scores: RRF-unified scores keyed by node_id (used as teleportation weights).
+        G:           Full code DiGraph with edge type attributes.
+        top_n:       Max neighbor nodes to return (by PPR score), excluding seeds.
+        alpha:       PageRank damping factor (default 0.85 matches graph_builder).
+
+    Returns:
+        Dict mapping neighbor node_id → PPR score. Seeds are excluded — the caller
+        merges this with unified_scores (seed RRF scores take precedence on overlap).
+    """
+    if not seed_scores:
+        return {}
+
+    # Build subgraph of traversable edge types only
+    traversable = nx.DiGraph()
+    for u, v, data in G.edges(data=True):
+        if data.get("type") in ("CALLS", "CLASS_CONTAINS"):
+            traversable.add_edge(u, v)
+
+    # Ensure all seed nodes are present even if they have no traversable edges
+    for nid in seed_scores:
+        if nid not in traversable:
+            traversable.add_node(nid)
+
+    if traversable.number_of_nodes() == 0:
+        return {}
+
+    # Normalize seed scores → teleportation weights (must sum to 1.0 for nx.pagerank)
+    seeds_in_graph = {nid: s for nid, s in seed_scores.items() if nid in traversable}
+    if not seeds_in_graph:
+        return {}
+    total = sum(seeds_in_graph.values())
+    personalization = {nid: s / total for nid, s in seeds_in_graph.items()}
+
+    try:
+        ppr = nx.pagerank(traversable, alpha=alpha, personalization=personalization)
+    except nx.PowerIterationFailedConvergence:
+        logger.warning("PPR failed to converge — falling back to empty expansion")
+        return {}
+
+    # Return only non-seed nodes, capped to top_n
+    neighbors = {
+        nid: score
+        for nid, score in ppr.items()
+        if nid not in seed_scores and score > 0
+    }
+    return dict(sorted(neighbors.items(), key=lambda x: x[1], reverse=True)[:top_n])
 
 
 def expand_calls_neighbors(
@@ -179,6 +256,39 @@ def mmr_diversify(
         file_counts[file_key] = file_counts.get(file_key, 0) + 1
 
     return selected
+
+
+def _expand_full_bodies(
+    scored: list[tuple[float, CodeNode]],
+    top_n: int = 5,
+) -> int:
+    """Read full source lines for top_n scored nodes and populate full_body in-place.
+
+    For each of the first top_n (score, node) pairs, reads line_start→line_end
+    from node.file_path and writes the joined lines to node.full_body. Nodes
+    beyond top_n are left unchanged. Failures (missing file, permission error)
+    are silently swallowed — the node keeps full_body="" and falls back to
+    body_preview in format_context_block.
+
+    Args:
+        scored: Pre-sorted (score, CodeNode) list, typically post-CE-floor.
+        top_n:  Number of top nodes to expand (default 5).
+
+    Returns:
+        Count of nodes successfully expanded.
+    """
+    expanded = 0
+    for _score, node in scored[:top_n]:
+        try:
+            text = Path(node.file_path).read_text(encoding="utf-8", errors="replace")
+            lines = text.splitlines()
+            # line_start and line_end are 1-indexed; slice to 0-indexed
+            body_lines = lines[node.line_start - 1 : node.line_end]
+            node.full_body = "\n".join(body_lines)
+            expanded += 1
+        except Exception:
+            pass  # silently fall back to body_preview for this node
+    return expanded
 
 
 _FTS_STOPWORDS: frozenset[str] = frozenset({
@@ -349,8 +459,9 @@ def graph_rag_retrieve(
         semantic_count, fts_count, fts_new, len(unified_scores),
     )
 
-    # Step 4: CALLS depth-1 expansion from semantic seeds only
-    expanded_neighbors = expand_calls_neighbors(semantic_seed_ids, unified_scores, G)
+    # Step 4: PPR expansion — random-walk seeded from RRF scores, traverses
+    # CALLS + CLASS_CONTAINS edges. Replaces depth-1 BFS for multi-hop discovery.
+    expanded_neighbors = ppr_expand(unified_scores, G)
 
     # Step 5: combine candidate pool — seeds overwrite neighbors on overlap
     candidate_pool: dict[str, float] = dict(expanded_neighbors)
@@ -385,12 +496,34 @@ def graph_rag_retrieve(
     # more accurate relevance discrimination than cosine similarity alone.
     # Operates on top 2*max_nodes candidates; MMR enforces file diversity after.
     ce_used = False
+    ce_floor_dropped = 0
     if use_cross_encoder and scored:
         try:
             scored = cross_encode_rerank(query, scored[:max_nodes * 2], top_n=max_nodes * 2)
             ce_used = True
+            # Drop CE-negative nodes before MMR — FILCO-style score floor.
+            # cross-encoder/ms-marco-MiniLM-L-6-v2 treats 0 as the relevance boundary;
+            # positive = relevant, negative = not relevant.
+            pre_floor = len(scored)
+            # Hybrid CE floor: always keep top-3, then keep extras within 4.0 of the best.
+            # Pure ce_score > 0.0 drops everything when the model scores all candidates
+            # negative (common for abstract/architectural queries). The relative floor
+            # preserves the best candidates regardless of absolute score polarity.
+            if scored:
+                max_ce = scored[0][0]  # already sorted descending
+                floor = max_ce - 4.0
+                kept = list(scored[:3])
+                extras = [item for item in scored[3:] if item[0] > floor]
+                scored = kept + extras
+            ce_floor_dropped = pre_floor - len(scored)
+            if ce_floor_dropped:
+                logger.debug("CE floor dropped %d nodes (hybrid floor)", ce_floor_dropped)
         except Exception as exc:
             logger.warning("cross-encoder rerank failed, using score order: %s", exc)
+
+    # Step 5c: Full body expansion for top-5 CE survivors (cAST 2025 pattern).
+    # Reads line_start→line_end from source file. Failures silently fall back.
+    full_body_expanded = _expand_full_bodies(scored, top_n=5)
 
     # Step 6: MMR diversity selection
     nodes = mmr_diversify(scored, max_nodes)
@@ -404,5 +537,7 @@ def graph_rag_retrieve(
         "candidate_pool": len(candidate_pool),
         "returned_count": len(nodes),
         "cross_encoder_used": ce_used,
+        "ce_floor_dropped": ce_floor_dropped,
+        "full_body_expanded": full_body_expanded,
     }
     return nodes, stats

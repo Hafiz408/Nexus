@@ -1,0 +1,2598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — Complete Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b12;
+    --bg2: #0d1119;
+    --bg3: #121720;
+    --bg4: #1a2030;
+    --border: #1e2840;
+    --border2: #2a3650;
+    --amber: #f59e0b;
+    --amber2: #fbbf24;
+    --amber3: #fcd34d;
+    --teal: #14b8a6;
+    --teal2: #2dd4bf;
+    --blue: #3b82f6;
+    --blue2: #60a5fa;
+    --purple: #8b5cf6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+    --serif: 'DM Serif Display', serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+  /* ── LAYOUT ── */
+  .shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: 260px;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 24px 0 40px;
+    z-index: 100;
+  }
+
+  .nav-logo {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .nav-logo .wordmark {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 20px;
+    color: var(--amber);
+    letter-spacing: -0.5px;
+  }
+
+  .nav-logo .tagline {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  .nav-section {
+    padding: 0 12px 8px;
+    margin-bottom: 4px;
+  }
+
+  .nav-section-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 8px 8px 6px;
+    font-family: var(--sans);
+  }
+
+  nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+    transition: all 0.15s ease;
+    border-left: 2px solid transparent;
+  }
+
+  nav a:hover { color: var(--text); background: var(--bg3); }
+  nav a.active { color: var(--amber); background: rgba(245,158,11,0.08); border-left-color: var(--amber); }
+
+  nav a .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border2);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  nav a.active .dot { background: var(--amber); }
+  nav a:hover .dot { background: var(--text3); }
+
+  /* ── MAIN ── */
+  main {
+    margin-left: 260px;
+    min-height: 100vh;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 80px 60px 60px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 600px; height: 600px;
+    background: radial-gradient(ellipse, rgba(245,158,11,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--amber);
+    font-family: var(--mono);
+    margin-bottom: 24px;
+  }
+
+  .hero-badge::before { content: '◆'; font-size: 8px; }
+
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: 56px;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--amber);
+  }
+
+  .hero-sub {
+    font-size: 17px;
+    color: var(--text2);
+    max-width: 640px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+    font-family: var(--mono);
+  }
+
+  .hero-loop {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+
+  .hero-loop .step { color: var(--amber); font-weight: 600; }
+  .hero-loop .arrow { color: var(--text3); }
+
+  /* ── SECTIONS ── */
+  section {
+    padding: 64px 60px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  section:last-child { border-bottom: none; }
+
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-family: var(--sans);
+    margin-bottom: 12px;
+  }
+
+  .section-label::before {
+    content: '';
+    display: block;
+    width: 24px; height: 1px;
+    background: var(--amber);
+    opacity: 0.5;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 400;
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+    margin-top: 28px;
+  }
+
+  h3:first-of-type { margin-top: 0; }
+
+  p {
+    color: var(--text2);
+    margin-bottom: 16px;
+    max-width: 720px;
+    line-height: 1.75;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .card-grid .card {
+    transition: border-color 0.2s, background 0.2s;
+    cursor: default;
+  }
+
+  .card-grid .card:hover {
+    border-color: var(--border2);
+    background: var(--bg3);
+  }
+
+  .card .card-icon {
+    font-size: 22px;
+    margin-bottom: 10px;
+    line-height: 1;
+  }
+
+  .card .card-title {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .card .card-desc {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  /* ── MODES ── */
+  .modes-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .mode-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mode-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--mode-color);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .mode-card:hover::after, .mode-card.active::after { opacity: 1; }
+  .mode-card.active { border-color: var(--mode-color); background: var(--bg3); }
+  .mode-card:hover { background: var(--bg3); border-color: var(--border2); }
+
+  .mode-icon { font-size: 28px; margin-bottom: 10px; }
+  .mode-name {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .mode-hint { font-size: 11px; color: var(--text3); }
+
+  .mode-detail {
+    display: none;
+    margin-top: 20px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 24px 28px;
+    animation: fadeIn 0.2s ease;
+  }
+  .mode-detail.visible { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 16px 0;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--bg4);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .code-header .lang {
+    color: var(--amber);
+    font-weight: 600;
+  }
+
+  .code-body {
+    padding: 16px;
+    overflow-x: auto;
+    line-height: 1.6;
+    color: var(--text2);
+  }
+
+  .code-body .kw { color: #c084fc; }
+  .code-body .fn { color: #60a5fa; }
+  .code-body .str { color: #86efac; }
+  .code-body .cm { color: #475569; font-style: italic; }
+  .code-body .nb { color: #fca5a5; }
+  .code-body .hl { background: rgba(245,158,11,0.1); }
+
+  /* ── ARCHITECTURE DIAGRAM ── */
+  .arch-diagram {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin-top: 24px;
+    overflow-x: auto;
+  }
+
+  .arch-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 700px;
+  }
+
+  .arch-layer {
+    border-radius: 8px;
+    padding: 14px 18px;
+    border: 1px solid;
+    position: relative;
+  }
+
+  .arch-layer-label {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 12px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .arch-layer-items {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .arch-item {
+    background: var(--bg);
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: var(--mono);
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .layer-ext { border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05); }
+  .layer-ext .arch-layer-label { color: var(--blue2); }
+  .layer-ext .arch-item { border-color: rgba(59,130,246,0.2); color: var(--blue2); }
+
+  .layer-api { border-color: rgba(20,184,166,0.3); background: rgba(20,184,166,0.05); }
+  .layer-api .arch-layer-label { color: var(--teal2); }
+  .layer-api .arch-item { border-color: rgba(20,184,166,0.2); color: var(--teal2); }
+
+  .layer-ret { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.05); }
+  .layer-ret .arch-layer-label { color: var(--amber2); }
+  .layer-ret .arch-item { border-color: rgba(245,158,11,0.2); color: var(--amber2); }
+
+  .layer-age { border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); }
+  .layer-age .arch-layer-label { color: #a78bfa; }
+  .layer-age .arch-item { border-color: rgba(139,92,246,0.2); color: #a78bfa; }
+
+  .layer-db { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.05); }
+  .layer-db .arch-layer-label { color: #4ade80; }
+  .layer-db .arch-item { border-color: rgba(34,197,94,0.2); color: #4ade80; }
+
+  .arch-arrow {
+    text-align: center;
+    color: var(--text3);
+    font-size: 16px;
+    padding: 2px 0;
+  }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 24px 0;
+  }
+
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative;
+  }
+
+  .flow-step-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .flow-dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--sans);
+    flex-shrink: 0;
+    border: 2px solid;
+  }
+
+  .flow-connector {
+    width: 2px;
+    height: 28px;
+    background: var(--border2);
+    margin: 2px 0;
+  }
+
+  .flow-content {
+    padding-bottom: 24px;
+    flex: 1;
+    padding-top: 4px;
+  }
+
+  .flow-content .flow-title {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .flow-content .flow-desc {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .pipe-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .pipe-box {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 12px 18px;
+    text-align: center;
+    min-width: 110px;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: pointer;
+  }
+
+  .pipe-box:hover {
+    border-color: var(--amber);
+    background: rgba(245,158,11,0.05);
+  }
+
+  .pipe-box .pipe-icon { font-size: 20px; margin-bottom: 4px; }
+  .pipe-box .pipe-name { font-family: var(--sans); font-weight: 700; font-size: 12px; color: var(--text); }
+  .pipe-box .pipe-file { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  .pipe-arrow {
+    color: var(--amber);
+    font-size: 18px;
+    flex-shrink: 0;
+    opacity: 0.6;
+    margin: 0 2px;
+    padding-bottom: 20px;
+  }
+
+  /* ── TABLE ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .data-table th {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 9px 14px;
+    text-align: left;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--amber);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .data-table td {
+    border: 1px solid var(--border);
+    padding: 9px 14px;
+    color: var(--text2);
+    vertical-align: top;
+    line-height: 1.6;
+  }
+
+  .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .data-table td code {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 11px;
+    color: var(--amber2);
+  }
+
+  /* ── TAGS ── */
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--sans);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tag-amber { background: rgba(245,158,11,0.15); color: var(--amber2); }
+  .tag-teal { background: rgba(20,184,166,0.15); color: var(--teal2); }
+  .tag-blue { background: rgba(59,130,246,0.15); color: var(--blue2); }
+  .tag-purple { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .tag-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .tag-red { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+  /* ── CALLOUT ── */
+  .callout {
+    display: flex;
+    gap: 14px;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 16px 0;
+    border: 1px solid;
+  }
+
+  .callout-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+  .callout-body { font-size: 13px; line-height: 1.65; }
+  .callout-body strong { font-weight: 600; }
+
+  .callout-amber { border-color: rgba(245,158,11,0.2); background: rgba(245,158,11,0.05); }
+  .callout-amber .callout-body { color: #fcd34d; }
+  .callout-teal { border-color: rgba(20,184,166,0.2); background: rgba(20,184,166,0.05); }
+  .callout-teal .callout-body { color: var(--teal2); }
+  .callout-blue { border-color: rgba(59,130,246,0.2); background: rgba(59,130,246,0.05); }
+  .callout-blue .callout-body { color: var(--blue2); }
+  .callout-red { border-color: rgba(239,68,68,0.2); background: rgba(239,68,68,0.05); }
+  .callout-red .callout-body { color: #fca5a5; }
+
+  /* ── FAQ ── */
+  .faq-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+
+  .faq-tab {
+    padding: 10px 16px;
+    border-radius: 6px 6px 0 0;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text3);
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: transparent;
+    transition: all 0.15s;
+    position: relative;
+    bottom: -1px;
+  }
+
+  .faq-tab:hover { color: var(--text2); }
+  .faq-tab.active {
+    color: var(--amber);
+    border-color: var(--border);
+    border-bottom-color: var(--bg);
+    background: var(--bg);
+  }
+
+  .faq-panel { display: none; }
+  .faq-panel.active { display: block; animation: fadeIn 0.2s ease; }
+
+  .faq-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+
+  .faq-q {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    font-family: var(--mono);
+    user-select: none;
+    background: var(--bg2);
+    transition: background 0.15s;
+  }
+
+  .faq-q:hover { background: var(--bg3); }
+
+  .faq-q::after {
+    content: '▸';
+    color: var(--amber);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+
+  .faq-item.open .faq-q::after { transform: rotate(90deg); }
+
+  .faq-a {
+    display: none;
+    padding: 16px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.75;
+  }
+
+  .faq-item.open .faq-a { display: block; animation: fadeIn 0.2s ease; }
+
+  .faq-a code {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 11px;
+    color: var(--amber2);
+    font-family: var(--mono);
+  }
+
+  .faq-a strong { color: var(--text); font-weight: 600; }
+
+  /* ── STAT ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  .stat-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: var(--serif);
+    font-size: 36px;
+    color: var(--amber);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  /* ── COMPARISON ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  .compare-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .compare-box .compare-label {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compare-box ul { list-style: none; }
+  .compare-box li {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .compare-box li::before { flex-shrink: 0; }
+  .compare-before .compare-label { color: #fca5a5; }
+  .compare-before li::before { content: '✗'; color: #ef4444; }
+  .compare-after .compare-label { color: #4ade80; }
+  .compare-after li::before { content: '✓'; color: var(--green); }
+
+  /* ── SCORE BAR ── */
+  .score-bar-wrap { margin: 16px 0; }
+  .score-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .score-label { font-size: 12px; color: var(--text2); width: 160px; flex-shrink: 0; }
+  .score-track { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 3px; animation: growBar 1.2s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @keyframes growBar { from { width: 0 !important; } }
+  .score-val { font-size: 12px; color: var(--amber); font-weight: 600; width: 40px; text-align: right; }
+
+  /* ── AGENT FLOW SVG ── */
+  .agent-flow {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+
+  .agent-nodes {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0;
+    min-width: 700px;
+  }
+
+  .agent-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .agent-box {
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    font-family: var(--sans);
+    font-weight: 700;
+    text-align: center;
+    border: 1px solid;
+    min-width: 90px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+
+  .agent-box:hover { opacity: 0.85; transform: translateY(-2px); }
+
+  .agent-label { font-size: 10px; color: var(--text3); text-align: center; font-family: var(--mono); }
+
+  .agent-arrow-h {
+    color: var(--text3);
+    font-size: 16px;
+    padding: 0 6px;
+    flex-shrink: 0;
+    margin-bottom: 18px;
+  }
+
+  .agent-split {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .agent-merge {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* ── TRADEOFFS ── */
+  .tradeoff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .tradeoff-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .tradeoff-card .t-decision {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tradeoff-card .t-chose {
+    font-size: 11px;
+    color: var(--green);
+    margin-bottom: 4px;
+  }
+  .tradeoff-card .t-rejected {
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .tradeoff-card .t-why {
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  /* ── INLINE CODE ── */
+  code {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 11.5px;
+    color: var(--amber2);
+    font-family: var(--mono);
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0;
+    font-size: 12px;
+  }
+  .progress-label { color: var(--text2); width: 120px; }
+  .progress-track { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; }
+  .progress-fill { height: 100%; border-radius: 2px; background: var(--amber); animation: growBar 1s ease both; }
+
+  /* ── SSE DEMO ── */
+  .sse-demo {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 2;
+    overflow-x: auto;
+  }
+
+  .sse-event { color: var(--text3); }
+  .sse-data { color: var(--teal2); margin-left: 12px; }
+  .sse-token { color: var(--text); margin-left: 12px; }
+  .sse-citation { color: var(--amber2); margin-left: 12px; }
+  .sse-done { color: var(--green); margin-left: 12px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1100px) {
+    .modes-grid { grid-template-columns: repeat(3, 1fr); }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .tradeoff-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+    nav { display: none; }
+    main { margin-left: 0; }
+    .hero { padding: 40px 24px; }
+    section { padding: 40px 24px; }
+    .hero h1 { font-size: 36px; }
+    .modes-grid { grid-template-columns: 1fr 1fr; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .tradeoff-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── PULSE ANIM ── */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    display: inline-block;
+    animation: pulse 2s ease-in-out infinite;
+    margin-right: 6px;
+  }
+
+  /* ── SCROLL INDICATOR ── */
+  .scroll-top {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    width: 36px; height: 36px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--amber);
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 200;
+  }
+  .scroll-top.visible { opacity: 1; }
+  .scroll-top:hover { background: var(--bg4); }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-logo">
+    <div class="wordmark">⬡ Nexus</div>
+    <div class="tagline">Complete Visual Guide · KT / Demo / Interview</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Getting Started</div>
+    <a href="#what-is" class="active"><span class="dot"></span> What is Nexus?</a>
+    <a href="#modes"><span class="dot"></span> Five Modes</a>
+    <a href="#architecture"><span class="dot"></span> Architecture</a>
+    <a href="#data-flow"><span class="dot"></span> Data Flow</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Under the Hood</div>
+    <a href="#ingestion"><span class="dot"></span> Ingestion Pipeline</a>
+    <a href="#retrieval"><span class="dot"></span> Graph RAG Retrieval</a>
+    <a href="#agents"><span class="dot"></span> Agent System</a>
+    <a href="#extension"><span class="dot"></span> Extension Internals</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Deep Dive</div>
+    <a href="#storage"><span class="dot"></span> Storage & SQLite</a>
+    <a href="#tech-stack"><span class="dot"></span> Tech Stack</a>
+    <a href="#decisions"><span class="dot"></span> Design Decisions</a>
+    <a href="#weaknesses"><span class="dot"></span> Honest Weaknesses</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">KT / Demo / Interview</div>
+    <a href="#faq"><span class="dot"></span> Full FAQ</a>
+    <a href="#interview"><span class="dot"></span> Interview Prep</a>
+    <a href="#usecases"><span class="dot"></span> Use Cases</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- ─── HERO ─── -->
+<div class="hero" id="what-is">
+  <div class="hero-badge">VS Code Extension + Python Backend</div>
+  <h1>Nexus — <em>Code Intelligence</em><br>for Your Entire Codebase</h1>
+  <p class="hero-sub">
+    A VS Code extension that turns any codebase into a searchable, AI-queryable knowledge graph.
+    Index once. Ask questions in plain English. Get grounded answers with clickable file:line citations.
+  </p>
+  <div class="hero-loop">
+    <span class="step">Index your code</span>
+    <span class="arrow">→</span>
+    <span class="step">Ask a question</span>
+    <span class="arrow">→</span>
+    <span class="step">Get a grounded answer</span>
+  </div>
+
+  <div class="stats-row" style="margin-top: 40px;">
+    <div class="stat-box">
+      <div class="stat-val">5</div>
+      <div class="stat-label">Query Modes</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val">0.54</div>
+      <div class="stat-label">Faithfulness (RAGAS v2+CE)</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val">5+</div>
+      <div class="stat-label">LLM Providers</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val">0</div>
+      <div class="stat-label">Server Setup Required</div>
+    </div>
+  </div>
+
+  <div class="compare-grid" style="margin-top: 32px;">
+    <div class="compare-box compare-before">
+      <div class="compare-label">Without Nexus</div>
+      <ul>
+        <li>Manually paste code into ChatGPT</li>
+        <li>No awareness of call relationships</li>
+        <li>No clickable file citations</li>
+        <li>LLM hallucinating file paths that don't exist</li>
+        <li>Have to know <em>which</em> files are relevant</li>
+      </ul>
+    </div>
+    <div class="compare-box compare-after">
+      <div class="compare-label">With Nexus</div>
+      <ul>
+        <li>Ask questions about your full codebase</li>
+        <li>Graph traversal finds causally related code</li>
+        <li>Every answer has <code>file:line</code> citations</li>
+        <li>Anti-hallucination layers + Critic quality gate</li>
+        <li>Nexus always knows what's relevant</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODES ─── -->
+<section id="modes">
+  <div class="section-label">Core Feature</div>
+  <h2>Five Query Modes</h2>
+  <p>Nexus routes each question to the right specialist agent. You can pick explicitly or let Auto mode decide.</p>
+
+  <div class="modes-grid">
+    <div class="mode-card active" style="--mode-color: #60a5fa;" onclick="selectMode('explain', this)">
+      <div class="mode-icon">🔍</div>
+      <div class="mode-name">Explain</div>
+      <div class="mode-hint">How does X work?</div>
+    </div>
+    <div class="mode-card" style="--mode-color: #f87171;" onclick="selectMode('debug', this)">
+      <div class="mode-icon">🐛</div>
+      <div class="mode-name">Debug</div>
+      <div class="mode-hint">Why does X fail?</div>
+    </div>
+    <div class="mode-card" style="--mode-color: #4ade80;" onclick="selectMode('review', this)">
+      <div class="mode-icon">🛡</div>
+      <div class="mode-name">Review</div>
+      <div class="mode-hint">Security / quality</div>
+    </div>
+    <div class="mode-card" style="--mode-color: #a78bfa;" onclick="selectMode('test', this)">
+      <div class="mode-icon">🧪</div>
+      <div class="mode-name">Test</div>
+      <div class="mode-hint">Write tests for X</div>
+    </div>
+    <div class="mode-card" style="--mode-color: #fbbf24;" onclick="selectMode('auto', this)">
+      <div class="mode-icon">⚡</div>
+      <div class="mode-name">Auto</div>
+      <div class="mode-hint">LLM decides mode</div>
+    </div>
+  </div>
+
+  <div id="mode-detail-explain" class="mode-detail visible">
+    <span class="tag tag-blue">Explain Mode</span>
+    <h3 style="margin-top: 12px;">Explorer Agent — Streaming explanation with citations</h3>
+    <p>The Explorer streams tokens directly from the LLM, like a chat interface. Each answer includes clickable <code>file:line</code> citations. This is the only mode that bypasses LangGraph — it calls <code>explore_stream()</code> directly for minimum latency.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Example query</span><span>→ Explorer Agent</span></div>
+      <div class="code-body">"How does the auth middleware work?"
+<span class="cm">→ Graph RAG finds: auth.py::validate_token, auth.py::check_permissions, api.py::login_endpoint</span>
+<span class="cm">→ Explorer streams explanation with citations to each function</span>
+<span class="cm">→ You can click any citation to jump to that exact line in VS Code</span></div>
+    </div>
+  </div>
+
+  <div id="mode-detail-debug" class="mode-detail">
+    <span class="tag tag-red">Debug Mode</span>
+    <h3 style="margin-top: 12px;">Debugger Agent — Ranked suspects with anomaly scores</h3>
+    <p>The Debugger scores each retrieved function on 5 factors: complexity, missing error handling, keyword relevance, coupling, and low centrality. Returns top 5 suspects with a diagnosis narrative. Clicking a suspect opens that exact file and line.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="lang">DebugResult structure</span></div>
+      <div class="code-body"><span class="kw">class</span> <span class="fn">DebugResult</span>(BaseModel):
+    suspects: <span class="nb">list</span>[SuspectNode]    <span class="cm"># top 5, ranked by anomaly score</span>
+    diagnosis: <span class="nb">str</span>              <span class="cm"># narrative explanation</span>
+    traversal_path: <span class="nb">list</span>[<span class="nb">str</span>]   <span class="cm"># all BFS nodes visited (for Critic)</span>
+
+<span class="kw">class</span> <span class="fn">SuspectNode</span>(BaseModel):
+    node_id: <span class="nb">str</span>                <span class="cm"># "auth/login.py::validate_token"</span>
+    file_path: <span class="nb">str</span>
+    line_number: <span class="nb">int</span>
+    anomaly_score: <span class="nb">float</span>         <span class="cm"># 0.0 – 1.0</span>
+    reason: <span class="nb">str</span>                 <span class="cm"># why this function is suspect</span></div>
+    </div>
+  </div>
+
+  <div id="mode-detail-review" class="mode-detail">
+    <span class="tag tag-green">Review Mode</span>
+    <h3 style="margin-top: 12px;">Reviewer Agent — Structured findings with severity + fix suggestion</h3>
+    <p>Uses <code>with_structured_output(ReviewResult)</code> to force the LLM to return valid JSON. Each finding has a severity (critical/high/medium/low), category (security/performance/style), and a concrete fix suggestion. You can post findings as inline PR comments via GitHub token.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="lang">ReviewResult structure</span></div>
+      <div class="code-body"><span class="kw">class</span> <span class="fn">ReviewResult</span>(BaseModel):
+    findings: <span class="nb">list</span>[Finding]
+
+<span class="kw">class</span> <span class="fn">Finding</span>(BaseModel):
+    severity: <span class="nb">Literal</span>[<span class="str">"critical"</span>, <span class="str">"high"</span>, <span class="str">"medium"</span>, <span class="str">"low"</span>]
+    category: <span class="nb">Literal</span>[<span class="str">"security"</span>, <span class="str">"performance"</span>, <span class="str">"style"</span>, <span class="str">"correctness"</span>]
+    file_path: <span class="nb">str</span>
+    line_number: <span class="nb">int</span>
+    message: <span class="nb">str</span>
+    suggestion: <span class="nb">str</span>   <span class="cm"># concrete fix (Critic requires this field non-empty)</span></div>
+    </div>
+  </div>
+
+  <div id="mode-detail-test" class="mode-detail">
+    <span class="tag tag-purple">Test Mode</span>
+    <h3 style="margin-top: 12px;">Tester Agent — Writes test files directly to your repo</h3>
+    <p>The Tester detects your test framework (pytest / jest / vitest), derives a logical test file path, generates test code, and writes it to disk using the MCP <code>write_file</code> tool. The Critic checks for at least one <code>def test_</code> function before accepting.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Test file derivation logic</span></div>
+      <div class="code-body"><span class="cm"># Input: source file = "app/auth/login.py"</span>
+<span class="cm"># Output: test file = "tests/test_login.py"</span>
+
+<span class="cm"># Input: source file = "src/components/Button.tsx"</span>
+<span class="cm"># Output: test file = "src/components/Button.test.tsx"</span>
+
+<span class="cm"># Path traversal guard: checks raw string for ".." before Path.resolve()</span>
+<span class="kw">if</span> <span class="str">".."</span> <span class="kw">in</span> test_file_path:
+    <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="str">"Path traversal detected"</span>)</div>
+    </div>
+  </div>
+
+  <div id="mode-detail-auto" class="mode-detail">
+    <span class="tag tag-amber">Auto Mode</span>
+    <h3 style="margin-top: 12px;">Router Agent — Three-path intent classification</h3>
+    <p>The Router classifies intent via 3 paths: (1) user-supplied hint (no LLM call), (2) LLM classification with confidence ≥ 0.6, (3) low-confidence fallback → defaults to "explain". This makes explicit mode selection zero-cost.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="lang">Router classification paths</span></div>
+      <div class="code-body"><span class="cm"># Path 1 — User picked a mode in UI → instant, no LLM needed</span>
+intent_hint = <span class="str">"debug"</span>  →  IntentResult(intent=<span class="str">"debug"</span>, confidence=<span class="nb">1.0</span>)
+
+<span class="cm"># Path 2 — LLM classifies with high confidence</span>
+<span class="str">"why does login fail?"</span>  →  intent=<span class="str">"debug"</span>, confidence=<span class="nb">0.92</span>
+
+<span class="cm"># Path 3 — Low confidence fallback to safest mode</span>
+<span class="str">"tell me about this code"</span>  →  intent=<span class="str">"explain"</span>, confidence=<span class="nb">0.41</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ARCHITECTURE ─── -->
+<section id="architecture">
+  <div class="section-label">System Design</div>
+  <h2>Architecture Overview</h2>
+  <p>Nexus has two main components: a TypeScript VS Code extension and a Python FastAPI backend. The extension spawns the backend as a local sidecar process and communicates via HTTP + SSE.</p>
+
+  <div class="arch-diagram">
+    <div class="arch-layers">
+
+      <div class="arch-layer layer-ext">
+        <div class="arch-layer-label">VS Code Extension (TypeScript)</div>
+        <div class="arch-layer-items">
+          <span class="arch-item">React Chat UI (Webview)</span>
+          <span class="arch-item">SidebarProvider.ts</span>
+          <span class="arch-item">SidecarManager.ts</span>
+          <span class="arch-item">SseStream.ts</span>
+          <span class="arch-item">FileWatcher.ts</span>
+          <span class="arch-item">ConfigManager.ts</span>
+          <span class="arch-item">HighlightService.ts</span>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↕ HTTP + Server-Sent Events (SSE)</div>
+
+      <div class="arch-layer layer-api">
+        <div class="arch-layer-label">FastAPI Backend (Python · Stateless)</div>
+        <div class="arch-layer-items">
+          <span class="arch-item">POST /index</span>
+          <span class="arch-item">GET /index/status</span>
+          <span class="arch-item">POST /query → SSE stream</span>
+          <span class="arch-item">POST /api/config</span>
+          <span class="arch-item">GET /health</span>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div class="arch-layer layer-ret">
+          <div class="arch-layer-label">Graph RAG Retrieval</div>
+          <div class="arch-layer-items">
+            <span class="arch-item">semantic_search() — sqlite-vec ANN</span>
+            <span class="arch-item">fts_search() — SQLite FTS5</span>
+            <span class="arch-item">rrf_merge() — rank fusion</span>
+            <span class="arch-item">expand_via_graph() — CALLS-only BFS</span>
+            <span class="arch-item">cross_encode_rerank() — ms-marco-MiniLM</span>
+            <span class="arch-item">mmr_diversify() — diversity selection</span>
+          </div>
+        </div>
+        <div class="arch-layer layer-age">
+          <div class="arch-layer-label">Multi-Agent System (LangGraph)</div>
+          <div class="arch-layer-items">
+            <span class="arch-item">Router</span>
+            <span class="arch-item">Explorer</span>
+            <span class="arch-item">Debugger</span>
+            <span class="arch-item">Reviewer</span>
+            <span class="arch-item">Tester</span>
+            <span class="arch-item">Critic</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓ persist / load</div>
+
+      <div class="arch-layer layer-db">
+        <div class="arch-layer-label">SQLite Storage (.nexus/graph.db)</div>
+        <div class="arch-layer-items">
+          <span class="arch-item">code_nodes (graph)</span>
+          <span class="arch-item">code_edges (graph)</span>
+          <span class="arch-item">code_embeddings_vec (sqlite-vec)</span>
+          <span class="arch-item">code_embeddings_meta</span>
+          <span class="arch-item">code_fts (FTS5)</span>
+          <span class="arch-item">nexus_meta (config)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-amber" style="margin-top: 20px;">
+    <span class="callout-icon">⚡</span>
+    <div class="callout-body">
+      <strong>Stateless by design.</strong> Every request includes a <code>db_path</code> field pointing to the workspace's SQLite file. The backend never stores "which repo is open." Multiple VS Code windows share one backend; the backend can restart without losing state (state lives in SQLite).
+    </div>
+  </div>
+</section>
+
+<!-- ─── DATA FLOW ─── -->
+<section id="data-flow">
+  <div class="section-label">Request Lifecycle</div>
+  <h2>Data Flow — Enter to First Token</h2>
+  <p>Here is the complete journey of a single query from the moment you press Enter.</p>
+
+  <div class="flow-diagram">
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #60a5fa; color: #60a5fa; background: rgba(59,130,246,0.1);">1</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">React UI — App.tsx</div>
+        <div class="flow-desc">User types a question and presses Enter. <code>vscode.postMessage({ type: 'query', question, intent_hint })</code> is called to bridge the React webview to the VS Code extension host.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #a78bfa; color: #a78bfa; background: rgba(139,92,246,0.1);">2</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">SidebarProvider.ts — Bridge</div>
+        <div class="flow-desc">Captures active editor context (file path + selected line range) to attach as query context. Calls <code>streamQuery()</code> on the BackendClient.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.1);">3</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">SseStream.ts — HTTP to Backend</div>
+        <div class="flow-desc"><code>POST /query</code> with <code>{ question, repo_path, db_path, intent_hint, editor_context }</code>. Opens a streaming fetch connection to receive Server-Sent Events.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #14b8a6; color: #14b8a6; background: rgba(20,184,166,0.1);">4</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">FastAPI — Graph RAG Retrieval</div>
+        <div class="flow-desc">Embeds the query → cosine ANN search in sqlite-vec → FTS5 keyword search → RRF merge seeds → CALLS-only graph expansion (propagated score) → cross-encoder rerank (ms-marco-MiniLM) → MMR diversity selection.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #22c55e; color: #22c55e; background: rgba(34,197,94,0.1);">5</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">Agent Pipeline — Specialist + Critic</div>
+        <div class="flow-desc"><strong>Explain:</strong> Explorer streams tokens directly (bypasses LangGraph for speed). <strong>Debug/Review/Test:</strong> Router → Specialist → Critic (score &lt; 0.7 → retry, max 2 retries) → result event.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,0.1);">6</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">SSE Events — Back to UI</div>
+        <div class="flow-desc">Events stream back to <code>SseStream.ts</code> → <code>webview.postMessage()</code> → React state update → UI renders.</div>
+        <div class="sse-demo" style="margin-top: 12px; font-size: 11px;">
+<span class="sse-event">event: token</span>
+<span class="sse-token">data: {"delta": "The auth middleware works by..."}</span>
+<span class="sse-event">event: token</span>
+<span class="sse-token">data: {"delta": " validating the JWT in three steps:"}</span>
+<span class="sse-event">event: citations</span>
+<span class="sse-citation">data: {"nodes": [{"file": "app/auth.py", "line": 42, "name": "validate_token"}, ...]}</span>
+<span class="sse-event">event: done</span>
+<span class="sse-done">data: {"latency_ms": 340}</span>
+        </div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #60a5fa; color: #60a5fa; background: rgba(59,130,246,0.1);">7</div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">HighlightService.ts — Editor Highlights</div>
+        <div class="flow-desc">When the <code>done</code> event arrives, <code>HighlightService</code> applies editor decorations (gutter highlights) to the cited lines in VS Code. You can click any citation in the chat to jump directly to that file and line.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">⚡</span>
+    <div class="callout-body">
+      <strong>Latency to first token (warm graph):</strong> typically <strong>200–600ms</strong> — network + embedding API + cosine search + BFS + cross-encoder rerank (pre-warmed) + first LLM token.
+    </div>
+  </div>
+</section>
+
+<!-- ─── INGESTION ─── -->
+<section id="ingestion">
+  <div class="section-label">Index Pipeline</div>
+  <h2>Ingestion Pipeline</h2>
+  <p>When you click "Index Workspace," your codebase is processed through four sequential stages. Think of it as a factory assembly line that transforms raw source files into a searchable knowledge graph.</p>
+
+  <div class="pipeline">
+    <div class="pipe-stage">
+      <div class="pipe-box">
+        <div class="pipe-icon">🚶</div>
+        <div class="pipe-name">Walker</div>
+        <div class="pipe-file">walker.py</div>
+      </div>
+      <div style="font-size: 10px; color: var(--text3); text-align: center; margin-top: 6px;">Scans repo<br>by extension</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage">
+      <div class="pipe-box">
+        <div class="pipe-icon">🌳</div>
+        <div class="pipe-name">AST Parser</div>
+        <div class="pipe-file">ast_parser.py</div>
+      </div>
+      <div style="font-size: 10px; color: var(--text3); text-align: center; margin-top: 6px;">tree-sitter<br>×10 parallel</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage">
+      <div class="pipe-box">
+        <div class="pipe-icon">🕸</div>
+        <div class="pipe-name">Graph Builder</div>
+        <div class="pipe-file">graph_builder.py</div>
+      </div>
+      <div style="font-size: 10px; color: var(--text3); text-align: center; margin-top: 6px;">NetworkX DiGraph<br>+ PageRank</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage">
+      <div class="pipe-box">
+        <div class="pipe-icon">🔢</div>
+        <div class="pipe-name">Embedder</div>
+        <div class="pipe-file">embedder.py</div>
+      </div>
+      <div style="font-size: 10px; color: var(--text3); text-align: center; margin-top: 6px;">Batch 100 nodes<br>→ vectors</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage">
+      <div class="pipe-box" style="border-color: rgba(34,197,94,0.3);">
+        <div class="pipe-icon">💾</div>
+        <div class="pipe-name">SQLite</div>
+        <div class="pipe-file">graph.db</div>
+      </div>
+      <div style="font-size: 10px; color: var(--text3); text-align: center; margin-top: 6px;">graph + vectors<br>+ FTS5 index</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
+    <div class="card">
+      <div class="card-title">node_id format</div>
+      <div class="code-block" style="margin-top: 8px;">
+        <div class="code-body" style="font-size: 11px;"><span class="str">"auth/login.py::validate_token"</span>
+<span class="str">"src/components/Button.tsx::Button"</span>
+
+<span class="cm"># format: "file_path::symbol_name"</span>
+<span class="cm"># "::" chosen — illegal in Python & JS file paths</span>
+<span class="cm"># Deterministic → safe incremental delete/replace</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Incremental Re-index (on file save)</div>
+      <div class="code-block" style="margin-top: 8px;">
+        <div class="code-body" style="font-size: 11px;"><span class="cm"># FileWatcher: 2-second debounce</span>
+<span class="cm"># Only changed files are sent</span>
+<span class="fn">delete_nodes_for_files</span>([<span class="str">"auth/login.py"</span>])
+<span class="cm"># Re-parse + re-embed just those files</span>
+<span class="cm"># Typically completes in &lt;5 seconds</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-blue" style="margin-top: 16px;">
+    <span class="callout-icon">📊</span>
+    <div class="callout-body">
+      <strong>Indexing time:</strong> A 10,000-line Python project takes ~60–90 seconds. The bottleneck is embedding API calls (batched at 100 nodes per request). After that, incremental saves are instant.
+    </div>
+  </div>
+
+  <h3>What the AST Parser Extracts</h3>
+  <table class="data-table">
+    <thead><tr><th>Edge Type</th><th>Meaning</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><code>CALLS</code></td><td>Function A calls function B</td><td><code>login() → validate_token()</code></td></tr>
+      <tr><td><code>IMPORTS</code></td><td>Module A imports from module B</td><td><code>app.api → app.auth</code></td></tr>
+      <tr><td><code>DEFINES</code></td><td>Class A defines method B</td><td><code>UserService → get_user()</code></td></tr>
+      <tr><td><code>INHERITS</code></td><td>Class A extends class B</td><td><code>AdminUser → BaseUser</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── RETRIEVAL ─── -->
+<section id="retrieval">
+  <div class="section-label">Search Engine</div>
+  <h2>Graph RAG Retrieval</h2>
+  <p>The core search innovation. Eight sequential steps in <code>graph_rag.py</code> turn a plain-English question into a precisely curated list of code nodes. The pipeline combines vector search, keyword search, rank fusion, graph random-walk, cross-encoder reranking, full-body expansion, and file-diversity selection.</p>
+
+  <div class="score-bar-wrap" style="margin: 24px 0 8px;">
+    <div style="font-size: 12px; color: var(--text3); margin-bottom: 12px; font-family: var(--sans); font-weight: 700;">RAGAS Benchmark — v2+CE vs naive (golden_qa_v2, 30Q, fastapi corpus)</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+      <div class="stat-box">
+        <div class="stat-val" style="font-size: 28px;">0.54</div>
+        <div class="stat-label">Faithfulness (v2+CE)</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" style="font-size: 28px;">0.48</div>
+        <div class="stat-label">Answer Relevancy (v2+CE)</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" style="font-size: 28px;">0.37</div>
+        <div class="stat-label">Context Precision (v2+CE)</div>
+      </div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Graph RAG v2 + CE (current)</div>
+      <div class="score-track"><div class="score-fill" style="width: 74%; background: var(--amber);"></div></div>
+      <div class="score-val">0.3706</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Graph RAG v2</div>
+      <div class="score-track"><div class="score-fill" style="width: 51%; background: var(--teal);"></div></div>
+      <div class="score-val">0.2532</div>
+    </div>
+    <div class="score-row">
+      <div class="score-label">Naive Vector Search</div>
+      <div class="score-track"><div class="score-fill" style="width: 32%; background: var(--text3);"></div></div>
+      <div class="score-val">0.1585</div>
+    </div>
+    <div style="font-size: 11px; color: var(--text3); margin-top: 8px;">Context Precision shown. CE adds +46% vs v2 alone, +134% vs naive vector. Run eval: <code>python eval/run_ragas_redesign.py --limit 30</code></div>
+  </div>
+
+  <h3>The 8-Step Retrieval Pipeline</h3>
+
+  <div class="flow-diagram" style="margin-top: 16px;">
+
+    <!-- Step 1 -->
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,0.1);">1</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">semantic_search — sqlite-vec cosine ANN</div>
+        <div class="flow-desc">
+          Query text is embedded with the configured provider → query vector serialized as float32 bytes → sqlite-vec virtual table returns top-k nearest neighbours by cosine distance.<br>
+          <strong>Cosine floor:</strong> nodes with similarity &lt; <code>min_similarity=0.15</code> are dropped before entering the pipeline. Prevents completely unrelated nodes from polluting the seed set.
+        </div>
+        <div class="code-block" style="margin-top: 8px;">
+          <div class="code-header"><span class="lang">SQL (graph_rag.py)</span></div>
+          <div class="code-body"><span class="cm">-- sqlite-vec KNN query</span>
+<span class="kw">SELECT</span> meta.node_id, vec.distance
+<span class="kw">FROM</span> code_embeddings_vec vec
+<span class="kw">JOIN</span> code_embeddings_meta meta <span class="kw">ON</span> meta.vec_rowid = vec.rowid
+<span class="kw">WHERE</span> meta.repo_path = ? <span class="kw">AND</span> vec.embedding <span class="kw">MATCH</span> ? <span class="kw">AND</span> k = ?
+<span class="cm">-- score = 1.0 - distance (cosine); filter score &lt; 0.15</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: var(--teal); color: var(--teal2); background: rgba(20,184,166,0.1);">2</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">fts_search — FTS5 BM25 keyword search</div>
+        <div class="flow-desc">
+          Query is tokenised into identifier-like words → <strong>stopwords removed</strong> (how, what, def, class, return, import, etc.) → FTS5 BM25 OR search over <code>code_fts(name, embedding_text)</code>.<br>
+          Results normalised to [0, 0.85] so perfect FTS matches yield below perfect semantic matches (1.0). Capped at 5 results — FTS is a complementary signal, not the primary one.<br>
+          <strong>Why stopwords matter:</strong> "how does login work" → after filtering → "login", "work" → avoids flooding candidates with unrelated matches for "how" and "does".
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: var(--blue); color: var(--blue2); background: rgba(59,130,246,0.1);">3</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">rrf_merge — Reciprocal Rank Fusion (k=60)</div>
+        <div class="flow-desc">
+          The two ranked lists (semantic + FTS) are fused via RRF — a rank-based fusion immune to score scale differences between cosine [0,1] and BM25 scores. A node appearing high in both lists scores much higher than one topping only one.
+        </div>
+        <div class="code-block" style="margin-top: 8px;">
+          <div class="code-header"><span class="lang">RRF formula</span></div>
+          <div class="code-body">rrf_score(node) = Σ  <span class="nb">1.0</span> / (k + rank_i + <span class="nb">1</span>)   <span class="cm"># k=60 empirically robust</span>
+<span class="cm"># rank_i = position in each list (0-indexed)</span>
+<span class="cm"># node in both lists: ~1/61 + ~1/61 = ~0.033</span>
+<span class="cm"># node only in semantic top-1: ~1/61 = ~0.016</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: var(--purple); color: #a78bfa; background: rgba(139,92,246,0.1);">4</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">ppr_expand — Personalized PageRank graph expansion</div>
+        <div class="flow-desc">
+          <strong>Replaces the old depth-1 BFS</strong> from v2. Seeds RRF scores are used as teleportation weights in a global random-walk over CALLS + CLASS_CONTAINS edges (IMPORTS excluded to prevent cross-file pollution).<br>
+          <strong>PPR advantages over BFS:</strong>
+          <ul style="list-style: none; margin: 8px 0 0 0; padding: 0;">
+            <li style="font-size: 12px; color: var(--text2); margin-bottom: 4px; padding-left: 16px;">→ <strong>Multi-hop:</strong> discovers callers-of-callers and class siblings naturally</li>
+            <li style="font-size: 12px; color: var(--text2); margin-bottom: 4px; padding-left: 16px;">→ <strong>Score-proportional:</strong> neighbors of high-scoring seeds rank higher than neighbors of weak seeds</li>
+            <li style="font-size: 12px; color: var(--text2); margin-bottom: 4px; padding-left: 16px;">→ <strong>CLASS_CONTAINS-aware:</strong> methods of retrieved classes (and vice versa) surface</li>
+          </ul>
+          Returns top-30 non-seed neighbors by PPR score (alpha=0.85).
+        </div>
+        <div class="code-block" style="margin-top: 8px;">
+          <div class="code-header"><span class="lang">PPR normalization</span></div>
+          <div class="code-body"><span class="cm"># Personalization = RRF scores normalized to sum to 1.0</span>
+personalization = {nid: s / total <span class="kw">for</span> nid, s <span class="kw">in</span> seeds.items()}
+ppr = nx.pagerank(subgraph, alpha=<span class="nb">0.85</span>, personalization=personalization)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #f97316; color: #fb923c; background: rgba(249,115,22,0.1);">5</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">Combine candidates + test-file penalty</div>
+        <div class="flow-desc">
+          Seeds (RRF scores) and PPR neighbors are merged into a single candidate pool — seeds overwrite neighbors on overlap (RRF scores are higher). Then a <strong>test-file penalty</strong> halves the score of any node whose file path contains "test" or "spec". This prevents test files from dominating context when the user asks about production code.
+        </div>
+        <div class="code-block" style="margin-top: 8px;">
+          <div class="code-header"><span class="lang">Test penalty</span></div>
+          <div class="code-body"><span class="kw">for</span> node_id <span class="kw">in</span> candidate_pool:
+    file_part = node_id.split(<span class="str">"::"</span>)[<span class="nb">0</span>].lower()
+    <span class="kw">if</span> <span class="str">"test"</span> <span class="kw">in</span> file_part <span class="kw">or</span> <span class="str">"spec"</span> <span class="kw">in</span> file_part:
+        candidate_pool[node_id] *= <span class="nb">0.5</span>  <span class="cm"># 50% penalty</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5b -->
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: var(--purple); color: #a78bfa; background: rgba(139,92,246,0.1);">6</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">cross_encode_rerank — ms-marco-MiniLM-L-6-v2 + hybrid CE floor</div>
+        <div class="flow-desc">
+          Top <code>2×max_nodes</code> candidates are jointly scored as <code>(query, node_text)</code> pairs by the cross-encoder. Unlike cosine similarity (which encodes query and node separately), the cross-encoder sees both together — capturing precise relevance signals bi-encoders miss.<br><br>
+          <strong>Hybrid CE floor</strong> (FILCO-style, new in v3.1): always keep top-3, then keep extras within 4.0 of the best CE score. Pure <code>ce_score &gt; 0</code> floor drops everything when the model scores all candidates negative (common for abstract/architectural queries).<br><br>
+          Model: 66 MB, pre-warmed on startup (~200ms disk load), CPU inference ~100ms for 15 candidates.
+        </div>
+        <div class="code-block" style="margin-top: 8px;">
+          <div class="code-header"><span class="lang">Hybrid floor logic (graph_rag.py)</span></div>
+          <div class="code-body">max_ce = scored[<span class="nb">0</span>][<span class="nb">0</span>]   <span class="cm"># best CE score (already sorted desc)</span>
+floor = max_ce - <span class="nb">4.0</span>
+kept = <span class="fn">list</span>(scored[:<span class="nb">3</span>])     <span class="cm"># top-3 always kept</span>
+extras = [item <span class="kw">for</span> item <span class="kw">in</span> scored[<span class="nb">3</span>:] <span class="kw">if</span> item[<span class="nb">0</span>] &gt; floor]
+scored = kept + extras</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5c -->
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: var(--teal); color: var(--teal2); background: rgba(20,184,166,0.1);">7</div>
+        <div class="flow-connector"></div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">_expand_full_bodies — read live source lines for top-5</div>
+        <div class="flow-desc">
+          After CE reranking, the top-5 survivors get their <code>full_body</code> field populated by reading actual lines from disk (<code>line_start</code> → <code>line_end</code>). This replaces the 300-char <code>body_preview</code> stored at index time — critical for large functions where the key logic is beyond the preview window. Failures silently fall back to <code>body_preview</code>. Only top-5 are expanded (disk I/O cost is proportional).
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-dot" style="border-color: #22c55e; color: #22c55e; background: rgba(34,197,94,0.1);">8</div>
+      </div>
+      <div class="flow-content">
+        <div class="flow-title">mmr_diversify — file-based diversity selection</div>
+        <div class="flow-desc">
+          Maximal Marginal Relevance selects the final <code>max_nodes</code> iteratively. Each candidate's effective score is reduced by <code>0.35 × count_already_selected_from_same_file</code>. The third node from the same file needs a 0.70 score advantage over a fresh-file node to be selected. Prevents BFS clusters (all methods of one class) from dominating context.
+        </div>
+        <div class="code-block" style="margin-top: 8px;">
+          <div class="code-header"><span class="lang">MMR selection</span></div>
+          <div class="code-body">adjusted = score - <span class="nb">0.35</span> × file_counts.get(file_key, <span class="nb">0</span>)
+<span class="cm"># Iteratively pick node with highest adjusted score</span>
+<span class="cm"># file_counts tracks how many nodes already selected from each file</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Retrieval Stats Dict</h3>
+  <p>Every call to <code>graph_rag_retrieve()</code> returns a stats dict alongside the nodes. The SSE <code>done</code> event carries this dict.</p>
+  <table class="data-table">
+    <thead><tr><th>Key</th><th>What it tells you</th></tr></thead>
+    <tbody>
+      <tr><td><code>semantic_seeds</code></td><td>Count of nodes from cosine search after min_similarity floor</td></tr>
+      <tr><td><code>fts_seeds</code></td><td>Count of nodes from FTS5 BM25 search</td></tr>
+      <tr><td><code>fts_new</code></td><td>FTS nodes not already in semantic set (net new from keyword)</td></tr>
+      <tr><td><code>neighbor_count</code></td><td>PPR-expanded neighbors added to candidate pool</td></tr>
+      <tr><td><code>candidate_pool</code></td><td>Total candidates before CE reranking</td></tr>
+      <tr><td><code>cross_encoder_used</code></td><td>True if CE ran; False if model raised or skipped</td></tr>
+      <tr><td><code>ce_floor_dropped</code></td><td>Nodes dropped by hybrid CE floor</td></tr>
+      <tr><td><code>full_body_expanded</code></td><td>Count of top-5 nodes that got live source lines</td></tr>
+      <tr><td><code>returned_count</code></td><td>Final node count after MMR</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── AGENTS ─── -->
+<section id="agents">
+  <div class="section-label">Multi-Agent System</div>
+  <h2>Agent System (LangGraph)</h2>
+  <p>The LangGraph orchestrator coordinates a Router, specialist agents, and a quality-gating Critic. The Critic can trigger retries — but never hangs: max 2 retries (3 total attempts), then the best answer is always returned.</p>
+
+  <div class="agent-flow">
+    <div class="agent-nodes">
+      <div class="agent-node">
+        <div class="agent-box" style="border-color: rgba(59,130,246,0.4); background: rgba(59,130,246,0.1); color: var(--blue2);">Router</div>
+        <div class="agent-label">classifies intent</div>
+      </div>
+      <div class="agent-arrow-h">→</div>
+
+      <div class="agent-split" style="align-items: flex-start;">
+        <div style="display: flex; gap: 0; align-items: center;">
+          <div class="agent-node">
+            <div class="agent-box" style="border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.07); color: #93c5fd; font-size: 11px;">Explorer</div>
+            <div class="agent-label">explain →<br>streams directly</div>
+          </div>
+          <div class="agent-arrow-h" style="font-size: 12px; padding-bottom: 20px;">→ SSE tokens</div>
+        </div>
+        <div style="display: flex; gap: 0; align-items: center;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div class="agent-node">
+              <div class="agent-box" style="border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.07); color: #fca5a5; font-size: 11px;">Debugger</div>
+              <div class="agent-label">DebugResult</div>
+            </div>
+            <div class="agent-node">
+              <div class="agent-box" style="border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.07); color: #86efac; font-size: 11px;">Reviewer</div>
+              <div class="agent-label">ReviewResult</div>
+            </div>
+            <div class="agent-node">
+              <div class="agent-box" style="border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.07); color: #c4b5fd; font-size: 11px;">Tester</div>
+              <div class="agent-label">TestResult</div>
+            </div>
+          </div>
+          <div class="agent-arrow-h" style="font-size: 12px; padding-bottom: 0;">→</div>
+          <div class="agent-node">
+            <div class="agent-box" style="border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.1); color: var(--amber2);">Critic</div>
+            <div class="agent-label">score ≥ 0.7?</div>
+          </div>
+          <div class="agent-arrow-h" style="font-size: 12px; padding-bottom: 0;">→</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 0;">
+            <div class="agent-node">
+              <div class="agent-box" style="border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.1); color: #4ade80; font-size: 11px;">✓ Pass → SSE</div>
+              <div class="agent-label">result event</div>
+            </div>
+            <div class="agent-node">
+              <div class="agent-box" style="border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.07); color: #fca5a5; font-size: 11px;">✗ Retry (≤2×)</div>
+              <div class="agent-label">loop_count++</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>The Four Specialist Agents</h3>
+
+  <!-- Explain Agent -->
+  <div class="card" style="margin-bottom: 16px; border-color: rgba(59,130,246,0.3);">
+    <div class="card-title" style="color: var(--blue2); font-size: 14px;">Explorer (Explain) — <code>explorer.py</code> + <code>orchestrator.build_explain_context()</code></div>
+    <div class="card-desc" style="margin-top: 8px; line-height: 1.8;">
+      <strong>Path:</strong> Selection-aware → Graph RAG retrieval → SSE token streaming (bypasses LangGraph for explain to stream directly).<br>
+      <strong>Selection injection:</strong> If user has a file/range selected in VS Code, the system finds the most specific graph node overlapping the midpoint of the selection range, injects it at the front of context, and rewrites the question to anchor to that symbol.<br>
+      <strong>Virtual document guard:</strong> VS Code output panel URIs (<code>extension-output-…</code>) are detected and silently discarded.<br>
+      <strong>Module-level fallback:</strong> If selected code is not a tracked graph symbol (e.g. top-level statements), raw lines are read from disk and injected as a synthetic <code>CodeNode</code> so the LLM still sees them.<br>
+      <strong>Streaming:</strong> <code>explore_stream()</code> is an async generator — each LLM token becomes a SSE <code>token</code> event.
+    </div>
+  </div>
+
+  <!-- Debug Agent -->
+  <div class="card" style="margin-bottom: 16px; border-color: rgba(239,68,68,0.3);">
+    <div class="card-title" style="color: #fca5a5; font-size: 14px;">Debugger — <code>debugger.py</code> — 9-step graph-traversal algorithm</div>
+    <div class="card-desc" style="margin-top: 8px; line-height: 1.8;">
+      <strong>Step 1 — Entry discovery:</strong> Find nodes whose <code>.name</code> appears in the lowercased question. Fallback: node with highest <code>in_degree</code> (most-called function).<br>
+      <strong>Step 2 — BFS forward:</strong> Follow CALLS edges up to <code>max_hops=4</code> from each entry node.<br>
+      <strong>Step 3 — 5-factor anomaly scoring</strong> per node:<br>
+    </div>
+    <table class="data-table" style="margin: 8px 0;">
+      <thead><tr><th>Factor</th><th>Weight</th><th>Computation</th></tr></thead>
+      <tbody>
+        <tr><td>Complexity</td><td>0.30</td><td>cyclomatic complexity / 10, clamped [0,1]</td></tr>
+        <tr><td>Error absence</td><td>0.25</td><td>1.0 if no try/except/raise/catch in body; 0.0 otherwise</td></tr>
+        <tr><td>Keyword match</td><td>0.20</td><td>overlap(question_tokens, body_tokens) / len(question_tokens)</td></tr>
+        <tr><td>Out-degree coupling</td><td>0.15</td><td>out_degree / 10, clamped [0,1]</td></tr>
+        <tr><td>Inverted PageRank</td><td>0.10</td><td>1 - min(pagerank × 5, 1.0) — low centrality = more suspect</td></tr>
+      </tbody>
+    </table>
+    <div class="card-desc" style="line-height: 1.8;">
+      <strong>Step 4:</strong> Rank top-5 by anomaly score. <strong>Step 5:</strong> Compute impact_radius (direct CALLS-predecessors of top suspect). <strong>Step 6:</strong> LLM diagnosis narrative constrained to traversal function names only (anti-hallucination).
+    </div>
+    <div class="code-block" style="margin-top: 8px;">
+      <div class="code-header"><span class="lang">Example anomaly_score</span></div>
+      <div class="code-body">score = <span class="nb">0.30</span>×complexity + <span class="nb">0.25</span>×error_absence + <span class="nb">0.20</span>×keyword_match
+      + <span class="nb">0.15</span>×coupling + <span class="nb">0.10</span>×inverted_pagerank
+<span class="cm"># e.g. login() — complexity=4, no error handling, "login" in question</span>
+<span class="cm"># → 0.30×0.4 + 0.25×1.0 + 0.20×1.0 + 0.15×0.3 + 0.10×0.8 = 0.795</span></div>
+    </div>
+  </div>
+
+  <!-- Reviewer Agent -->
+  <div class="card" style="margin-bottom: 16px; border-color: rgba(34,197,94,0.3);">
+    <div class="card-title" style="color: #86efac; font-size: 14px;">Reviewer — <code>reviewer.py</code> — structured output + groundedness post-filter</div>
+    <div class="card-desc" style="margin-top: 8px; line-height: 1.8;">
+      <strong>Context assembly:</strong> target_node_id + its 1-hop CALLS predecessors (callers) + successors (callees). Each node labeled TARGET / CALLER / CALLEE in the prompt.<br>
+      <strong>Range clause:</strong> if user has a line range selected, prompt gets "FOCUS: target your findings to lines X–Y of file.py".<br>
+      <strong>Structured output:</strong> <code>llm.with_structured_output(ReviewResult)</code> returns Pydantic-validated findings. Each finding has: severity (critical/warning/info), category, description, file_path, line_start, line_end, suggestion.<br>
+      <strong>Groundedness post-filter:</strong> any Finding whose <code>file_path</code> is not in the retrieved context set is dropped — Python check, not LLM judgment. Prevents hallucinated file paths.<br>
+      <strong>GitHub PR integration:</strong> POST <code>/review/post-pr</code> sends findings as inline review comments via GitHub API (batched to 10, overflow → summary comment, 3× retry on 5xx).
+    </div>
+  </div>
+
+  <!-- Tester Agent -->
+  <div class="card" style="margin-bottom: 16px; border-color: rgba(139,92,246,0.3);">
+    <div class="card-title" style="color: #c4b5fd; font-size: 14px;">Tester — <code>tester.py</code> — deterministic framework detection</div>
+    <div class="card-desc" style="margin-top: 8px; line-height: 1.8;">
+      <strong>Step 1 — Framework detection</strong> (no LLM): scans repo root for marker files. Priority: pytest → jest → vitest → junit → fallback: test_*.py exists → unknown.<br>
+      <strong>Step 2 — Callee enumeration:</strong> CALLS-edge successors of target_node_id → mock targets list passed to prompt.<br>
+      <strong>Step 3 — LLM structured output:</strong> Only <code>test_code</code> comes from LLM. <code>test_file_path</code> and <code>framework</code> are derived deterministically from (func_name, framework) — never trusted from LLM.<br>
+      <strong>Step 4 — MCP file write:</strong> <code>write_test_file()</code> validates path (no "..", allowed extensions), creates parent dirs, writes to disk. Returns <code>{success, path, error}</code>. Extension shows "file written" badge vs "copy to clipboard" fallback.
+    </div>
+    <div class="code-block" style="margin-top: 8px;">
+      <div class="code-header"><span class="lang">Framework markers</span></div>
+      <div class="code-body">pytest  → pytest.ini, conftest.py, setup.cfg
+jest    → jest.config.js / .ts / .json
+vitest  → vitest.config.ts / .js
+junit   → pom.xml, build.gradle
+<span class="cm"># Fallback: any test_*.py in repo_root → pytest</span></div>
+    </div>
+  </div>
+
+  <h3>The Critic — Deterministic Quality Gate</h3>
+  <p>LLM-based critics add cost, non-determinism, and can be fooled by confident hallucinations. The Critic is purely rule-based — Python conditionals, zero API calls, microsecond execution.</p>
+
+  <div class="code-block" style="margin-bottom: 16px;">
+    <div class="code-header"><span class="lang">Critic formula (critic.py)</span></div>
+    <div class="code-body">score = <span class="nb">0.40</span> × groundedness + <span class="nb">0.35</span> × relevance + <span class="nb">0.25</span> × actionability
+<span class="cm"># groundedness: |cited_nodes ∩ retrieved_set| / |cited_nodes|</span>
+<span class="cm"># relevance:    structural quality (≥1 suspect + diagnosis / ≥1 finding + summary / def test_)</span>
+<span class="cm"># actionability: specificity (suspects/5 / suggestions ratio / test functions/3)</span>
+<span class="cm"># threshold: score &lt; 0.7 → retry; loop_count ≥ 2 → force pass (max_critic_loops)</span></div>
+  </div>
+
+  <table class="data-table">
+    <thead><tr><th>Agent</th><th>Groundedness source</th><th>Relevance check</th><th>Actionability check</th></tr></thead>
+    <tbody>
+      <tr><td>Debugger</td><td>suspect.node_id ∈ traversal_path</td><td>suspects &gt; 0 AND diagnosis non-empty</td><td>min(len(suspects)/5, 1.0)</td></tr>
+      <tr><td>Reviewer</td><td>finding.file_path ∈ retrieved_nodes set</td><td>findings &gt; 0 AND summary non-empty</td><td>fraction of findings with non-empty suggestion</td></tr>
+      <tr><td>Tester</td><td>always 1.0 (no cited nodes)</td><td>"def test_" present in test_code</td><td>min(count("def test_")/3, 1.0)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>The Balanced Grounding Prompt — v3.1 Design</h3>
+  <p>The system prompt in <code>prompts.py</code> went through two v3.1 iterations. An early version was over-restrictive ("ONLY use context") which caused poor answers on architectural questions where some general knowledge is needed. It was reverted. The current prompt is <strong>balanced</strong>: prefer context, but allow general programming reasoning to connect the dots.</p>
+
+  <div class="code-block" style="margin: 16px 0 24px;">
+    <div class="code-header"><span class="lang">prompts.py — SYSTEM_PROMPT (v3.1 balanced)</span></div>
+    <div class="code-body"><span class="str">"""You are an expert code assistant. You answer questions about a codebase
+by reasoning from the retrieved code context provided.
+
+Rules:
+1. Prefer the retrieved context as your primary source. When the answer is
+   visible in the code blocks, base your answer on them and cite the exact
+   file path and line range, e.g. `auth/login.py:42-55`.
+2. Never fabricate a citation. Only cite file:line locations that appear
+   verbatim in the context headers.
+3. You may use your general programming knowledge to EXPLAIN or CONNECT what
+   you see in the context (e.g. how a pattern works, what a base class implies).
+   Do NOT state facts about this specific codebase that contradict or go beyond
+   the retrieved context.
+4. If the retrieved context does not contain enough information to answer
+   confidently, say so briefly and share what you can infer from what was retrieved.
+5. Do not invent function names, class names, or file paths not present in context.
+6. Keep answers concise and focused on what the code actually shows."""</span>
+    <span class="cm">
+# Key design decision (v3.1):
+# Rule 3 distinguishes "explain a pattern you see" (allowed general knowledge)
+# vs "assert a codebase fact" (requires context support).
+# The over-restrictive version blocked useful answers like explaining what
+# a design pattern implies — reverted in 8d36aab, replaced by this.</span></div>
+  </div>
+
+  <div class="compare-grid">
+    <div class="compare-box compare-before">
+      <div class="compare-label">Over-Restrictive (reverted)</div>
+      <ul>
+        <li>Answer ONLY from the context block</li>
+        <li>Refused architectural questions needing general knowledge</li>
+        <li>"I'm not certain" on every question about patterns</li>
+        <li>Reverted in commit 8d36aab</li>
+      </ul>
+    </div>
+    <div class="compare-box compare-after">
+      <div class="compare-label">Balanced Grounding (v3.1 current)</div>
+      <ul>
+        <li>PREFER context, CITE from context</li>
+        <li>General knowledge allowed to explain/connect patterns</li>
+        <li>Can say "this looks like a factory pattern" even if not in docstring</li>
+        <li>Still prohibits fabricating file:line citations or codebase facts</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Anti-Hallucination Layers</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">1. Retrieval Constraint</div>
+      <div class="card-desc">LLM only sees the retrieved context block. Can't fabricate what it wasn't shown.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">2. Balanced Prompt (v3.1)</div>
+      <div class="card-desc">"Never fabricate a citation." General knowledge allowed to <em>explain</em> patterns in context, not to assert codebase facts.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">3. Groundedness Post-Filter</div>
+      <div class="card-desc">Reviewer drops any Finding whose file_path is not in the retrieved node set — Python check, not LLM.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">4. Traversal Grounding</div>
+      <div class="card-desc">Debugger prompt says "only mention function names from this list: {traversal_names}". PPR/BFS produces the list, not the LLM.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">5. Critic Hard Cap</div>
+      <div class="card-desc">max 2 retries (loop_count ≥ 2 → force passed=True). LangGraph loop always terminates. Best answer always returned.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">6. Deterministic Paths</div>
+      <div class="card-desc">test_file_path and framework come from Python logic (marker file scan, string formatting) — never from LLM output.</div>
+    </div>
+  </div>
+
+  <h3>LangGraph State — NexusState TypedDict</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="lang">orchestrator.py — NexusState</span></div>
+    <div class="code-body"><span class="cm"># G is NOT in state — nx.DiGraph is not msgpack-serializable for SqliteSaver</span>
+<span class="cm"># G lives in _G_CACHE dict; set_graph() called before every invoke()</span>
+<span class="kw">class</span> <span class="fn">NexusState</span>(TypedDict):
+    question: str; repo_path: str; db_path: str
+    intent_hint: Optional[str]     <span class="cm"># "explain"/"debug"/"review"/"test" or None</span>
+    max_nodes: int; hop_depth: int
+    target_node_id: Optional[str]  <span class="cm"># for review/test — specific node to target</span>
+    selected_file: Optional[str]   <span class="cm"># active VS Code editor file</span>
+    selected_range: Optional[list] <span class="cm"># [line_start, line_end] from editor selection</span>
+    intent: Optional[str]          <span class="cm"># set by router_node</span>
+    specialist_result: Optional[object]  <span class="cm"># DebugResult | ReviewResult | TestResult</span>
+    critic_result: Optional[object]      <span class="cm"># CriticResult</span>
+    loop_count: int                <span class="cm"># 0 on first attempt; +1 per critic retry</span></div>
+  </div>
+</section>
+
+<!-- ─── EXTENSION ─── -->
+<section id="extension">
+  <div class="section-label">VS Code Extension</div>
+  <h2>Extension Internals</h2>
+  <p>The extension is a TypeScript Node.js module. Everything is wired in <code>activate()</code>. Resources are disposed automatically on deactivation.</p>
+
+  <table class="data-table">
+    <thead><tr><th>File</th><th>Role</th><th>Key Detail</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>extension.ts</code></td>
+        <td>Entry point — <code>activate()</code></td>
+        <td>Wires all 8 components; registers commands; first-time onboarding</td>
+      </tr>
+      <tr>
+        <td><code>SidecarManager.ts</code></td>
+        <td>Spawns / reuses backend binary</td>
+        <td>Lockfile <code>.nexus/sidecar.lock</code> (PID + port). Multiple windows share one sidecar. Backend self-terminates after 600s idle.</td>
+      </tr>
+      <tr>
+        <td><code>SidebarProvider.ts</code></td>
+        <td>Webview bridge</td>
+        <td><code>postMessage</code> ↔ React. Captures active editor context (file + line range) for each query.</td>
+      </tr>
+      <tr>
+        <td><code>SseStream.ts</code></td>
+        <td>SSE consumer</td>
+        <td>Parses <code>event: token/citations/result/done</code> events. Forwards to webview.</td>
+      </tr>
+      <tr>
+        <td><code>FileWatcher.ts</code></td>
+        <td>Auto-reindex on save</td>
+        <td>2-second debounce. Only changed files sent for incremental reindex.</td>
+      </tr>
+      <tr>
+        <td><code>ConfigManager.ts</code></td>
+        <td>API key management</td>
+        <td>VS Code <code>SecretStorage</code> (system keychain). Keys never written to files.</td>
+      </tr>
+      <tr>
+        <td><code>HighlightService.ts</code></td>
+        <td>Editor decorations</td>
+        <td>Applies gutter highlights to cited lines on <code>done</code> event.</td>
+      </tr>
+      <tr>
+        <td><code>webview/App.tsx</code></td>
+        <td>React 18 chat UI</td>
+        <td>Streamed token rendering. Intent selector. Citation click → jump to file:line.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-blue" style="margin-top: 20px;">
+    <span class="callout-icon">🔒</span>
+    <div class="callout-body">
+      <strong>Why <code>document.execCommand('copy')</code>?</strong> VS Code's Electron webview blocks <code>navigator.clipboard.writeText()</code> via CSP (<code>default-src 'none'</code>). <code>execCommand</code> is the accepted VS Code webview workaround even though it's deprecated in standard browsers.
+    </div>
+  </div>
+</section>
+
+<!-- ─── MCP TOOLS ─── -->
+<section id="mcp">
+  <div class="section-label">Side-Effect Layer</div>
+  <h2>MCP Tool Layer</h2>
+  <p>The MCP layer (<code>app/mcp/tools.py</code>) provides the two side-effect I/O operations that agents can trigger. Neither function imports from <code>app.agent.*</code> at module level (no circular imports). Both are intentionally stateless — safe to call from any request.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px;">
+
+    <div class="card" style="border-color: rgba(59,130,246,0.3);">
+      <div class="card-title" style="color: var(--blue2); font-size: 14px;">post_review_comments()</div>
+      <div class="card-desc" style="margin-top: 8px; line-height: 1.8; font-size: 12px;">
+        Posts Reviewer findings as GitHub PR inline review comments via GitHub REST API.<br><br>
+        <strong>Batching:</strong> Up to 10 findings → single <code>POST /pulls/{pr}/reviews</code> batch. Findings 11+ → one summary issue comment.<br>
+        <strong>422 fallback:</strong> If batch review returns 422 (invalid line position in at least one comment), retries each finding individually. Skips findings where line position is invalid.<br>
+        <strong>Retry policy:</strong> tenacity — 3 attempts, exponential backoff [1, 8]s, retry on 5xx only (422 is permanent, never retried).<br>
+        <strong>Token security:</strong> GITHUB_TOKEN stored server-side in .env (Settings). Extension sends findings + PR metadata; token never exposed to frontend.
+      </div>
+      <div class="code-block" style="margin-top: 12px;">
+        <div class="code-header"><span class="lang">POST /review/post-pr</span></div>
+        <div class="code-body">{
+  <span class="str">"findings"</span>: [<span class="cm">/* list of Finding dicts */</span>],
+  <span class="str">"repo"</span>: <span class="str">"owner/repo"</span>,
+  <span class="str">"pr_number"</span>: <span class="nb">42</span>,
+  <span class="str">"commit_sha"</span>: <span class="str">"abc123"</span>
+}
+<span class="cm">→ {"posted": 8, "skipped": 1, "summary_posted": false}</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color: rgba(139,92,246,0.3);">
+      <div class="card-title" style="color: #c4b5fd; font-size: 14px;">write_test_file()</div>
+      <div class="card-desc" style="margin-top: 8px; line-height: 1.8; font-size: 12px;">
+        Writes generated test code to disk from TestResult. Security-validated before any file operations.<br><br>
+        <strong>Validation order:</strong><br>
+        1. Reject ".." in raw path string (path traversal — checked BEFORE Path.resolve())<br>
+        2. Reject disallowed extension (allowlist: .py .ts .js .tsx .jsx .java .go)<br>
+        3. Reject existing file when overwrite=False<br>
+        4. Create parent directories (mkdir -p)<br>
+        5. Write file<br><br>
+        <strong>Why check ".." before Path.resolve()?</strong> resolve() normalizes paths — <code>tests/../../../etc/cron.d/attack</code> looks relative but resolves outside repo. Raw string check prevents normalization from hiding the traversal.
+      </div>
+      <div class="code-block" style="margin-top: 12px;">
+        <div class="code-header"><span class="lang">write_test_file return</span></div>
+        <div class="code-body"><span class="cm"># Success:</span>
+{<span class="str">"success"</span>: <span class="kw">True</span>, <span class="str">"path"</span>: <span class="str">"/repo/tests/test_login.py"</span>, <span class="str">"error"</span>: <span class="kw">None</span>}
+<span class="cm"># Traversal rejected:</span>
+{<span class="str">"success"</span>: <span class="kw">False</span>, <span class="str">"path"</span>: <span class="kw">None</span>,
+ <span class="str">"error"</span>: <span class="str">"path traversal rejected: '..' found in path"</span>}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── STORAGE ─── -->
+<section id="storage">
+  <div class="section-label">Persistence</div>
+  <h2>Storage — SQLite Everything</h2>
+  <p>All state lives in a single SQLite file: <code>.nexus/graph.db</code> in your workspace root. No server, no Docker, no network dependency.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+    <div>
+      <table class="data-table">
+        <thead><tr><th>Table</th><th>What it stores</th></tr></thead>
+        <tbody>
+          <tr><td><code>code_nodes</code></td><td>Functions, classes — node_id, file, line, signature, body_preview</td></tr>
+          <tr><td><code>code_edges</code></td><td>CALLS / IMPORTS / DEFINES / INHERITS relationships</td></tr>
+          <tr><td><code>code_embeddings_vec</code></td><td>Float32 vectors — sqlite-vec virtual table (ANN search)</td></tr>
+          <tr><td><code>code_embeddings_meta</code></td><td>node_id ↔ vec_rowid mapping + repo_path scoping</td></tr>
+          <tr><td><code>code_fts</code></td><td>FTS5 full-text index over function names</td></tr>
+          <tr><td><code>nexus_meta</code></td><td>embedding provider, model name, dimension, index status</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom: 12px;">
+        <div class="card-title">Embedding Model Change → Re-index Required</div>
+        <div class="card-desc" style="margin-top: 6px; font-size: 12px; line-height: 1.7;">
+          <code>nexus_meta</code> stores the model used at index time. If model changes, backend returns HTTP <strong>409</strong> with "Embedding model mismatch — please re-index." Prevents querying mismatched vector dimensions (garbage results).
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">.gitignore .nexus/</div>
+        <div class="card-desc" style="margin-top: 6px; font-size: 12px; line-height: 1.7;">
+          The index contains absolute paths and local embeddings. Machine-specific + 5–50 MB. Always add to <code>.gitignore</code>.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TECH STACK ─── -->
+<section id="tech-stack">
+  <div class="section-label">Technology</div>
+  <h2>Tech Stack</h2>
+
+  <table class="data-table">
+    <thead><tr><th>Layer</th><th>Technology</th><th>Why chosen</th></tr></thead>
+    <tbody>
+      <tr><td>Backend</td><td>FastAPI (Python)</td><td>Async, excellent SSE support, easy streaming</td></tr>
+      <tr><td>Graph</td><td>NetworkX DiGraph</td><td>Mature BFS/PageRank built-in; traversal runs in-process (no network overhead)</td></tr>
+      <tr><td>Vector DB</td><td>sqlite-vec</td><td>Zero infra — ANN search inside SQLite, no separate server</td></tr>
+      <tr><td>Full-text search</td><td>SQLite FTS5</td><td>Bundled with SQLite, BM25 ranking, zero deps</td></tr>
+      <tr><td>AST parsing</td><td>tree-sitter</td><td>Incremental, multi-language, fast, grammar-based</td></tr>
+      <tr><td>Agent orchestration</td><td>LangGraph</td><td>Stateful graph with retry loops, checkpointing, conditional edges</td></tr>
+      <tr><td>LLM chains</td><td>LangChain LCEL</td><td>Streaming, structured output (<code>with_structured_output</code>), tracing</td></tr>
+      <tr><td>Extension</td><td>VS Code API + TypeScript</td><td>Official SDK — webview, SecretStorage, file system events</td></tr>
+      <tr><td>Frontend</td><td>React 18 (Webview)</td><td>State management, streaming token rendering</td></tr>
+      <tr><td>Build</td><td>PyInstaller + vsce</td><td>Single binary (no Python required on user machine) + .vsix package</td></tr>
+      <tr><td>CI</td><td>GitHub Actions</td><td>Matrix build: macOS + Windows + Linux smoke tests</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Supported LLM Providers (Model Factory)</h3>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;">
+    <span class="tag tag-amber">Mistral</span>
+    <span class="tag tag-blue">OpenAI</span>
+    <span class="tag tag-purple">Anthropic</span>
+    <span class="tag tag-teal">Ollama (local)</span>
+    <span class="tag tag-green">Gemini</span>
+  </div>
+  <p style="margin-top: 12px;">Adding a new provider: add an <code>elif</code> branch in <code>get_llm()</code> and <code>get_embeddings()</code> in <code>model_factory.py</code>, install the LangChain integration package, add the API key field in <code>config.py</code>.</p>
+</section>
+
+<!-- ─── DECISIONS ─── -->
+<section id="decisions">
+  <div class="section-label">Architecture Trade-offs</div>
+  <h2>Key Design Decisions</h2>
+  <p>Every architectural choice has a "why" and a "what you give up." These are the questions interviewers probe.</p>
+
+  <div class="tradeoff-grid">
+    <div class="tradeoff-card">
+      <div class="t-decision">SQLite vs. PostgreSQL + pgvector</div>
+      <div class="t-chose">✓ Chose: SQLite + sqlite-vec</div>
+      <div class="t-rejected">✗ Rejected: PostgreSQL</div>
+      <div class="t-why">Zero infrastructure. Works on install. Each workspace gets its own isolated file. The tradeoff: no horizontal scaling — fine for single-user dev tool.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="t-decision">Sidecar process vs. in-extension Python</div>
+      <div class="t-chose">✓ Chose: Persistent FastAPI sidecar</div>
+      <div class="t-rejected">✗ Rejected: Per-query subprocess</div>
+      <div class="t-why">Graph loads once, reused for all queries. Per-query subprocess would reload the NetworkX graph every time (500ms–2s overhead on large repos).</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="t-decision">Graph RAG vs. plain vector search</div>
+      <div class="t-chose">✓ Chose: Semantic + FTS5 + BFS</div>
+      <div class="t-rejected">✗ Rejected: Cosine-only</div>
+      <div class="t-why">Context Precision: 0.3706 (v2+CE) vs 0.1585 (naive) — +134%. The bug is often one CALLS hop away from the function you asked about; cross-encoder reranking further tightens the context window.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="t-decision">Deterministic Critic vs. LLM Critic</div>
+      <div class="t-chose">✓ Chose: Rule-based Python checks</div>
+      <div class="t-rejected">✗ Rejected: LLM self-evaluation</div>
+      <div class="t-why">Zero API cost, reproducible scores, not fooled by confident-sounding hallucinations. Rule checks (non-empty suspects, ≥1 def test_, etc.) capture quality for structured outputs.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="t-decision">tree-sitter vs. LSP for call graph</div>
+      <div class="t-chose">✓ Chose: tree-sitter</div>
+      <div class="t-rejected">✗ Rejected: Language Server Protocol</div>
+      <div class="t-why">tree-sitter is faster (pure parsing, no server round-trips), language-server-independent, and works offline. LSP gives more accurate dynamic dispatch — tradeoff accepted.</div>
+    </div>
+    <div class="tradeoff-card">
+      <div class="t-decision">Lazy imports in agent functions</div>
+      <div class="t-chose">✓ Chose: Import inside function body</div>
+      <div class="t-rejected">✗ Rejected: Module-level imports</div>
+      <div class="t-why">During pytest collection, module-level imports trigger <code>get_settings()</code> before fixtures run → ValidationError (no API keys). Lazy imports prevent this.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── WEAKNESSES ─── -->
+<section id="weaknesses">
+  <div class="section-label">Honest Assessment</div>
+  <h2>Known Weaknesses & Gaps</h2>
+  <p>Understanding limitations is as important as knowing strengths. These come up in senior interviews.</p>
+
+  <div class="callout callout-red" style="margin-bottom: 12px;">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body">
+      <strong>Static analysis only.</strong> tree-sitter extracts CALLS from source text. Dynamic dispatch (Python duck typing, JS callbacks, virtual method overrides) produces no edges. The call graph is an approximation — polymorphic calls are invisible.
+    </div>
+  </div>
+  <div class="callout callout-red" style="margin-bottom: 12px;">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body">
+      <strong>Truncated body previews.</strong> <code>CodeNode.body_preview</code> stores only the first N characters of a function. Critical logic in large functions may be in the truncated part — the LLM never sees it.
+    </div>
+  </div>
+  <div class="callout callout-red" style="margin-bottom: 12px;">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body">
+      <strong>Single-process retrieval.</strong> Vector search + BFS run in the FastAPI process handling all requests. On large repos (50K+ nodes), BFS at depth 2 can block other requests for several hundred milliseconds. A worker queue would fix this.
+    </div>
+  </div>
+  <div class="callout callout-amber">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <strong>If rewriting retrieval:</strong> (1) <s>Replace cosine similarity with a learned re-ranker</s> — done: cross-encoder (ms-marco-MiniLM-L-6-v2) now reranks top candidates. (2) Add backward CALLS expansion (who calls this? — current BFS is forward-only). (3) Fetch actual source lines at query time instead of stored body_preview — larger context, fewer blind spots in large functions.
+    </div>
+  </div>
+</section>
+
+<!-- ─── FAQ ─── -->
+<section id="faq">
+  <div class="section-label">Full Reference</div>
+  <h2>FAQ — KT · Demo · Interview</h2>
+
+  <div class="faq-tabs">
+    <div class="faq-tab active" onclick="switchFaq('kt', this)">Knowledge Transfer</div>
+    <div class="faq-tab" onclick="switchFaq('interview', this)">Interview Prep</div>
+    <div class="faq-tab" onclick="switchFaq('demo', this)">Demo Questions</div>
+    <div class="faq-tab" onclick="switchFaq('curveball', this)">Curveballs</div>
+  </div>
+
+  <!-- KT -->
+  <div id="faq-kt" class="faq-panel active">
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Where do I start to understand the full data flow?</div>
+      <div class="faq-a">Start with the <strong>Architecture Overview</strong> above for the big picture. Then follow the data in order: <strong>Ingestion</strong> (walker → AST → graph → embedder) → <strong>Retrieval</strong> (graph_rag.py) → <strong>Agents</strong> (router → specialist → critic) → <strong>API</strong> (SSE events) → <strong>Extension</strong> (sidebar → webview). For a 30-minute orientation: sections 00, 07, 08, 21 in docs/guide.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How do I add a new LLM provider (e.g. Cohere)?</div>
+      <div class="faq-a">5 changes: (1) <code>model_factory.py</code> — add <code>elif</code> in <code>get_llm()</code> and <code>get_embeddings()</code>. (2) Install LangChain integration package. (3) <code>config.py</code> — add API key field to Settings. (4) <code>App.tsx</code> — add to intent selector dropdown. (5) <code>ConfigManager.ts</code> — add key to <code>requiredKeys</code> map.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How do I add a new specialist agent (e.g. Refactor)?</div>
+      <div class="faq-a">(1) Create <code>refactorer.py</code> with <code>RefactorResult</code> Pydantic model + <code>refactor()</code> function (lazy-import pattern). (2) Register agent node in <code>orchestrator.py</code> (LangGraph state machine). (3) Add <code>"refactor"</code> to Router's intent options in <code>router.py</code>. (4) Add <code>"refactor"</code> to intent selector in <code>App.tsx</code>. (5) Handle <code>result</code> SSE event for <code>intent == "refactor"</code> in <code>SidebarProvider.ts</code>.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How do I debug the Python backend locally?</div>
+      <div class="faq-a"><code>cd backend && python -m uvicorn app.main:app --reload --port 8000</code>. Auto-generated docs at <code>http://localhost:8000/docs</code>. API surface: <code>POST /index</code>, <code>GET /index/status</code>, <code>DELETE /index</code>, <code>POST /query</code> (SSE), <code>POST /api/config</code>, <code>GET /health</code>.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Backend isn't starting — where do I look?</div>
+      <div class="faq-a">(1) VS Code Output panel → "Nexus" — SidecarManager logs stdout/stderr. (2) Check for Pydantic ValidationError (missing env var), ImportError (missing dep), or port conflicts. (3) Check <code>.nexus/sidecar.lock</code> — stale PID from crashed process? Delete it to force fresh start. (4) <code>GET /health</code> → 200 means backend is up; check for port mismatch.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">What is .nexus/ and should I gitignore it?</div>
+      <div class="faq-a"><strong>Yes, always gitignore it.</strong> Contains <code>graph.db</code> (SQLite index, 5–50 MB) and <code>sidecar.lock</code> (PID/port). Machine-specific absolute paths, local embeddings. Committing it causes conflicts across team members.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How do I run the RAGAS evaluation after changing retrieval?</div>
+      <div class="faq-a"><code>python eval/run_ragas_redesign.py --limit 30 --workers 1</code> for a full 30Q run (both v2 and v2+CE pipelines). Use <code>--ce-only</code> to skip re-running v2 and load the prior result instead (~1hr vs ~2hrs). Results land in <code>eval/results/ragas_redesign_*.json</code>. Key metrics: faithfulness, answer_relevancy, context_precision.</div>
+    </div>
+  </div>
+
+  <!-- Interview -->
+  <div id="faq-interview" class="faq-panel">
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why Graph RAG over plain vector similarity search?</div>
+      <div class="faq-a">Plain vector search finds <strong>semantically similar</strong> code, not <strong>causally related</strong> code. "Why does login fail?" returns functions whose names look like login. Graph-RAG starts from those seeds then uses <strong>Personalized PageRank</strong> over CALLS+CLASS_CONTAINS edges to discover multi-hop neighbors — what login calls, what calls login, and methods of the same class — all proportionally weighted by how strong the original seed was. Then a cross-encoder (ms-marco-MiniLM-L-6-v2, 66MB) jointly scores (query, node_text) pairs for precise relevance discrimination. Results: faithfulness=0.54, answer_relevancy=0.48, context_precision=0.37 on golden_qa_v2 30Q. +46% precision vs v2 alone (BFS), +134% vs naive vector (0.1585).</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why NetworkX in-memory rather than Neo4j?</div>
+      <div class="faq-a">NetworkX runs traversals (BFS, PageRank, degree centrality) as direct library calls inside the Python process — no query language, no network round-trip. Neo4j would add serialization overhead + operational complexity for what is a local-first tool. Graph persists to SQLite, loaded into NetworkX on startup.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How do you ensure the LLM doesn't hallucinate citations?</div>
+      <div class="faq-a">Four layers: (1) <strong>Retrieval constraint</strong> — LLM only sees the retrieved context block. (2) <strong>Prompt constraint</strong> — "Never fabricate a citation." (3) <strong>Post-filter</strong> — Reviewer drops findings with file_path not in retrieved set (Python check). (4) <strong>Critic groundedness</strong> — traversal_path is set by BFS code (deterministic), not the LLM; suspects outside it penalize the score.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why is the Critic rule-based instead of LLM-based?</div>
+      <div class="faq-a">LLM critics: extra API cost, non-deterministic (same output → different score), fooled by confident-sounding hallucinations. Rule-based: zero cost, deterministic, fast (Python conditionals in microseconds). For structured outputs (non-empty suspects, ≥1 <code>def test_</code>, every finding has a suggestion), rule checks capture quality well.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Walk me through latency from Enter to first token.</div>
+      <div class="faq-a">React postMessage → SidebarProvider captures active editor file+range → SseStream opens fetch to POST /query → FastAPI validates index status → loads nx.DiGraph from cache → embeds query → cosine ANN with min_similarity=0.15 floor → FTS5 BM25 stopword-filtered search → RRF merge (k=60) → Personalized PageRank expansion over CALLS+CLASS_CONTAINS edges → combine + test-file penalty → cross-encoder rerank ms-marco-MiniLM (pre-warmed, ~100ms CPU) → hybrid CE floor → full-body expansion for top-5 → MMR diversity selection → Explorer streams first LLM token via SSE → SseStream parses token event → webview.postMessage → React renders. <strong>Typical: 300–800ms to first token on warm graph (CE dominates).</strong></div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How does the sidecar handle multiple VS Code windows?</div>
+      <div class="faq-a">Lockfile singleton: <code>.nexus/sidecar.lock</code> = PID + port. Second window opening same repo reads lockfile and reuses existing sidecar. Different repo → new sidecar on different port. Sidecar self-terminates after 600s idle (<code>_IDLE_TIMEOUT</code> in main.py).</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How does CI ensure the shipped binary actually works?</div>
+      <div class="faq-a">After each PyInstaller build: (1) Launch binary with <code>--port 0</code> (OS-assigned). (2) Read port from stdout. (3) <code>POST /index</code> small test repo. (4) Wait for <code>GET /index/status</code> → "complete". (5) <code>POST /query</code> test question. (6) Assert response has <code>done</code> SSE event. Runs on macOS + Windows + Linux matrix.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why lazy imports inside agent function bodies?</div>
+      <div class="faq-a">During <code>pytest</code> collection, Python imports every test file. Module-level <code>get_settings()</code> / <code>get_llm()</code> would run before test fixtures — triggering Pydantic ValidationError (no API keys). Importing inside the function body means the import only runs when the function is called. Tests can import <code>debugger.py</code> to test <code>_score_node</code> without live API keys.</div>
+    </div>
+  </div>
+
+  <!-- Demo -->
+  <div id="faq-demo" class="faq-panel">
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Does it work on my repo right now, or does it need special setup?</div>
+      <div class="faq-a">Works on any repo once indexed. Click "Index Workspace" in sidebar. Nexus scans every <code>.py/.ts/.js/.tsx/.jsx/.java/.go/.rs</code> file, builds call graph, stores embeddings locally. ~5,000-function repo takes 30–90 seconds. You need an API key for at least one provider (Ollama is the zero-cost local option).</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Will it leak my code to the internet?</div>
+      <div class="faq-a">Only through the LLM API you configure — same data privacy as using those APIs directly. The full index never leaves your machine. Use Ollama for zero-network operation. There is no Nexus server — the backend runs as a local process on your machine.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">What happens when I edit a file? Does it auto-reindex?</div>
+      <div class="faq-a">Yes. FileWatcher.ts watches for file changes. 2-second debounce after saves. Only changed files sent for incremental reindex. Backend re-parses, removes old nodes, inserts new ones. Typically completes in &lt;5 seconds per file.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How is Nexus different from asking ChatGPT about my code?</div>
+      <div class="faq-a">Three differences: (1) <strong>Scope</strong> — Nexus knows your whole codebase (every function, every call relationship). ChatGPT only knows what you paste. (2) <strong>Citations</strong> — Nexus cites specific <code>file:line</code> locations, clickable to jump directly. (3) <strong>Freshness</strong> — Nexus indexes your latest code on every save.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Can it work with a monorepo with multiple languages?</div>
+      <div class="faq-a">Yes. Walker detects language from file extension; ast_parser dispatches to the appropriate tree-sitter grammar. Python + TypeScript repos get a mixed graph. CALLS edges across language boundaries aren't extracted (Python→TypeScript calls), but each language's internal call graph is complete.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How does Debug mode differ from searching for the error message?</div>
+      <div class="faq-a">Search finds where a string appears. Debug mode finds <em>why</em>. The Debugger scores functions on 5 factors: complexity, missing error handling, keyword relevance, coupling, low centrality. Returns top 5 suspects with anomaly scores and a diagnosis narrative. Clicking a suspect opens the file at that line.</div>
+    </div>
+  </div>
+
+  <!-- Curveballs -->
+  <div id="faq-curveball" class="faq-panel">
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">What's the biggest weakness of the current architecture?</div>
+      <div class="faq-a"><strong>Three honest weaknesses:</strong> (1) Static analysis only — dynamic dispatch (duck typing, callbacks, virtual methods) produces no CALLS edges. (2) Truncated body previews — critical logic in large functions may be cut. (3) Single-process retrieval — BFS at depth 2 on large repos can block other requests. A worker queue would fix the third.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Why does write_test_file check for ".." before Path.resolve()?</div>
+      <div class="faq-a"><code>Path.resolve()</code> normalizes paths and follows symlinks. An attacker could craft <code>tests/../../../etc/cron.d/attack</code> — it looks like a relative path, but after resolve() points outside the repo. Checking the raw string for <code>".."</code> before any Path operation prevents traversal normalization from obscuring the attack. Only after the raw check passes is Path construction safe.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">How would you scale this to work across a team?</div>
+      <div class="faq-a">Current arch: strictly single-user local. To scale: (1) Move graph.db to shared store (shared FS or PostgreSQL + pgvector). (2) Add auth to backend API (currently no auth). (3) Replace sidecar with persistent service (container/pod). (4) The <code>repo_path</code> scoping in the graph schema already supports multi-repo namespacing — no schema change needed. Agent + retrieval layers unchanged.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">If you rewrote retrieval from scratch, what would change?</div>
+      <div class="faq-a">(1) <s>BFS expansion</s> — shipped: replaced by Personalized PageRank which is multi-hop, score-proportional, and CLASS_CONTAINS-aware. (2) <s>Pure CE score floor</s> — shipped: hybrid CE floor keeps top-3 always, then within 4.0 of best score (handles architectural queries where all CE scores are negative). (3) <s>body_preview truncation</s> — shipped: full-body expansion reads live source lines for top-5 CE survivors. (4) Next: semantic filtering of CALLS neighbors (select by cosine sim to query, not just pagerank) to avoid high-degree utility nodes. (5) Next: multi-provider embedding fusion — combine Mistral+OpenAI embeddings, re-rank by agreement.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">The Reviewer uses with_structured_output — what happens under the hood?</div>
+      <div class="faq-a">LangChain inspects the Pydantic model's JSON schema. For OpenAI/Mistral with tool-calling: schema becomes a tool definition; LLM is asked to call it. For providers without tool-calling: JSON mode with schema embedded in system prompt. LangChain deserializes response into <code>ReviewResult</code> via Pydantic. If JSON is malformed: ValidationError → Critic score 0.0 → retry.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── INTERVIEW ─── -->
+<section id="interview">
+  <div class="section-label">Preparation</div>
+  <h2>Interview Cheat Sheet</h2>
+  <p>Quick-reference cards for the most common interview angles.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="color: var(--amber);">The Core Value Prop</div>
+      <div class="card-desc" style="margin-top: 6px; line-height: 1.8;">
+        "Index once → ask anything → get grounded answers with clickable citations." The key differentiator from Copilot: Nexus answers questions about <em>existing</em> code using the entire call graph, not just completion.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: var(--teal2);">The Graph RAG Story</div>
+      <div class="card-desc" style="margin-top: 6px; line-height: 1.8;">
+        "Vector finds similar code. RRF fuses vector+keyword. PPR random-walk finds causally related multi-hop neighbors. Cross-encoder reranks by joint (query, code) relevance. Full-body expansion for top-5. MMR ensures file diversity." faith=0.54, rel=0.48, prec=0.37 (v2+CE, +134% vs naive).
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: var(--blue2);">Why Stateless Backend</div>
+      <div class="card-desc" style="margin-top: 6px; line-height: 1.8;">
+        "Every request includes db_path. Multiple windows → one backend. Restart without losing state. State lives in SQLite."
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: #a78bfa;">Why No LLM Critic</div>
+      <div class="card-desc" style="margin-top: 6px; line-height: 1.8;">
+        "Zero API cost, deterministic, not fooled by confident hallucinations. Rule checks on structured outputs capture quality better."
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: #4ade80;">Privacy Story</div>
+      <div class="card-desc" style="margin-top: 6px; line-height: 1.8;">
+        "Only code snippets go to your chosen LLM API. Full index stays local in .nexus/graph.db. API keys in system keychain via SecretStorage. Ollama = fully offline."
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: #fca5a5;">Honest Weakness</div>
+      <div class="card-desc" style="margin-top: 6px; line-height: 1.8;">
+        "Static analysis only — dynamic dispatch not captured. Truncated previews miss logic in large functions. Single-process retrieval blocks on large repos."
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── USE CASES ─── -->
+<section id="usecases">
+  <div class="section-label">Practical Examples</div>
+  <h2>Real Use Cases</h2>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-icon">🔍</div>
+      <div class="card-title">Onboarding to a new codebase</div>
+      <div class="card-desc">"How does the payment flow work from checkout to confirmation?" — Nexus traces the call chain from checkout() through payment_gateway() to receipt_email() with citations.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🐛</div>
+      <div class="card-title">Production bug investigation</div>
+      <div class="card-desc">"Users with uppercase emails can't log in." — Debugger scores validate_email() and normalize_user() as top suspects with anomaly scores, points to the missing .lower() call.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🛡</div>
+      <div class="card-title">Pre-commit security review</div>
+      <div class="card-desc">Select your new payment handler → Review mode → "critical: SQL injection in line 47, use parameterized query" → Post findings as PR inline comments.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🧪</div>
+      <div class="card-title">Auto-generate test coverage</div>
+      <div class="card-desc">"Write tests for the user signup flow." → Tester detects pytest, generates test_signup.py with fixtures covering happy path and edge cases, writes directly to tests/.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🏗</div>
+      <div class="card-title">Architecture documentation</div>
+      <div class="card-desc">"Explain the full authentication middleware pipeline." — Explorer produces a multi-paragraph explanation tracing every layer of the auth stack with precise citations.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔗</div>
+      <div class="card-title">Cross-language monorepo</div>
+      <div class="card-desc">Python backend + TypeScript frontend in one repo. Each language's call graph is complete. Ask "how does the API contract between frontend and backend work?"</div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal" style="margin-top: 24px;">
+    <span class="callout-icon"><span class="live-dot"></span></span>
+    <div class="callout-body">
+      <strong>Fully offline mode:</strong> Set provider to <code>ollama</code> with a local model. No code leaves your machine. The index, call graph, embeddings, and LLM inference all run locally. Same API surface, same quality gate — just no cloud dependency.
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+
+<script>
+// ── Mode selector ──
+function selectMode(mode, card) {
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.mode-detail').forEach(d => d.classList.remove('visible'));
+  card.classList.add('active');
+  document.getElementById('mode-detail-' + mode)?.classList.add('visible');
+}
+
+// ── FAQ tabs ──
+function switchFaq(tab, el) {
+  document.querySelectorAll('.faq-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.faq-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('faq-' + tab)?.classList.add('active');
+}
+
+// ── FAQ accordion ──
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const wasOpen = item.classList.contains('open');
+  // Optionally close others in same panel
+  // item.parentElement.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  item.classList.toggle('open', !wasOpen);
+}
+
+// ── Nav scroll spy ──
+const sections = document.querySelectorAll('section[id], .hero[id]');
+const navLinks = document.querySelectorAll('nav a');
+
+function updateNav() {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 100) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+
+// ── Scroll top button ──
+const scrollBtn = document.getElementById('scrollTop');
+window.addEventListener('scroll', () => {
+  updateNav();
+  scrollBtn.classList.toggle('visible', window.scrollY > 400);
+}, { passive: true });
+
+updateNav();
+
+// ── Score bar animation trigger ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.querySelectorAll('.score-fill, .progress-fill').forEach(bar => {
+        bar.style.animationPlayState = 'running';
+      });
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.score-bar-wrap, .progress').forEach(el => {
+  el.querySelectorAll('.score-fill, .progress-fill').forEach(bar => {
+    bar.style.animationPlayState = 'paused';
+  });
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
