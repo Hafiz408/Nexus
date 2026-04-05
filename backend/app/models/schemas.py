@@ -15,6 +15,7 @@ class CodeNode(BaseModel):
     body_preview: str = ""         # first 300 chars of body (PARSE-05)
     complexity: int = 1            # keyword count proxy, min 1 (PARSE-05)
     embedding_text: str = ""       # "{signature}\n{docstring}\n{body_preview}" (PARSE-06)
+    full_body: str = ""            # full source lines line_start→line_end, populated at query time only
 
 
 class CodeEdge(BaseModel):
