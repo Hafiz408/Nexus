@@ -212,7 +212,8 @@ def score_pipeline(samples, metrics, run_config, label: str = "v3") -> tuple[dic
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 async def main(limit: int, judge: str, ollama_chat: str, ollama_embed: str,
-               answer_concurrency: int, workers: int) -> None:
+               answer_concurrency: int, workers: int,
+               skip_context_precision: bool = False) -> None:
     print(f"\nNexus RAGAS — v3 Evaluation")
     print(f"  corpus : {REPO_PATH}")
     print(f"  golden : {GOLDEN_PATH.name}")
@@ -221,6 +222,19 @@ async def main(limit: int, judge: str, ollama_chat: str, ollama_embed: str,
 
     print("Loading baselines...")
     baselines = load_baselines()
+    if skip_context_precision:
+        # Reuse context_precision from the most recent v3 result file (retrieval-only metric,
+        # unaffected by prompt changes).
+        results_dir = _root / "eval" / "results"
+        v3_files = sorted(results_dir.glob("ragas_v3_2*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if v3_files:
+            prev = json.loads(v3_files[0].read_text())
+            baselines["ctx_prec_reuse"] = prev.get("v3", {}).get("context_precision")
+            cp = baselines["ctx_prec_reuse"]
+            print(f"  context_precision reused from {v3_files[0].name}: {cp:.4f}" if cp is not None else f"  context_precision: not found in {v3_files[0].name}, will be None")
+        else:
+            baselines["ctx_prec_reuse"] = None
+            print("  context_precision: no prior result found, will be None")
 
     print("\nLoading graph...")
     G = load_graph(REPO_PATH, DB_PATH)
@@ -248,7 +262,10 @@ async def main(limit: int, judge: str, ollama_chat: str, ollama_embed: str,
         print(f"  judge  : mistral (mistral-large-latest)")
         run_cfg = RunConfig(timeout=120, max_retries=3, max_workers=workers)
 
-    metrics = [Faithfulness(llm=llm), ResponseRelevancy(llm=llm, embeddings=emb), ContextPrecision(llm=llm)]
+    if skip_context_precision:
+        metrics = [Faithfulness(llm=llm), ResponseRelevancy(llm=llm, embeddings=emb)]
+    else:
+        metrics = [Faithfulness(llm=llm), ResponseRelevancy(llm=llm, embeddings=emb), ContextPrecision(llm=llm)]
     sem = asyncio.Semaphore(answer_concurrency)
 
     print("Running v3 pipeline...")
@@ -275,7 +292,7 @@ async def main(limit: int, judge: str, ollama_chat: str, ollama_embed: str,
         "golden_qa": "golden_qa_v2.json",
         "questions": len(golden),
         "pipeline": "v3 (cosine_floor + ce_floor + full_body)",
-        "v3": v3_agg,
+        "v3": {**v3_agg, **({"context_precision": baselines.get("ctx_prec_reuse")} if skip_context_precision else {})},
         "baselines": baselines,
         "retrieval_stats_v3": v3_stats,
         "per_question_v3": v3_df.to_dict(orient="records"),
@@ -327,8 +344,10 @@ if __name__ == "__main__":
     p.add_argument("--ollama-embed-model", default="nomic-embed-text")
     p.add_argument("--answer-concurrency", type=int, default=1)
     p.add_argument("--workers", type=int, default=1)
+    p.add_argument("--skip-context-precision", action="store_true",
+                   help="Skip ContextPrecision scoring (reuse from last result); saves ~33%% eval time")
     args = p.parse_args()
     asyncio.run(main(
         args.limit, args.judge, args.ollama_chat_model, args.ollama_embed_model,
-        args.answer_concurrency, args.workers,
+        args.answer_concurrency, args.workers, args.skip_context_precision,
     ))
