@@ -32,7 +32,7 @@ backend/
 │   ├── mcp/                  # → Side-effect tools (GitHub PR posting, test file writer)
 │   └── models/               # Pydantic schemas (CodeNode, QueryRequest…)
 ├── build.py                  # PyInstaller build script (outputs extension/bin/)
-├── tests/                    # 289 tests — all offline, no live API calls
+├── tests/                    # 319 tests — all offline, no live API calls
 └── requirements.txt
 ```
 
@@ -70,6 +70,7 @@ In production use the extension auto-spawns the bundled binary — no manual sta
 
 ```bash
 cd backend && python -m pytest tests/ -v    # 319 tests, no API keys required
+
 ```
 
 ## Module Docs

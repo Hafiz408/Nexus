@@ -15,7 +15,9 @@ Golden set: **`golden_qa_v2.json`** — 30 hand-labelled code-navigation Q&A pai
 | **Graph RAG v1** | FTS + BFS via CALLS+IMPORTS edges (ego_graph) + dual-score reranking (`0.7×semantic + 0.3×pagerank`) + MMR |
 | **HyDE + CrossEncoder** | HyDE query expansion (1 LLM call) + RRF merge + BFS-threshold + cross-encoder reranker — eval-only, never production |
 | **Graph RAG v2** | FTS + RRF merge + CALLS-only depth-1 expansion + propagated score (`parent_rrf × 0.6`) + MMR |
-| **Graph RAG v2 + CE** | Same as v2, plus cross-encoder rerank (`ms-marco-MiniLM-L-6-v2`) over top `2×N` candidates before MMR — current production |
+| **Graph RAG v2 + CE** | Same as v2, plus cross-encoder rerank (`ms-marco-MiniLM-L-6-v2`) over top `2×N` candidates before MMR |
+| **Graph RAG v3** | PPR expansion (CALLS + CLASS_CONTAINS edges) replacing BFS depth-1; hybrid CE floor (keep top-3 + 4.0-logit-gap threshold); full-body expansion for top-5 CE nodes; balanced grounding prompt |
+| **Graph RAG v3.1** | Same as v3 with tuned PPR parameters and CE floor — **current production** (faith=0.91, rel=0.77, prec=0.67) |
 
 ---
 
